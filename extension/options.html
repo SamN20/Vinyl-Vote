@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vinyl Vote Companion Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Vinyl Vote Companion</h1>
+      <form id="options-form">
+        <label class="field">
+          <span>Vinyl Vote site URL</span>
+          <input type="url" id="apiOrigin" required placeholder="https://vinylvote.bynolo.ca" />
+          <small>The extension will call <code>/api</code> endpoints on this origin.</small>
+        </label>
+
+        <label class="field checkbox">
+          <input type="checkbox" id="autoPrompt" />
+          <span>Automatically remind me when I open a supported music site</span>
+        </label>
+
+        <label class="field">
+          <span>Reminder interval (hours)</span>
+          <input type="number" id="remindIntervalHours" min="1" max="48" step="1" />
+        </label>
+
+        <h2>After-song Prompts</h2>
+        <label class="field checkbox">
+          <input type="checkbox" id="afterSongPrompt" />
+          <span>Ask me to rate a track after it finishes</span>
+        </label>
+        <label class="field checkbox">
+          <input type="checkbox" id="crossTabPrompt" />
+          <span>Show reminders even when I’m on a different tab (toolbar badge)</span>
+        </label>
+        <label class="field checkbox">
+          <input type="checkbox" id="desktopNotifications" />
+          <span>Also show desktop notifications (uses the icon URL below)</span>
+        </label>
+        <label class="field">
+          <span>Song prompt cooldown (minutes)</span>
+          <input type="number" id="songPromptCooldownMinutes" min="5" max="240" step="5" />
+        </label>
+        <label class="field">
+          <span>Notification icon URL</span>
+          <input type="url" id="notificationIconUrl" placeholder="https://.../icon.png" />
+        </label>
+
+        <h2>Platforms</h2>
+        <label class="field checkbox"><input type="checkbox" id="platform-ytmusic" /> <span>YouTube Music</span></label>
+        <label class="field checkbox"><input type="checkbox" id="platform-spotify" /> <span>Spotify Web</span></label>
+        <label class="field checkbox"><input type="checkbox" id="platform-apple" /> <span>Apple Music Web</span></label>
+
+        <h2>Lazy Voting</h2>
+        <label class="field checkbox">
+          <input type="checkbox" id="lazyVoteEnabled" />
+          <span>Enable lazy voting stars in prompts</span>
+        </label>
+        <label class="field">
+          <span>Lazy vote step</span>
+          <input type="number" id="lazyVoteStep" min="0.1" max="1" step="0.1" />
+          <small>Step for star increments, e.g., 0.5 for half-stars</small>
+        </label>
+
+        <button type="submit">Save settings</button>
+        <p id="saveStatus" role="status"></p>
+      </form>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

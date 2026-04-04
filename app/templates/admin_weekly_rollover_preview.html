@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Weekly Rollover Preview{% endblock %}
+{% block content %}
+<div class="main-content-container">
+  <h2 class="slide-fade">🧪 Weekly Rollover Preview</h2>
+  <p class="text-muted"><small>Now: {{ plan.now }} • Vote end: {{ plan.vote_end }}</small></p>
+
+  {% if not plan.can_run %}
+    <div class="form-card" style="border:1px solid var(--border-color);">
+      <strong>Heads up</strong>
+      <p class="text-muted">{{ plan.reason }}</p>
+    </div>
+  {% endif %}
+
+  <div class="hero-album-card pop-in" style="align-items:center;">
+    {% if plan.current.cover_url %}
+      <div class="hero-image"><img src="{{ plan.current.cover_url }}" alt="Current cover"></div>
+    {% endif %}
+    <div class="hero-content">
+      <h3>Current Album</h3>
+      <p style="margin:6px 0 0 0"><strong>{{ plan.current.title or 'None' }}</strong></p>
+      <p class="text-muted" style="margin:4px 0 6px 0">{{ plan.current.artist or '—' }}</p>
+      <p class="text-muted">Queue Order: {{ plan.current.order or '—' }}</p>
+    </div>
+  </div>
+
+  <div class="history fade-in" style="margin-top:20px;">
+    <h3>Next Segment Reorder <span class="badge warning">Top {{ plan.limit }}</span></h3>
+    {% if plan.segment and plan.segment|length > 0 %}
+      <div class="results-table-wrapper">
+        <table class="results-table compact">
+          <thead>
+            <tr>
+              <th class="text-center">New</th>
+              <th class="text-center">Old</th>
+              <th>Cover</th>
+              <th>Title</th>
+              <th>Artist</th>
+              <th class="text-center">Votes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in plan.segment %}
+            <tr>
+              <td class="text-center">
+                <span class="badge">{{ a.new_order }}</span>
+              </td>
+              <td class="text-center">
+                {% set moved_up = a.new_order < a.old_order %}
+                {% set moved_down = a.new_order > a.old_order %}
+                <span class="order-delta">
+                  <span class="text-muted">{{ a.old_order }}</span>
+                  {% if moved_up %}
+                    <i class="fa-solid fa-arrow-up up" title="Moved earlier in queue"></i>
+                  {% elif moved_down %}
+                    <i class="fa-solid fa-arrow-down down" title="Moved later in queue"></i>
+                  {% else %}
+                    <i class="fa-solid fa-minus same" title="No change"></i>
+                  {% endif %}
+                </span>
+              </td>
+              <td>{% if a.cover_url %}<img src="{{ a.cover_url }}" alt="cover" class="album-cover">{% endif %}</td>
+              <td>{{ a.title }}</td>
+              <td class="text-muted">{{ a.artist }}</td>
+              <td class="text-center"><span class="song-rating-badge">{{ a.votes }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted">No upcoming albums found to reorder.</p>
+    {% endif %}
+  </div>
+
+  <div class="leaderboard fade-in" style="margin-top:20px;">
+    <h3>Planned Switch</h3>
+    <div class="section-card">
+      {% if plan.planned_next %}
+        <div class="media">
+          {% if plan.planned_next.cover_url %}
+            <img src="{{ plan.planned_next.cover_url }}" class="planned-cover" alt="next cover">
+          {% endif %}
+          <div class="media-body">
+            <p class="planned-title"><strong>{{ plan.planned_next.title }}</strong></p>
+            <p class="text-muted planned-artist">{{ plan.planned_next.artist }}</p>
+            <div class="badge-group">
+              <span class="badge success">New Order: {{ plan.planned_next.new_order }}</span>
+              {% if plan.planned_next.old_order and plan.planned_next.old_order != plan.planned_next.new_order %}
+                <span class="badge info">Old: {{ plan.planned_next.old_order }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <p class="text-muted">No next album candidate found.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="history fade-in" style="margin-top:20px;">
+    <h3>Notifications</h3>
+    <div class="section-card">
+      <p class="text-muted" style="margin:0"><i class="fa-regular fa-bell" style="margin-right:8px;"></i>Scope: <strong>{{ plan.notification_scope }}</strong> • Estimated recipients: <strong>{{ plan.estimated_recipients }}</strong></p>
+    </div>
+  </div>
+
+  <div class="history fade-in" style="margin-top:20px;">
+    <h3>New Vote End Time (Preview)</h3>
+    <div class="section-card">
+      <p style="margin:0"><i class="fa-regular fa-calendar" style="margin-right:8px;"></i>{{ plan.new_vote_end_iso }}</p>
+    </div>
+  </div>
+
+  <p style="margin-top:1em">
+    <a href="{{ url_for('admin.admin_settings') }}" class="btn">Back to Settings</a>
+  </p>
+</div>
+{% endblock %}

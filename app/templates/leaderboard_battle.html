@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Elo Leaderboard{% endblock %}
+
+{% block content %}
+<div class="leaderboard-container fade-in" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+        <h2><i class="fa fa-trophy"></i> Fan Favorites</h2>
+        <a href="{{ url_for('battle.index') }}" class="button"><i class="fa fa-bolt"></i> Play Face-Off</a>
+    </div>
+
+    <p style="margin-bottom: 20px; color: white;">
+        Rankings based on {{ pagination.total }} songs involved in Face-Off battles.
+        Songs gain rating when they win a head-to-head match.
+    </p>
+
+    <div class="table-responsive">
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">#</th>
+                    <th>Song</th>
+                    <th>Artist</th>
+                    <th style="text-align: right;">Rating</th>
+                    <th style="text-align: right;">Matches</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for song in pagination.items %}
+                <tr class="rank-row">
+                    <td class="rank-cell">
+                        {% set rank = (pagination.page - 1) * pagination.per_page + loop.index %}
+                        {% if rank == 1 %}
+                        <span class="rank-badge gold">1</span>
+                        {% elif rank == 2 %}
+                        <span class="rank-badge silver">2</span>
+                        {% elif rank == 3 %}
+                        <span class="rank-badge bronze">3</span>
+                        {% else %}
+                        <span class="rank-number">#{{ rank }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="{{ song.album.cover_url }}" alt="cover" width="40" height="40"
+                                style="border-radius:4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                            <div>
+                                <div style="font-weight:600; font-size:1.05rem;">{{ song.title }}</div>
+                                {% if song.spotify_url %}
+                                <a href="{{ song.spotify_url }}" target="_blank"
+                                    style="color:#1DB954; font-size:0.85rem; margin-right:5px;"><i
+                                        class="fab fa-spotify"></i></a>
+                                {% endif %}
+                                {% if song.apple_url %}
+                                <a href="{{ song.apple_url }}" target="_blank"
+                                    style="color:#fa243c; font-size:0.85rem; margin-right:5px;"><i
+                                        class="fab fa-apple"></i></a>
+                                {% endif %}
+                                {% if song.youtube_url %}
+                                <a href="{{ song.youtube_url }}" target="_blank"
+                                    style="color:#ff0000; font-size:0.85rem;"><i class="fab fa-youtube"></i></a>
+                                {% endif %}
+
+                                {% if current_user.is_authenticated and user_votes.get(song.id) %}
+                                <div class="user-vote-badge"
+                                    title="You picked this song as winner {{ user_votes[song.id] }} times">
+                                    <i class="fa fa-check-circle"></i> Voted {{ user_votes[song.id] }}x
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td><a href="{{ url_for('user.top_artists', q=song.album.artist) }}" class="bare-link"
+                            style="font-weight:700; color: var(--accent);">{{ song.album.artist }}</a></td>
+                    <td style="text-align: right;">
+                        <span style="font-weight: 800; color: var(--accent); font-size: 1.1rem;">{{ '%.0f' %
+                            song.elo_rating }}</span>
+                    </td>
+                    <td style="text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums;">
+                        {{ song.match_count }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align:center; padding: 40px;">
+                        No matches played yet! <a href="{{ url_for('battle.index') }}">Start a battle</a> to generate
+                        rankings.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="pagination" style="margin-top: 20px; text-align: center;">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('battle.leaderboard', page=pagination.prev_num) }}" class="button secondary btn-sm">&larr;
+            Prev</a>
+        {% endif %}
+
+        <span style="margin: 0 10px;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+        {% if pagination.has_next %}
+        <a href="{{ url_for('battle.leaderboard', page=pagination.next_num) }}" class="button secondary btn-sm">Next
+            &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .rank-badge {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        border-radius: 50%;
+        text-align: center;
+        color: white;
+        font-weight: bold;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .rank-badge.gold {
+        background: #FFD700;
+        color: #333;
+    }
+
+    .rank-badge.silver {
+        background: #C0C0C0;
+        color: #333;
+    }
+
+    .rank-badge.bronze {
+        background: #CD7F32;
+    }
+
+    .rank-number {
+        font-weight: bold;
+        color: var(--text-muted);
+        font-size: 1rem;
+    }
+
+    .results-table td {
+        vertical-align: middle;
+        padding: 12px 8px;
+    }
+
+    .user-vote-badge {
+        display: inline-block;
+        font-size: 0.75rem;
+        background: rgba(29, 185, 84, 0.15);
+        color: #1DB954;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 8px;
+        font-weight: 600;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}

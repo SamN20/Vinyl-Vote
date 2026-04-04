@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Admin - Battles{% endblock %}
+
+{% block content %}
+<div class="admin-container fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2>⚡ Battle Stats</h2>
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="button secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="analytics-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Votes</div>
+            <div class="stat-value">{{ total_votes }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Users Participating</div>
+            <div class="stat-value">{{ users_participating }}</div>
+        </div>
+    </div>
+
+    <h3 style="margin-top: 40px;">Recent Battles</h3>
+    <div class="table-responsive">
+        <table class="top-albums-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Winner</th>
+                    <th>Loser</th>
+                    <th>User</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vote in recent_votes %}
+                <tr>
+                    <td class="mono">{{ vote.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <div style="font-weight: 600; color: var(--accent);">{{ vote.winner.title }}</div>
+                        <div class="text-muted" style="font-size: 0.85rem;">{{ vote.winner.album.artist }}</div>
+                    </td>
+                    <td>
+                        <div style="opacity: 0.8;">{{ vote.loser.title }}</div>
+                        <div class="text-muted" style="font-size: 0.85rem;">{{ vote.loser.album.artist }}</div>
+                    </td>
+                    <td>
+                        {% if vote.user %}
+                        <span class="user-link" style="color: var(--text); font-weight: 600;">{{ vote.user.username
+                            }}</span>
+                        {% else %}
+                        <span class="text-muted" style="font-style: italic;">Anonymous</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 20px;">No battles yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin: 14px 0 22px;
+    }
+
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 14px;
+    }
+
+    .stat-label {
+        font-size: .9rem;
+        opacity: .8;
+    }
+
+    .stat-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin-top: 6px;
+    }
+
+    /* Table styling reused/adapted */
+    .top-albums-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    .top-albums-table th {
+        text-align: left;
+        padding: 12px 8px;
+        border-bottom: 2px solid var(--border-color);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        opacity: 0.8;
+    }
+
+    .top-albums-table td {
+        padding: 12px 8px;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+
+    .top-albums-table td.mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        opacity: .95;
+        font-size: 0.9rem;
+    }
+
+    .user-link {
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .user-link:hover {
+        color: var(--accent);
+        text-decoration: underline;
+    }
+
+    .text-muted {
+        color: var(--text-muted);
+    }
+</style>
+{% endblock %}

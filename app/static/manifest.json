@@ -1,0 +1,26 @@
+{
+    "short_name": "VinylVote",
+    "name": "Vinyl Vote - Album Voting App",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#121212",
+    "theme_color": "#1DB954",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "/static/favicon_64x64.png",
+            "sizes": "64x64",
+            "type": "image/png"
+        },
+        {
+            "src": "/static/favicon_180x180.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        }
+    ],
+    "categories": ["music", "entertainment", "social"],
+    "lang": "en-US",
+    "dir": "ltr"
+}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Invite to Vinyl Vote{% endblock %}
+
+{% block content %}
+<div class="hero-album-card fade-in">
+  <div class="hero-image">
+    <img src="{{ album.cover_url }}" alt="{{ album.title }} cover">
+  </div>
+  <div class="hero-content">
+    <h2>📨 You’re Invited!</h2>
+    <p>Join <strong>Vinyl Vote</strong> and cast your vote on this week’s album.</p>
+    <h3>{{ album.title }}</h3>
+    <p><strong>Artist:</strong> {{ album.artist }}</p>
+    <p><strong>Release Date:</strong> {{ album.release_date }}</p>
+    <p class="countdown-line"><strong>Voting ends in:</strong> <span id="countdown">Loading...</span></p>
+
+    <div class="music-links better-music-links" style="margin: 1rem 0;">
+      <a class="music-link" href="{{ album.spotify_url }}" target="_blank">
+        <img src="https://api.iconify.design/logos:spotify-icon.svg" alt="Spotify" class="icon"> Spotify
+      </a>
+      <a class="music-link" href="{{ album.apple_url }}" target="_blank">
+        <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/apple-music-icon.svg" alt="Apple Music" class="icon"> Apple Music
+      </a>
+      <a class="music-link" href="{{ album.youtube_url }}" target="_blank">
+        <img src="https://api.iconify.design/logos:youtube-icon.svg" alt="YouTube Music" class="icon"> YouTube Music
+      </a>
+    </div>
+
+    <a href="{{ url_for('user.register') }}" class="button go-vote-cta">🔑 Create Account & Vote</a>
+  </div>
+</div>
+
+<script>
+    // exactly the same countdown you use on index.html:
+    const endTime = new Date("{{ vote_end }}");
+    const countdownElem = document.getElementById('countdown');
+    function updateCountdown() {
+      const now = new Date();
+      const diff = endTime - now;
+      if (diff <= 0) {
+        countdownElem.innerText = "Voting closed!";
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hrs  = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const mins = Math.floor((diff / (1000 * 60)) % 60);
+      const secs = Math.floor((diff / 1000) % 60);
+      countdownElem.innerText = `${days}d ${hrs}h ${mins}m ${secs}s`;
+    }
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+  </script>
+  {% endblock %}

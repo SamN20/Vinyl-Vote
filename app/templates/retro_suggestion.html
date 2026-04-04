@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Retro Suggestion{% endblock %}
+
+{% block content %}
+<div class="retro-page-wrapper">
+  <h2>Quick catch-up</h2>
+
+  {% if suggestion %}
+    <article class="retro-card">
+      <div class="retro-media">
+        <img src="{{ suggestion.cover_url }}" alt="{{ suggestion.title }} cover" class="retro-cover">
+      </div>
+      <div class="retro-body">
+        <h3 class="retro-title">{{ suggestion.title }}</h3>
+        <div class="retro-artist">{{ suggestion.artist }}</div>
+        <p class="retro-desc">This is a past album you haven't voted on. Would you like to cast retroactive votes now?</p>
+
+        <div class="retro-actions">
+          <a href="{{ url_for('user.retro_vote', album_id=suggestion.id) }}" class="retro-btn retro-btn-primary">Yes — vote now</a>
+          <a href="{{ url_for('user.index') }}" class="retro-btn retro-btn-secondary">Not now</a>
+          <a href="{{ url_for('user.results', album_id=suggestion.id) }}" class="retro-btn retro-btn-link">View album</a>
+        </div>
+      </div>
+    </article>
+  {% else %}
+    <div class="retro-empty">
+      <h3>You're caught up</h3>
+      <p>No missed albums found — great job keeping up!</p>
+      <p><a class="retro-btn retro-btn-primary" href="{{ url_for('user.index') }}">Back to home</a></p>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

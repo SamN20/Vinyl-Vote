@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Update Your Email{% endblock %}
+{% block content %}
+<div class="form-card pop-in" style="animation-delay: 0.1s;">
+    <h2 class="pop-in" style="animation-delay: 0.2s;">Update Your Email</h2>
+    <p class="pop-in" style="animation-delay: 0.25s;">
+        Changing email for <strong>{{ username }}</strong>
+    </p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <label for="email" class="pop-in" style="animation-delay: 0.3s; margin-top: -10px;">{{ form.email.label }}</label>
+        {{ form.email(class_="input-field pop-in", style="animation-delay: 0.3s", placeholder="Enter your email") }}
+        <button type="submit" class="pop-in" style="animation-delay: 0.5s;">Update Email</button>
+    </form>
+    <p class="form-footer pop-in" style="animation-delay: 0.6s;">
+        <a href="{{ url_for('user.index') }}">Return Home</a>
+    </p>
+</div>
+{% endblock %}

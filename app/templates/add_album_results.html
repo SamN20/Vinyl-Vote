@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Select Album{% endblock %}
+
+{% block content %}
+<h2>Select the correct album</h2>
+
+<div class="album-results">
+  {% for album in albums %}
+  <div class="album-card">
+    <img src="{{ album.images[0].url }}" width="100">
+    <h3>{{ album.name }}</h3>
+    <p>{{ album.artists[0].name }}</p>
+    <a href="{{ url_for('admin.confirm_album', spotify_id=album.id) }}" class="button">✅ Use this album</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

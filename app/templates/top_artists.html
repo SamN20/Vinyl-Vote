@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Top Artists{% endblock %}
+
+{% block content %}
+  <h2>🎤 Top Artists of All Time</h2>
+
+  <form id="artist-filter" class="search-form"
+        method="get" action="{{ url_for('user.top_artists') }}">
+    <input class="search-input"  type="text"   name="q"           placeholder="Artist name…"    value="{{ q or '' }}">
+    <input class="search-input"  type="number" name="min_ratings" placeholder="Min # ratings" min="1" value="{{ min_ratings or '' }}">
+    <input class="search-input"  type="number" step="0.1" name="min_avg"     placeholder="Min avg score" min="1" max="5" value="{{ min_avg or '' }}">
+    <button class="search-button" type="submit">Filter</button>
+  </form>
+
+  <div class="top-albums-table-wrapper">
+    <table class="top-albums-table">
+      <thead>
+        <tr>
+          <th>🏆</th>
+          <th>Photo</th>
+          <th>Artist</th>
+          <th>Avg Rating</th>
+          <th># Ratings</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in stats %}
+  <tr class="clickable-row {% if loop.first %}current-row{% endif %}">
+          <td class="crown-cell">{% if loop.first %}<span class="crown">👑</span>{% endif %}</td>
+          <td>
+            <div class="artist-thumb">
+              <div class="skeleton-box"></div>
+              <img src="{{ a.image_url }}" alt="{{ a.artist }}" class="artist-photo" loading="lazy" decoding="async" width="48" height="48">
+            </div>
+          </td>
+          <td class="artist-cell" data-artist="{{ a.artist }}">
+            {{ a.artist }}
+            {% if a.spotify_track_id %}
+            <span class="artist-embed" data-src="https://open.spotify.com/embed/track/{{ a.spotify_track_id }}" aria-hidden="true"></span>
+            {% endif %}
+          </td>
+          <td>{{ "%.2f"|format(a.avg) }}</td>
+          <td>{{ a.count }}</td>
+        </tr>
+        <tr class="details-row">
+          <td colspan="5">
+            <div class="details-content" data-artist="{{ a.artist }}">
+              <div class="skeleton-box" style="height: 120px; border-radius: 6px;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total > per_page %}
+  <div class="text-center" style="margin-top: 14px; display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap;">
+    {% if has_prev %}
+      <a class="button outline" href="{{ url_for('user.top_artists', page=page-1, per_page=per_page, q=q, min_ratings=min_ratings, min_avg=min_avg) }}">Previous</a>
+    {% endif %}
+    <span class="text-muted">Page {{ page }} of {{ ((total - 1) // per_page) + 1 }}</span>
+    {% if has_next %}
+      <a class="button" href="{{ url_for('user.top_artists', page=page+1, per_page=per_page, q=q, min_ratings=min_ratings, min_avg=min_avg) }}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Mark artist thumbs as loaded when images complete
+    document.querySelectorAll('.artist-thumb').forEach(th => {
+      const img = th.querySelector('img');
+      if (!img) return;
+      if (img.complete) th.classList.add('loaded');
+      else img.addEventListener('load', () => th.classList.add('loaded'));
+    });
+
+        // Sectioned rendering so tracks can appear immediately
+        function setDetailsSkeleton(detailsEl) {
+          const container = detailsEl.querySelector('.details-content');
+          if (!container) return;
+          container.innerHTML = `
+            <div class="bio-section"><div class="skeleton-box" style="height: 100px; border-radius: 6px;"></div></div>
+            <h4>Top Tracks</h4>
+            <ul class="track-list tracks-section">
+              <li><div class="skeleton-box" style="height: 92px; border-radius: 6px;"></div></li>
+              <li><div class="skeleton-box" style="height: 92px; border-radius: 6px;"></div></li>
+              <li><div class="skeleton-box" style="height: 92px; border-radius: 6px;"></div></li>
+            </ul>`;
+          detailsEl.dataset.state = 'loading';
+        }
+
+        function updateBio(detailsEl, bio) {
+          const el = detailsEl.querySelector('.details-content .bio-section');
+          if (!el) return;
+          el.innerHTML = `<div class="bio-text"><strong>Bio:</strong> ${bio || 'No bio found.'}</div>`;
+        }
+
+        function updateTracks(detailsEl, songs) {
+          const list = detailsEl.querySelector('.details-content .tracks-section');
+          if (!list) return;
+          const arr = Array.isArray(songs) ? songs : [];
+          if (!arr.length) {
+            list.innerHTML = `<li><div class="track-info"><span>No top tracks yet.</span></div></li>`;
+            return;
+          }
+          let html = '';
+          arr.forEach(s => {
+            const trackId = s.spotify_url ? s.spotify_url.split('/').pop().split('?')[0] : '';
+            html += `
+              <li>
+                <div class="track-info">
+                  <span>${s.title} — ${s.avg ?? ''}★</span>
+                  ${trackId ? `<span class="track-embed-holder" data-track-id="${trackId}"></span>` : ''}
+                </div>
+              </li>`;
+          });
+          list.innerHTML = html;
+          requestAnimationFrame(() => {
+            list.querySelectorAll('.track-embed-holder').forEach(holder => {
+              const id = holder.getAttribute('data-track-id');
+              if (!id) return;
+              const ifr = document.createElement('iframe');
+              ifr.className = 'track-embed';
+              ifr.loading = 'lazy';
+              ifr.src = `https://open.spotify.com/embed/track/${id}`;
+              ifr.setAttribute('frameborder', '0');
+              ifr.setAttribute('allow', 'encrypted-media');
+              holder.replaceWith(ifr);
+            });
+          });
+        }
+
+        document.querySelectorAll('.clickable-row').forEach(row => {
+          row.style.cursor = 'pointer';
+          row.addEventListener('click', async () => {
+            const details = row.nextElementSibling;
+            if (!details) return;
+
+            // toggle
+            if (details.style.display === 'table-row') {
+              details.style.display = 'none';
+              return;
+            }
+
+            details.style.display = 'table-row';
+            const artist = row.querySelector('.artist-cell')?.dataset.artist;
+            if (!artist) return;
+
+            // Build base structure and load sections independently
+            setDetailsSkeleton(details);
+            // Fetch Top Tracks first so embeds appear ASAP
+            fetch(`/artist/${encodeURIComponent(artist)}/top_songs`)
+              .then(r => r.ok ? r.json() : [])
+              .catch(() => [])
+              .then(songs => { if (details.style.display === 'table-row') updateTracks(details, songs); });
+            // Fetch bio separately
+            fetch(`/artist/${encodeURIComponent(artist)}/bio`)
+              .then(r => r.ok ? r.json() : {bio:'No bio found.'})
+              .catch(() => ({bio:'No bio found.'}))
+              .then(b => { if (details.style.display === 'table-row') updateBio(details, b?.bio); });
+          });
+        });
+
+  // Defer artist inline iframes until visible
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const span = entry.target;
+              const src = span.getAttribute('data-src');
+              if (!src) return;
+              const ifr = document.createElement('iframe');
+              ifr.setAttribute('src', src);
+              ifr.setAttribute('width', '60');
+              ifr.setAttribute('height', '60');
+              ifr.setAttribute('frameborder', '0');
+              ifr.setAttribute('allow', 'encrypted-media');
+              ifr.setAttribute('loading', 'lazy');
+              span.replaceWith(ifr);
+              observer.unobserve(span);
+            }
+          });
+        }, { root: null, threshold: 0.1 });
+        document.querySelectorAll('.artist-embed').forEach(el => observer.observe(el));
+
+        // Prefetch first few artists' bios and top songs into sessionStorage for instant expand
+        // Note: prefetch removed per request; skeletons provide the perceived speed
+    });
+</script>
+{% endblock %}

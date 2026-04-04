@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Manage Comments{% endblock %}
+
+{% block content %}
+<h2>🛡️ Comment Moderation</h2>
+<p>Review flagged or hidden comments.</p>
+
+{% if comments %}
+<div class="table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Album</th>
+        <th>Comment</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for comment in comments %}
+      <tr>
+        <td>{{ comment.user.username }}</td>
+        <td>{{ comment.album.title }}</td>
+        <td>{{ comment.text }}</td>
+        <td>
+          {% if comment.is_hidden %}<span class="badge error">Hidden</span>{% endif %}
+          {% if comment.is_flagged %}<span class="badge warning">Flagged</span>{% endif %}
+        </td>
+        <td>
+          <form method="POST" style="display:inline;">
+            <input type="hidden" name="comment_id" value="{{ comment.id }}">
+            <button type="submit" name="action" value="approve" class="btn btn-small success">Approve</button>
+            <button type="submit" name="action" value="hide" class="btn btn-small warning">Hide</button>
+            <button type="submit" name="action" value="delete" class="btn btn-small danger" onclick="return confirm('Delete this comment permanently?')">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p>No comments currently need review.</p>
+{% endif %}
+
+<style>
+  .badge { padding: 2px 6px; border-radius: 4px; font-size: 0.8em; color: white; }
+  .badge.error { background-color: #e74c3c; }
+  .badge.warning { background-color: #f39c12; }
+  .btn-small { padding: 4px 8px; font-size: 0.8em; margin-right: 4px; }
+  .success { background-color: #2ecc71; border: none; color: white; }
+  .warning { background-color: #f39c12; border: none; color: white; }
+  .danger { background-color: #e74c3c; border: none; color: white; }
+</style>
+{% endblock %}

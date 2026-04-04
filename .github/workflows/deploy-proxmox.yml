@@ -1,0 +1,30 @@
+name: Deploy To Proxmox
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH to Proxmox host
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROXMOX_SSH_HOST }}
+          username: ${{ secrets.PROXMOX_SSH_USER }}
+          key: ${{ secrets.PROXMOX_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PROXMOX_SSH_PORT }}
+          script: |
+            set -e
+            cd ${{ secrets.PROXMOX_DEPLOY_PATH }}
+            git fetch --all
+            git reset --hard origin/main
+            docker compose pull || true
+            docker compose up -d --build
+            docker image prune -f

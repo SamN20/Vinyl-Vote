@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}Face-Off{% endblock %}
+
+{% block content %}
+<div class="battle-container fade-in">
+    <h2 class="battle-title" style="text-align: center; margin-bottom: 24px;">Which song is better?</h2>
+
+    <div class="battle-arena">
+        <!-- Song 1 -->
+        <div class="battle-card" id="card-1" onclick="vote({{ song1.id }}, {{ song2.id }})">
+            <div class="battle-cover">
+                <img src="{{ song1.album.cover_url }}" alt="{{ song1.album.title }}">
+                <div class="battle-overlay">
+                    <span class="vote-text">VOTE</span>
+                </div>
+            </div>
+            <div class="battle-info">
+                <h3>{{ song1.title }}</h3>
+                <p>{{ song1.album.artist }}</p>
+                <div class="song-links">
+                    {% if song1.spotify_url %}
+                    <a href="{{ song1.spotify_url }}" target="_blank" title="Open in Spotify"><i
+                            class="fab fa-spotify"></i></a>
+                    {% endif %}
+                    {% if song1.apple_url %}
+                    <a href="{{ song1.apple_url }}" target="_blank" title="Open in Apple Music"><i
+                            class="fab fa-apple"></i></a>
+                    {% endif %}
+                    {% if song1.youtube_url %}
+                    <a href="{{ song1.youtube_url }}" target="_blank" title="Open in YouTube Music"><i
+                            class="fab fa-youtube"></i></a>
+                    {% endif %}
+                </div>
+                {% if song1.spotify_url %}
+                <div class="spotify-embed-container">
+                    {# Extract ID from URL for embed #}
+                    {% set spotify_id = song1.spotify_url.split('/')[-1].split('?')[0] %}
+                    <iframe style="border-radius:12px"
+                        src="https://open.spotify.com/embed/track/{{ spotify_id }}?utm_source=generator&theme=0"
+                        width="100%" height="80" frameBorder="0" allowfullscreen=""
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"></iframe>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="vs-badge">VS</div>
+
+        <!-- Song 2 -->
+        <div class="battle-card" id="card-2" onclick="vote({{ song2.id }}, {{ song1.id }})">
+            <div class="battle-cover">
+                <img src="{{ song2.album.cover_url }}" alt="{{ song2.album.title }}">
+                <div class="battle-overlay">
+                    <span class="vote-text">VOTE</span>
+                </div>
+            </div>
+            <div class="battle-info">
+                <h3>{{ song2.title }}</h3>
+                <p>{{ song2.album.artist }}</p>
+                <div class="song-links">
+                    {% if song2.spotify_url %}
+                    <a href="{{ song2.spotify_url }}" target="_blank" title="Open in Spotify"><i
+                            class="fab fa-spotify"></i></a>
+                    {% endif %}
+                    {% if song2.apple_url %}
+                    <a href="{{ song2.apple_url }}" target="_blank" title="Open in Apple Music"><i
+                            class="fab fa-apple"></i></a>
+                    {% endif %}
+                    {% if song2.youtube_url %}
+                    <a href="{{ song2.youtube_url }}" target="_blank" title="Open in YouTube Music"><i
+                            class="fab fa-youtube"></i></a>
+                    {% endif %}
+                </div>
+                {% if song2.spotify_url %}
+                <div class="spotify-embed-container">
+                    {# Extract ID from URL for embed #}
+                    {% set spotify_id = song2.spotify_url.split('/')[-1].split('?')[0] %}
+                    <iframe style="border-radius:12px"
+                        src="https://open.spotify.com/embed/track/{{ spotify_id }}?utm_source=generator&theme=0"
+                        width="100%" height="80" frameBorder="0" allowfullscreen=""
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"></iframe>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if not current_user.is_authenticated %}
+    <div class="login-suggestion fade-in"
+        style="text-align: center; margin-top: 32px; background: var(--card-bg-hover); padding: 16px; border-radius: 8px; border: 1px solid var(--accent);">
+        <p style="margin: 0 0 8px 0; font-weight: bold;">Want to track your voting history?</p>
+        <a href="{{ url_for('user.login', next=request.path) }}" class="button small">Log In Now</a>
+    </div>
+    {% endif %}
+
+    <div class="skip-container"
+        style="text-align: center; margin-top: 32px; display: flex; flex-direction: column; gap: 16px; align-items: center;">
+        <a href="{{ url_for('battle.index') }}" class="button secondary">Skip this match</a>
+        <a href="{{ url_for('battle.leaderboard') }}"
+            style="color: var(--text-muted); font-size: 0.9rem; text-decoration: none; border-bottom: 1px dotted var(--text-muted);">View
+            Face-Off Leaderboard</a>
+    </div>
+
+    <!-- Result Modal (Hidden by default) -->
+    <div id="result-overlay" class="result-overlay" style="display: none;">
+        <div class="result-modal pop-in">
+            <h2>Winner!</h2>
+            <div class="result-content">
+                <div id="winner-display">
+                    <!-- populated by JS -->
+                </div>
+                <div class="rating-change">
+                    <span id="rating-val"></span> <span id="rating-diff" class="diff-positive"></span>
+                </div>
+            </div>
+            <button class="button" onclick="location.reload()">Next Battle <i class="fa fa-arrow-right"></i></button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .battle-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .battle-arena {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+        position: relative;
+    }
+
+    @media (max-width: 700px) {
+        .battle-arena {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .vs-badge {
+            position: relative;
+            margin: 10px 0;
+        }
+    }
+
+    .battle-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        width: 300px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+    }
+
+    .battle-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        border-color: var(--accent);
+    }
+
+    .battle-cover {
+        position: relative;
+        width: 100%;
+        padding-bottom: 100%;
+        /* Square aspect ratio */
+        margin-bottom: 16px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .battle-cover img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .battle-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .battle-card:hover .battle-overlay {
+        opacity: 1;
+    }
+
+    .vote-text {
+        background: var(--accent);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        transform: scale(0.9);
+        transition: transform 0.2s;
+    }
+
+    .battle-card:hover .vote-text {
+        transform: scale(1);
+    }
+
+    .battle-info h3 {
+        margin: 0 0 4px;
+        font-size: 1.1rem;
+        line-height: 1.3;
+    }
+
+    .battle-info p {
+        margin: 0 0 8px;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .song-links {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .song-links a {
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        transition: color 0.2s;
+    }
+
+    .song-links a:hover {
+        color: var(--accent);
+    }
+
+    .spotify-embed-container {
+        margin-top: 10px;
+    }
+
+    .vs-badge {
+        background: #000;
+        color: white;
+        font-weight: 800;
+        padding: 10px;
+        border-radius: 50%;
+        border: 2px solid var(--border-color);
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        font-style: italic;
+    }
+
+    /* Modal styling */
+    .result-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+    }
+
+    .result-modal {
+        background: var(--card-bg);
+        padding: 40px;
+        border-radius: 16px;
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        border: 1px solid var(--border-color);
+    }
+
+    .rating-change {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 20px 0;
+    }
+
+    .diff-positive {
+        color: var(--accent);
+    }
+
+    .diff-negative {
+        color: #ff5555;
+    }
+</style>
+
+<script>
+    function vote(winnerId, loserId) {
+        const formData = new FormData();
+        formData.append('winner_id', winnerId);
+        formData.append('loser_id', loserId);
+
+        fetch("{{ url_for('battle.vote') }}", {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                showResult(data);
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Something went wrong. Please try again.');
+            });
+    }
+
+    function showResult(data) {
+        const overlay = document.getElementById('result-overlay');
+        const winnerDisplay = document.getElementById('winner-display');
+        const ratingVal = document.getElementById('rating-val');
+        const ratingDiff = document.getElementById('rating-diff');
+
+        // Could add more detail about the song here if we passed it back, 
+        // but simplified for now to just show rating change
+
+        ratingVal.innerText = data.winner.new_rating;
+        ratingDiff.innerText = "+" + data.winner.gain;
+
+        overlay.style.display = 'flex';
+
+        // Auto-advance after 3 seconds if user doesn't click
+        // setTimeout(() => location.reload(), 3000);
+    }
+</script>
+
+{% endblock %}

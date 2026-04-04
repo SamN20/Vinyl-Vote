@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h2>⚙️ Site Settings</h2>
+<form method="post">
+  <label for="next_album_option_count"><strong>Next album options to show:</strong></label>
+  <input type="number" min="1" name="next_album_option_count" id="next_album_option_count" value="{{ count }}">
+
+  <div style="margin-top:1em">
+    <label for="auto_switch_notification_scope"><strong>Auto-switch notifications:</strong></label>
+    <select name="auto_switch_notification_scope" id="auto_switch_notification_scope">
+      <option value="none"  {% if notif_scope == 'none' %}selected{% endif %}>No notifications</option>
+      <option value="admin" {% if notif_scope == 'admin' %}selected{% endif %}>Admins only</option>
+      <option value="all"   {% if notif_scope == 'all' %}selected{% endif %}>All users</option>
+    </select>
+  </div>
+  <button type="submit" class="btn">Save</button>
+</form>
+
+<form method="post" action="{{ url_for('admin.run_weekly_rollover') }}" style="margin-top:2em;">
+  <button type="submit" class="btn btn-warning">Run Weekly Rollover (Test)</button>
+  <p style="margin-top:0.5em;color:#666;font-size:0.9em;">Runs the Monday rollover now: reorders next {{ count }} by votes, switches album, updates vote end time, and sends notifications based on the setting above.</p>
+</form>
+
+<p style="margin-top:1em">
+  <a class="btn" href="{{ url_for('admin.weekly_rollover_preview') }}">Preview Weekly Rollover (Dry Run)</a>
+  <span style="margin-left:0.5em;color:#666;font-size:0.9em;">Shows the plan without making changes.</span>
+  
+</p>
+{% endblock %}

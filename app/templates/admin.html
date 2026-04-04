@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+
+{% block content %}
+<h2>🛠 Admin Dashboard</h2>
+
+<div class="admin-cards">
+  <a href="{{ url_for('admin.add_album') }}" class="admin-card">➕ Add an Album</a>
+  <a href="{{ url_for('admin.manage_albums') }}" class="admin-card">🎛 Manage Queue</a>
+  <a href="{{ url_for('admin.manage_songs') }}" class="admin-card">🎵 Manage Songs</a>
+  <a href="{{ url_for('admin.admin_results') }}" class="admin-card">📊 View Live Results</a>
+  <a href="{{ url_for('admin.export_all_votes') }}" class="admin-card">📥 Export All Votes (CSV)</a>
+  <a href="{{ url_for('admin.retro_votes') }}" class="admin-card">🕓 Retro Votes</a>
+  <a href="{{ url_for('admin.manage_notifications') }}" class="admin-card">🔔 Manage Notifications</a>
+  <a href="{{ url_for('admin.admin_email') }}" class="admin-card">📧 Send Email</a>
+  <a href="{{ url_for('admin.admin_song_requests') }}" class="admin-card">🎶 Manage Album Requests</a>
+  <a href="{{ url_for('admin.manage_comments') }}" class="admin-card">🛡️ Moderate Comments</a>
+  <a href="{{ url_for('admin.admin_users') }}" class="admin-card">👥 User Management</a>
+  <a href="{{ url_for('admin.admin_battles') }}" class="admin-card">⚡ Battle Stats</a>
+  <a href="{{ url_for('admin.admin_settings') }}" class="admin-card">⚙️ Settings</a>
+  <a href="{{ url_for('admin.next_album_results') }}" class="admin-card">📈 Next Album Results</a>
+</div>
+{% endblock %}

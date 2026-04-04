@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <body style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;padding:20px;border-radius:8px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <img src="https://album.nolanbc.ca/static/icon.png" alt="Vinyl Vote Logo" style="max-width:180px; height:auto;">
+      </div>
+      <h2 style="color:#1db954;">Don't Forget to Vote!</h2>
+      <p>This is a friendly reminder to rate this week's album:</p>
+      <p><strong>{{ album.title }} by {{ album.artist }}</strong></p>
+      <p>Voting closes on {{ vote_end }}.</p>
+      <p style="text-align:center;margin:30px 0;">
+        <a href="{{ vote_url }}" style="display:inline-block;background:#1db954;color:#ffffff;padding:10px 20px;border-radius:5px;text-decoration:none;">Vote Now</a>
+      </p>
+      <p style="margin-top:40px;color:#555;">Thanks for participating!<br>— The Vinyl Vote Team</p>
+    </div>
+  </body>
+</html>

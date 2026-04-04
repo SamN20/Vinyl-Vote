@@ -1,0 +1,597 @@
+{% extends "base.html" %}
+{% block title %}Vote{% endblock %}
+
+{% block content %}
+{% if request.args.get('voted') %}
+<div class="vote-success-banner">
+  <div class="success-content">
+    <i class="fa fa-check-circle"></i>
+    <div>
+      <strong>Your votes have been recorded!</strong>
+      <p>Share your rating with friends:</p>
+    </div>
+  </div>
+  <a href="{{ url_for('user.share_vote_card', album_id=album.id) }}" class="btn-share-card">
+    <i class="fa fa-share-alt"></i> Download Vote Card
+  </a>
+</div>
+{% endif %}
+
+<h2>🗳 Album of the Week</h2>
+
+<div class="hero-album-card">
+  <div class="hero-image">
+    <img src="{{ album.cover_url }}" alt="Album Cover">
+  </div>
+  <div class="hero-content">
+    <h3>{{ album.title }}</h3>
+    <p><strong>Artist:</strong> {{ album.artist }}</p>
+    <p><strong>Release Date:</strong> {{ album.release_date }}</p>
+    <p class="countdown-line"><strong>Voting ends in:</strong> <span id="countdown">Loading...</span></p>
+
+    <div class="music-links better-music-links">
+      <a class="music-link" href="{{ album.spotify_url }}" target="_blank">
+        <img src="https://api.iconify.design/logos:spotify-icon.svg" alt="Spotify" class="icon"> Spotify
+      </a>
+      <a class="music-link" href="{{ album.apple_url }}" target="_blank">
+        <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/apple-music-icon.svg"
+          alt="Apple Music" class="icon"> Apple Music
+      </a>
+      <a class="music-link" href="{{ album.youtube_url }}" target="_blank">
+        <img src="https://api.iconify.design/logos:youtube-icon.svg" alt="YouTube Music" class="icon"> YouTube Music
+      </a>
+    </div>
+
+    <!-- Pop-out voting button -->
+    <div class="pip-action-row">
+      <button type="button" id="open-vote-pip" class="button small">Pop out voting window</button>
+      <span class="muted pip-hint" id="pip-hint"></span>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top: 20px;"></p>
+
+<!-- Sticky progress header -->
+<div class="vote-progress-header" aria-live="polite">
+  <div class="vph-row">
+    <span id="vph-text">Tracks rated: 0/0</span>
+    <span id="vph-remaining" class="muted"></span>
+  </div>
+  <div class="vph-bar">
+    <div class="vph-fill" style="width:0%"></div>
+  </div>
+</div>
+
+<form method="POST" class="vote-form">
+  <div class="song-list compact">
+    <div class="lazy-toggle">
+      <label>
+        <input type="checkbox" id="lazy-toggle">
+        <span class="toggle-switch"></span>
+        <i class="toggle-icon fas fa-star"></i>
+        <span>Lazy vote mode</span>
+      </label>
+    </div>
+    {% for song in album.songs|sort(attribute='track_number') %}
+    <div class="song-entry compact">
+      <label class="song-label" for="score_{{ song.id }}">
+        {{ song.track_number }}. {{ song.title }}
+      </label>
+      <input type="number" name="score_{{ song.id }}" id="score_{{ song.id }}" step="0.1" min="0" max="5"
+        value="{{ user_votes[song.id] if user_votes[song.id] is defined else 0.0 }}" required>
+      <div class="lazy-stars" data-for="score_{{ song.id }}" style="display:none;">
+        <i class="star fa-regular fa-star" data-value="1"></i>
+        <i class="star fa-regular fa-star" data-value="2"></i>
+        <i class="star fa-regular fa-star" data-value="3"></i>
+        <i class="star fa-regular fa-star" data-value="4"></i>
+        <i class="star fa-regular fa-star" data-value="5"></i>
+        <span class="half-toggle">1/2</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="album-score compact">
+    <label for="personal_score"><strong>Your overall album score (0–5):</strong></label>
+    <input type="number" step="0.1" min="0" max="5" name="personal_score" id="personal_score"
+      value="{{ personal_score.personal_score if personal_score else '' }}" required>
+    <div class="lazy-stars" data-for="personal_score" style="display:none;">
+      <i class="star fa-regular fa-star" data-value="1"></i>
+      <i class="star fa-regular fa-star" data-value="2"></i>
+      <i class="star fa-regular fa-star" data-value="3"></i>
+      <i class="star fa-regular fa-star" data-value="4"></i>
+      <i class="star fa-regular fa-star" data-value="5"></i>
+      <span class="half-toggle">1/2</span>
+    </div>
+  </div>
+
+  <!-- Sticky progress footer -->
+  <div class="vote-progress-footer" aria-live="polite">
+    <div class="vpf-left">
+      <strong id="vpf-text">Tracks rated: 0/0</strong>
+      <span id="vpf-remaining" class="muted" style="margin-left:8px;"></span>
+      <div class="vpf-bar">
+        <div class="vpf-fill" style="width:0%"></div>
+      </div>
+    </div>
+    <a href="#vote-submit" class="button" style="white-space:nowrap;">Review & Submit</a>
+  </div>
+
+
+  <div class="vote-status-wrapper">
+    <p id="vote-status" class="vote-status 
+      {% if user_votes or personal_score %}voted{% else %}not-voted{% endif %}">
+      {% if user_votes or personal_score %}VOTED!{% else %}No votes submitted{% endif %}
+    </p>
+    <button type="submit" id="vote-submit" class="vote-cta">✅ Submit Votes</button>
+  </div>
+
+</form>
+
+{% include "components/comments_section.html" %}
+
+<!-- Countdown Timer -->
+<script>
+  const endTime = new Date("{{ vote_end }}");
+  const countdownElem = document.getElementById('countdown');
+  function updateCountdown() {
+    const now = new Date();
+    const diff = endTime - now;
+    if (diff <= 0) {
+      countdownElem.innerText = "Voting is closed!";
+      return;
+    }
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const mins = Math.floor((diff / (1000 * 60)) % 60);
+    const secs = Math.floor((diff / 1000) % 60);
+    countdownElem.innerText = `${days}d ${hours}h ${mins}m ${secs}s`;
+  }
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+</script>
+
+<!-- Vote State Tracker -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const statusElem = document.getElementById('vote-status');
+    const inputs = document.querySelectorAll('input[type="number"]');
+    const originalValues = {};
+    let hasUnsavedChanges = false;
+
+    // Track original values and restore any saved changes
+    inputs.forEach(input => {
+      const id = input.id;
+      const orig = parseFloat(input.value || "0");
+      originalValues[id] = orig;
+
+      const saved = localStorage.getItem(id);
+      if (saved !== null && parseFloat(saved) !== orig) {
+        input.value = saved;
+        hasUnsavedChanges = true;
+      }
+
+      input.addEventListener('input', () => {
+        const current = parseFloat(input.value || "0");
+        localStorage.setItem(id, input.value);
+        updateStatus();
+      });
+    });
+
+    function updateStatus() {
+      for (const input of inputs) {
+        const id = input.id;
+        const curr = parseFloat(input.value || "0");
+        if (curr !== originalValues[id]) {
+          statusElem.innerText = "Unsubmitted changes";
+          statusElem.classList.remove('voted', 'not-voted');
+          statusElem.classList.add('unsaved');
+          return;
+        }
+      }
+      statusElem.innerText = "VOTED!";
+      statusElem.classList.remove('unsaved', 'not-voted');
+      statusElem.classList.add('voted');
+    }
+
+    // Initial check
+    if (hasUnsavedChanges) {
+      statusElem.innerText = "Unsubmitted changes";
+    }
+  });
+</script>
+
+<!-- Lazy Vote Script -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const lazyToggle = document.getElementById('lazy-toggle');
+    const starContainers = document.querySelectorAll('.lazy-stars');
+    const numberInputs = document.querySelectorAll('.song-entry input[type="number"], #personal_score');
+
+    function applyMode() {
+      const lazy = lazyToggle.checked;
+      starContainers.forEach(el => el.style.display = lazy ? 'flex' : 'none');
+      // Hide song number inputs in lazy mode, but keep personal_score visible unless it has stars
+      document.querySelectorAll('.song-entry input[type="number"]').forEach(el => {
+        el.style.display = lazy ? 'none' : '';
+      });
+      // Hide personal_score input only if in lazy mode
+      const personalScoreInput = document.getElementById('personal_score');
+      personalScoreInput.style.display = lazy ? 'none' : '';
+    }
+
+    const saved = localStorage.getItem('lazy_mode');
+    if (saved === 'true') {
+      lazyToggle.checked = true;
+    }
+    applyMode();
+
+    lazyToggle.addEventListener('change', () => {
+      localStorage.setItem('lazy_mode', lazyToggle.checked);
+      applyMode();
+    });
+
+    starContainers.forEach(container => {
+      const input = document.getElementById(container.dataset.for);
+      const stars = container.querySelectorAll('.star');
+      const halfBtn = container.querySelector('.half-toggle');
+
+      const updateUI = () => {
+        const val = parseFloat(input.value) || 0;
+        const base = Math.floor(val);
+        const half = Math.abs(val - base - 0.5) < 0.1;
+
+        stars.forEach(star => {
+          const sv = parseInt(star.dataset.value);
+          if (sv <= base) {
+            star.classList.add('fa-solid');
+            star.classList.remove('fa-regular');
+          } else {
+            star.classList.remove('fa-solid');
+            star.classList.add('fa-regular');
+          }
+        });
+
+        if (half) {
+          halfBtn.classList.add('active');
+        } else {
+          halfBtn.classList.remove('active');
+        }
+
+        // Disable half toggle when at 5 stars
+        if (base >= 5) {
+          halfBtn.style.opacity = '0.5';
+          halfBtn.style.cursor = 'not-allowed';
+          halfBtn.style.pointerEvents = 'none';
+        } else {
+          halfBtn.style.opacity = '1';
+          halfBtn.style.cursor = 'pointer';
+          halfBtn.style.pointerEvents = 'auto';
+        }
+      };
+
+      stars.forEach(star => {
+        star.addEventListener('click', () => {
+          const sv = parseInt(star.dataset.value);
+          const currentVal = parseFloat(input.value) || 0;
+          const currentBase = Math.floor(currentVal);
+          const addHalf = halfBtn.classList.contains('active');
+
+          // If clicking on the same star that's already selected, deselect it
+          if (sv === currentBase && !addHalf) {
+            // Deselect - set to 0 or 0.5 if half is active
+            const val = addHalf ? 0.5 : 0;
+            input.value = val.toFixed(1);
+          } else {
+            // Normal selection
+            const val = sv + (addHalf ? 0.5 : 0);
+            input.value = val.toFixed(1);
+          }
+
+          input.dispatchEvent(new Event('input'));
+          updateUI();
+        });
+      });
+
+      halfBtn.addEventListener('click', () => {
+        const currentVal = parseFloat(input.value) || 0;
+        const currentBase = Math.floor(currentVal);
+
+        // Don't allow half toggle when at 5 stars
+        if (currentBase >= 5) {
+          return;
+        }
+
+        halfBtn.classList.toggle('active');
+        const val = currentBase + (halfBtn.classList.contains('active') ? 0.5 : 0);
+        input.value = val.toFixed(1);
+        input.dispatchEvent(new Event('input'));
+        updateUI();
+      });
+
+      input.addEventListener('input', updateUI);
+      updateUI();
+    });
+  });
+</script>
+
+<!-- Clear localStorage after successful vote -->
+{% if session.pop('clear_localstorage', None) %}
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+      localStorage.removeItem(input.id);
+    });
+  });
+</script>
+{% endif %}
+<style>
+  /* Sticky header with progress */
+  .vote-progress-header {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+
+  .vote-progress-header .vph-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .vote-progress-header .vph-bar {
+    height: 6px;
+    background: var(--input-bg);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+
+  .vote-progress-header .vph-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+  }
+
+  .vote-progress-header .muted {
+    opacity: .75
+  }
+
+  /* Sticky footer with progress */
+  .vote-progress-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(18, 18, 18, .96);
+    border-top: 1px solid var(--border-color);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 1000;
+    backdrop-filter: blur(6px);
+  }
+
+  .vote-progress-footer .vpf-left {
+    flex: 1;
+  }
+
+  .vote-progress-footer .vpf-bar {
+    height: 6px;
+    background: var(--input-bg);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+
+  .vote-progress-footer .vpf-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+  }
+
+  @media (max-width:700px) {
+    .vote-progress-footer .button {
+      padding: 8px 12px;
+    }
+  }
+
+  /* Avoid footer covering bottom content */
+  .vote-status-wrapper {
+    margin-bottom: 64px;
+  }
+
+  /* Vote success banner */
+  .vote-success-banner {
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(29, 185, 84, 0.05));
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .vote-success-banner .success-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .vote-success-banner .fa-check-circle {
+    font-size: 2rem;
+    color: var(--accent);
+  }
+
+  .vote-success-banner strong {
+    display: block;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+  }
+
+  .vote-success-banner p {
+    margin: 0;
+    opacity: 0.85;
+    font-size: 0.9rem;
+  }
+
+  .btn-share-card {
+    background: var(--accent);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+
+  .btn-share-card:hover {
+    background: #16a247;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  }
+
+  @media (max-width: 700px) {
+    .vote-success-banner {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .btn-share-card {
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  // Detect PiP mode via URL param and simplify layout
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const isPip = params.get('pip') === '1';
+    if (isPip) {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.add('pip-mode');
+      });
+    }
+  })();
+
+  // Progress tracker for sticky header/footer
+  document.addEventListener('DOMContentLoaded', () => {
+    const inputs = Array.from(document.querySelectorAll('.song-entry input[type="number"]'));
+    const total = inputs.length;
+    const update = () => {
+      const rated = inputs.filter(i => parseFloat(i.value || '0') > 0).length;
+      const pct = total > 0 ? Math.round((rated / total) * 100) : 0;
+      const remaining = Math.max(total - rated, 0);
+      // header
+      const vphText = document.getElementById('vph-text');
+      const vphRem = document.getElementById('vph-remaining');
+      const vphFill = document.querySelector('.vph-fill');
+      if (vphText) vphText.textContent = `Tracks rated: ${rated}/${total}`;
+      if (vphRem) vphRem.textContent = remaining ? `${remaining} remaining` : 'All set!';
+      if (vphFill) vphFill.style.width = pct + '%';
+      // footer
+      const vpfText = document.getElementById('vpf-text');
+      const vpfRem = document.getElementById('vpf-remaining');
+      const vpfFill = document.querySelector('.vpf-fill');
+      if (vpfText) vpfText.textContent = `Tracks rated: ${rated}/${total}`;
+      if (vpfRem) vpfRem.textContent = remaining ? `${remaining} remaining` : 'All set!';
+      if (vpfFill) vpfFill.style.width = pct + '%';
+    };
+    inputs.forEach(i => i.addEventListener('input', update));
+    update();
+  });
+</script>
+
+<!-- Pop-out integration -->
+<script src="{{ url_for('static', filename='js/pip_vote.js') }}?v={{ asset_version }}" defer></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('open-vote-pip');
+    const hint = document.getElementById('pip-hint');
+    const row = btn?.closest('.pip-action-row');
+    if (!btn) return;
+    const supported = typeof window.documentPictureInPicture === 'object' && typeof window.documentPictureInPicture.requestWindow === 'function';
+    if (!supported) {
+      // Hide the PiP affordance entirely on unsupported browsers
+      if (row) row.style.display = 'none';
+      return;
+    } else {
+      if (hint) hint.textContent = '';
+    }
+    btn.addEventListener('click', async () => {
+      try { await window.VotePiP.open({ width: 320, height: 520 }); }
+      catch (_) { /* no-op */ }
+    });
+  });
+</script>
+
+<!-- PiP-specific styling -->
+<style>
+  .pip-action-row {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .button.small {
+    padding: 6px 10px;
+    font-size: .9rem;
+  }
+
+  body.pip-mode header,
+  body.pip-mode footer,
+  body.pip-mode .vote-progress-footer {
+    display: none !important;
+  }
+
+  body.pip-mode .main-content-container {
+    padding: 8px;
+  }
+
+  body.pip-mode .hero-album-card {
+    margin-bottom: 8px;
+  }
+
+  body.pip-mode .song-list.compact {
+    max-height: calc(100vh - 280px);
+    overflow: auto;
+  }
+
+  @media (max-width: 420px) {
+    .pip-action-row .pip-hint {
+      display: none;
+    }
+  }
+</style>
+{% endblock %}

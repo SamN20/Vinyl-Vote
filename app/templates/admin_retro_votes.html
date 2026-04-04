@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Admin: Retro Votes{% endblock %}
+
+{% block content %}
+  <h2>🕓 Retro Votes & Scores</h2>
+
+  <form class="filter-bar" method="get" action="{{ url_for('admin.retro_votes') }}">
+    <label>
+      Window (days)
+      <select name="days">
+        {% for d in [30, 90, 180, 365] %}
+          <option value="{{ d }}" {% if summary.days == d %}selected{% endif %}>Last {{ d }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Type
+      <select name="type">
+        {% for key, label in [('all','All'), ('songs','Songs only'), ('albums','Album scores only')] %}
+          <option value="{{ key }}" {% if summary.type == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Min score
+      <input type="number" name="min_score" step="0.1" min="0" max="5" value="{{ summary.min_score if summary.min_score is not none else '' }}" />
+    </label>
+    <label>
+      Max score
+      <input type="number" name="max_score" step="0.1" min="0" max="5" value="{{ summary.max_score if summary.max_score is not none else '' }}" />
+    </label>
+    <label class="toggle">
+      <input type="checkbox" name="show_ignored" value="1" {% if summary.show_ignored %}checked{% endif %} />
+      <span class="slider" aria-hidden="true"></span>
+      <span class="toggle-text">Include ignored</span>
+    </label>
+    <button type="submit">Apply</button>
+  </form>
+
+  {% if albums_with_counts and albums_with_counts|length > 0 %}
+  <div class="card" style="margin-bottom:16px;">
+    <h3>Albums with recent retro activity</h3>
+    <div class="table-wrap">
+      <table class="top-albums-table">
+        <thead>
+          <tr>
+            <th>Album</th>
+             <th class="right">Retro Song Votes</th>
+             <th class="right">Retro Album Scores</th>
+            <th class="right">View</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in albums_with_counts %}
+          <tr>
+             <td>{{ a.title }} — {{ a.artist }}</td>
+             <td class="right count-pill {% if a.song_votes >= 20 %}high{% elif a.song_votes == 0 %}muted{% endif %}">{{ a.song_votes }}</td>
+             <td class="right count-pill {% if a.album_scores >= 5 %}high{% elif a.album_scores == 0 %}muted{% endif %}">{{ a.album_scores }}</td>
+            <td class="right"><a class="button-link" href="{{ url_for('admin.retro_votes_album', album_id=a.album_id) }}">Open</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="retro-grid">
+    <div class="card">
+      <h3>Album Scores ({{ album_rows|length }})</h3>
+      <div class="table-wrap no-scrollbar">
+        <table class="top-albums-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Album</th>
+              <th>User</th>
+              <th class="right">Score</th>
+              <th class="center">Ignored?</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in album_rows %}
+            <tr>
+              <td class="mono">{{ r.timestamp.strftime('%Y-%m-%d %H:%M') if r.timestamp else '—' }}</td>
+              <td>{{ r.album_title }} — {{ r.artist }}</td>
+              <td><a href="{{ url_for('admin.admin_user_detail', user_id=r.user_id) }}" class="user-link">{{ r.username }}</a></td>
+              <td class="right {{ 'low' if r.score <= 2 else ('high' if r.score >= 4.5 else '') }}">{{ '%.2f'|format(r.score) }}</td>
+              <td class="center">{% if r.ignored %}<span class="status-badge danger">Yes</span>{% else %}<span class="status-badge ok">No</span>{% endif %}</td>
+              <td class="actions">
+                <form method="post" action="{{ url_for('admin.retro_album_score_toggle_ignore', score_id=r.id) }}"><button type="submit">{% if r.ignored %}Unignore{% else %}Ignore{% endif %}</button></form>
+                <form method="post" action="{{ url_for('admin.retro_album_score_delete', score_id=r.id) }}" onsubmit="return confirm('Delete this album score?');"><button type="submit">Delete</button></form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Songs ({{ song_rows|length }})</h3>
+      <div class="table-wrap no-scrollbar">
+        <table class="top-albums-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Album</th>
+              <th class="center">#</th>
+              <th>Song</th>
+              <th>User</th>
+              <th class="right">Score</th>
+              <th class="center">Ignored?</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in song_rows %}
+            <tr>
+              <td class="mono">{{ r.timestamp.strftime('%Y-%m-%d %H:%M') if r.timestamp else '—' }}</td>
+              <td>{{ r.album_title }} — {{ r.artist }}</td>
+              <td class="center">{{ r.track }}</td>
+              <td>{{ r.song_title }}</td>
+              <td><a href="{{ url_for('admin.admin_user_detail', user_id=r.user_id) }}" class="user-link">{{ r.username }}</a></td>
+              <td class="right {{ 'low' if r.score <= 2 else ('high' if r.score >= 4.5 else '') }}">{{ '%.1f'|format(r.score) }}</td>
+              <td class="center">{% if r.ignored %}<span class="status-badge danger">Yes</span>{% else %}<span class="status-badge ok">No</span>{% endif %}</td>
+              <td class="actions">
+                <form method="post" action="{{ url_for('admin.retro_vote_toggle_ignore', vote_id=r.id) }}"><button type="submit">{% if r.ignored %}Unignore{% else %}Ignore{% endif %}</button></form>
+                <form method="post" action="{{ url_for('admin.retro_vote_delete', vote_id=r.id) }}" onsubmit="return confirm('Delete this vote?');"><button type="submit">Delete</button></form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 10px 0 16px; }
+    .filter-bar label { display: flex; flex-direction: column; gap: 6px; }
+  .filter-bar .toggle { display: inline-flex; align-items: center; gap: 10px; margin-left: 8px; cursor: pointer; user-select: none; }
+  .filter-bar .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .filter-bar .toggle .slider { width: 44px; height: 26px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 999px; position: relative; transition: background 0.2s ease, border-color 0.2s ease; }
+  .filter-bar .toggle .slider::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: var(--text); border-radius: 50%; transition: transform 0.2s ease; }
+  .filter-bar .toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+  .filter-bar .toggle input:checked + .slider::after { transform: translateX(18px); }
+  .filter-bar .toggle .toggle-text { opacity: .9; font-weight: 600; }
+
+    /* Stack the two tables vertically to avoid horizontal overflow */
+    .retro-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; }
+    .table-wrap { overflow-x: auto; }
+    .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+  .button-link { color: var(--accent); text-decoration: none; font-weight: 700; }
+  .button-link:hover { text-decoration: underline; }
+
+    .top-albums-table th.right, .top-albums-table td.right { text-align: right; }
+    .top-albums-table th.center, .top-albums-table td.center { text-align: center; }
+    .top-albums-table td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; opacity: .95; }
+    .top-albums-table td.actions { display: flex; gap: 8px; justify-content: flex-end; }
+  /* Nicer, on-theme user links */
+  .top-albums-table a.user-link { color: var(--text); text-decoration: none; font-weight: 600; }
+  .top-albums-table a.user-link:hover { color: var(--accent); text-decoration: underline; }
+
+    .status-badge { padding: 2px 10px; border-radius: 999px; font-weight: 700; font-size: .85rem; border: 1px solid var(--border-color); }
+    .status-badge.ok { background: rgba(100, 200, 120, 0.15); color: #8be28f; }
+    .status-badge.danger { background: rgba(231, 76, 60, 0.15); color: #ff8b7e; }
+
+    .right.low { color: #ff7a70; font-weight: 700; }
+    .right.high { color: #8be28f; font-weight: 700; }
+
+    /* No media query needed; we always stack */
+    .count-pill { font-weight: 700; }
+    .count-pill.high { color: #8be28f; }
+    .count-pill.muted { opacity: .6; }
+  </style>
+{% endblock %}
+ 

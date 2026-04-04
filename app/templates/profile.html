@@ -1,0 +1,841 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<div class="profile-header-card pop-in" style="justify-content:center; text-align:center;">
+  <div class="profile-info">
+    <h2>{{ current_user.username }}</h2>
+    <p class="profile-email"><i class="fa fa-envelope"></i> {{ current_user.email }}</p>
+  </div>
+</div>
+
+<div class="profile-analytics-grid" style="margin:16px 0;">
+  <div class="stat-card">
+    <div class="stat-label">Albums Scored</div>
+    <div class="stat-value">{{ profile_stats.total_albums_scored }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Songs Rated</div>
+    <div class="stat-value">{{ profile_stats.total_song_votes }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg Album Score</div>
+    <div class="stat-value">{{ '%.2f'|format(profile_stats.avg_album_score) if profile_stats.avg_album_score is not none
+      else '—' }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg Song Score</div>
+    <div class="stat-value">{{ '%.2f'|format(profile_stats.avg_song_score) if profile_stats.avg_song_score is not none
+      else '—' }}</div>
+  </div>
+  <div class="stat-card tip" data-tip="Consecutive completed weeks with on-time voting (excludes this week)">
+    <div class="stat-label">Current Streak <span class="info-dot" aria-hidden="true">i</span></div>
+    <div class="stat-value">{{ profile_streaks.current }} wk</div>
+  </div>
+  <div class="stat-card tip" data-tip="Your best run of consecutive completed weeks with on-time voting">
+    <div class="stat-label">Longest Streak <span class="info-dot" aria-hidden="true">i</span></div>
+    <div class="stat-value">{{ profile_streaks.longest }} wk</div>
+  </div>
+  <div class="stat-card tip" data-tip="Completed past weeks you participated on-time">
+    <div class="stat-label">Active Weeks <span class="info-dot" aria-hidden="true">i</span></div>
+    <div class="stat-value">{{ profile_extras.active_weeks }}</div>
+  </div>
+  <div class="stat-card tip" data-tip="{{ profile_extras.last_on_time_vote_full }}">
+    <div class="stat-label">Last On-time Vote <span class="info-dot" aria-hidden="true">i</span></div>
+    <div class="stat-value">{{ profile_extras.last_on_time_vote }}</div>
+  </div>
+  <!-- Battle Stats -->
+  <div class="stat-card tip" data-tip="Total number of Face-Off battles you have judged">
+    <div class="stat-label">Battles Fought <span class="info-dot" aria-hidden="true">i</span></div>
+    <div class="stat-value">{{ battle_stats.count }}</div>
+  </div>
+  <div class="stat-card tip" data-tip="The song you've chosen as the winner most often in Face-Off">
+    <div class="stat-label">Top Pick <span class="info-dot" aria-hidden="true">i</span></div>
+    <div class="stat-value" style="font-size: 1.1rem; line-height: 1.2; margin-top: 6px;">
+      {% if battle_stats.top_pick %}
+      <div style="font-weight: 700;">{{ battle_stats.top_pick.song.title }}</div>
+      <div style="font-size: 0.8rem; font-weight: 400; opacity: 0.8;">{{ battle_stats.top_pick.song.album.artist }}
+      </div>
+      <div style="font-size: 0.7rem; color: var(--accent); margin-top: 2px;">{{ battle_stats.top_pick.wins }} wins</div>
+      {% else %}
+      <span class="text-muted">No battles yet</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="chart-card" style="margin-bottom:20px;">
+  <h3 style="margin:6px 0 10px;">Your Votes (last 60 days)</h3>
+  <div class="chart-wrap" style="position:relative; height:220px;">
+    <canvas id="profile-votes-over-time"></canvas>
+  </div>
+  <script id="profile-ts" type="application/json">{{ votes_timeseries | tojson }}</script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const ctx = document.getElementById('profile-votes-over-time');
+      if (!ctx) return;
+      const raw = document.getElementById('profile-ts');
+      let labels = [];
+      let data = [];
+      try {
+        const parsed = JSON.parse(raw.textContent || '{}');
+        labels = parsed.labels || [];
+        data = parsed.data || [];
+      } catch (e) { console.warn('Failed to parse profile timeseries'); }
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Votes per day',
+            data,
+            borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1DB954',
+            backgroundColor: 'rgba(29,185,84,0.15)',
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 0,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { maxTicksLimit: 6 } },
+            y: { beginAtZero: true, precision: 0 }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    });
+  </script>
+</div>
+
+<div class="profile-forms-card fade-in">
+  <h3 class="profile-section-title"><i class="fa fa-user-edit"></i> Account Settings</h3>
+  {% if current_user.keyn_migrated %}
+  <div class="form-card account-settings-keyn full-span">
+    <div class="keyn-header">
+      <div class="avatar" aria-hidden="true">
+        {% set avatar_name = (keyn_profile.display_name if keyn_profile and keyn_profile.display_name else
+        (keyn_profile.username if keyn_profile and keyn_profile.username else current_user.username)) %}
+        {{ avatar_name[:1]|upper }}
+      </div>
+      <div class="id-block">
+        <h4 class="title"><i class="fa fa-link"></i> Managed via KeyN <span class="tag">LINKED</span></h4>
+        <div class="primary-name">{{ avatar_name }}</div>
+        {% if keyn_profile and keyn_profile.username %}<div class="secondary-name">@{{ keyn_profile.username }}</div>{%
+        endif %}
+        <div class="meta-line">
+          <span><i class="fa fa-hashtag"></i> {{ current_user.keyn_id }}</span>
+          {% if keyn_profile and keyn_profile.is_verified %}<span class="verified"><i class="fa fa-check-circle"></i>
+            Verified</span>{% endif %}
+        </div>
+      </div>
+    </div>
+    <p class="intro-text">
+      Your identity is synchronized with KeyN. Profile info refreshes every login.
+    </p>
+    <div class="keyn-grid">
+      {% if keyn_profile and keyn_profile.display_name %}
+      <div class="kcard">
+        <div class="klabel">Display Name</div>
+        <div class="kvalue">{{ keyn_profile.display_name }}</div>
+      </div>
+      {% endif %}
+      {% if keyn_profile and keyn_profile.username %}
+      <div class="kcard">
+        <div class="klabel">Username</div>
+        <div class="kvalue">{{ keyn_profile.username }}</div>
+      </div>
+      {% endif %}
+      {% if keyn_profile and keyn_profile.email %}
+      <div class="kcard">
+        <div class="klabel">
+          Email
+          {% if keyn_profile.is_verified %}
+          <span class="verified-badge"
+            style="background:var(--accent); color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600; vertical-align:middle;">
+            <i class="fa fa-check-circle"></i> Verified
+          </span>
+          {% endif %}
+        </div>
+        <div class="kvalue">
+          {{ keyn_profile.email }}
+        </div>
+      </div>
+      {% endif %}
+      <!-- {% if keyn_profile and keyn_profile.is_verified is not none %}
+        <div class="kcard"><div class="klabel">Email Verified</div><div class="kvalue {% if keyn_profile.is_verified %}yes{% else %}no{% endif %}">{{ 'Yes' if keyn_profile.is_verified else 'No' }}</div></div>
+        {% endif %} -->
+      <div class="kcard">
+        <div class="klabel">Last Sync</div>
+        <div class="kvalue">{{ current_user.last_login.strftime('%Y-%m-%d %H:%M UTC') if current_user.last_login else
+          'N/A' }}</div>
+      </div>
+    </div>
+    <!-- <div class="actions-row">
+        <a class="portal-btn" href="{{ keyn_auth_server_url }}" target="_blank" rel="noopener"><i class="fa fa-external-link-alt"></i> Open KeyN Portal</a>
+        {% if keyn_profile %}
+          <button type="button" class="toggle-raw" onclick="document.querySelector('.raw-json').classList.toggle('open')"><i class="fa fa-code"></i> Raw Data</button>
+        {% endif %}
+      </div> -->
+    <h3 class="quick-links-title">Quick Links</h3>
+    <div class="action-grid">
+      <a href="https://auth-keyn.bynolo.ca/profile" class="action-tile" target="_blank" rel="noopener">
+        <i class="fa fa-user"></i>
+        <div>
+          <strong>Profile</strong>
+          <small>View your profile</small>
+        </div>
+      </a>
+      <a href="https://auth-keyn.bynolo.ca/profile/edit" class="action-tile" target="_blank" rel="noopener">
+        <i class="fa fa-edit"></i>
+        <div>
+          <strong>Edit Profile</strong>
+          <small>Update details & bio</small>
+        </div>
+      </a>
+      <a href="https://auth-keyn.bynolo.ca/profile/change-password" class="action-tile" target="_blank" rel="noopener">
+        <i class="fa fa-key"></i>
+        <div>
+          <strong>Password</strong>
+          <small>Change password</small>
+        </div>
+      </a>
+      <a href="https://nolofication.bynolo.ca/sites/vinylvote/preferences" class="action-tile" target="_blank"
+        rel="noopener">
+        <i class="fa fa-bell"></i>
+        <div>
+          <strong>Notifications</strong>
+          <small>Manage notification preferences</small>
+        </div>
+      </a>
+    </div>
+    <div class="note">Advanced account management occurs on the Auth portal.</div>
+    {% if keyn_profile %}
+    <div class="raw-json" aria-hidden="true">
+      <pre>{{ keyn_profile | tojson(indent=2) }}</pre>
+    </div>
+    {% endif %}
+  </div>
+  <style>
+    .account-settings-keyn {
+      --accent: #1DB954;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .profile-forms-card .account-settings-keyn.full-span {
+      max-width: 96%;
+    }
+
+    /* Ensure the container itself can stretch to full width of parent card */
+    .profile-forms-card {
+      max-width: 1100px;
+    }
+
+    .account-settings-keyn:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(29, 185, 84, 0.12), rgba(29, 185, 84, 0.02));
+      pointer-events: none;
+    }
+
+    .account-settings-keyn .keyn-header {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .account-settings-keyn .avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, var(--accent), #0b3f20);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.5);
+    }
+
+    .account-settings-keyn .title {
+      margin: 0 0 4px;
+      font-size: 1.05rem;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .account-settings-keyn .tag {
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      letter-spacing: .6px;
+      font-weight: 600;
+    }
+
+    .account-settings-keyn .primary-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .account-settings-keyn .secondary-name {
+      opacity: .7;
+      font-size: .85rem;
+      margin-top: 2px;
+    }
+
+    .account-settings-keyn .meta-line {
+      display: flex;
+      gap: 14px;
+      margin-top: 6px;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      opacity: .75;
+    }
+
+    .account-settings-keyn .meta-line .verified {
+      color: var(--accent);
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      font-weight: 600;
+    }
+
+    .account-settings-keyn .intro-text {
+      margin: 0 0 14px;
+      font-size: .85rem;
+      line-height: 1.4;
+      opacity: .85;
+    }
+
+    .account-settings-keyn .keyn-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .account-settings-keyn .kcard {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .account-settings-keyn .klabel {
+      font-size: .55rem;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      opacity: .6;
+      margin-bottom: 4px;
+    }
+
+    .account-settings-keyn .kvalue {
+      font-size: .9rem;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .account-settings-keyn .kvalue.yes {
+      color: var(--accent);
+    }
+
+    .account-settings-keyn .kvalue.no {
+      color: #d66;
+    }
+
+    .account-settings-keyn .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .account-settings-keyn .portal-btn,
+    .account-settings-keyn .toggle-raw {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 600;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .account-settings-keyn .toggle-raw {
+      background: #222;
+      border: 1px solid #333;
+    }
+
+    .account-settings-keyn .toggle-raw:hover {
+      background: #2c2c2c;
+    }
+
+    .account-settings-keyn .portal-btn:hover {
+      background: #16a247;
+    }
+
+    .account-settings-keyn .raw-json {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #0f0f0f;
+      padding: 12px;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .account-settings-keyn .raw-json.open {
+      display: block;
+    }
+
+    .account-settings-keyn pre {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .account-settings-keyn .quick-links-title {
+      margin: 22px 0 10px;
+      font-size: .75rem;
+      letter-spacing: .18em;
+      font-weight: 600;
+      opacity: .65;
+      text-transform: uppercase;
+    }
+
+    .account-settings-keyn .action-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .account-settings-keyn .action-tile {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 12px 14px;
+      border-radius: 10px;
+      text-decoration: none;
+      display: flex;
+      gap: 12px;
+      color: #eee;
+      align-items: flex-start;
+      position: relative;
+      overflow: hidden;
+      transition: .18s background, .18s border-color, .18s transform;
+    }
+
+    .account-settings-keyn .action-tile:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(29, 185, 84, 0.12), rgba(29, 185, 84, 0));
+      opacity: 0;
+      transition: .25s opacity;
+    }
+
+    .account-settings-keyn .action-tile:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .account-settings-keyn .action-tile:hover:before {
+      opacity: 1;
+    }
+
+    .account-settings-keyn .action-tile i {
+      font-size: 1.2rem;
+      width: 26px;
+      text-align: center;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+
+    .account-settings-keyn .action-tile strong {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .5px;
+    }
+
+    .account-settings-keyn .action-tile small {
+      display: block;
+      font-size: .65rem;
+      opacity: .65;
+      margin-top: 3px;
+    }
+
+    .account-settings-keyn .note {
+      font-size: .65rem;
+      opacity: .55;
+      margin: 2px 2px 10px;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+    }
+
+    @media (max-width:600px) {
+      .account-settings-keyn .keyn-header {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+
+      .account-settings-keyn .avatar {
+        width: 60px;
+        height: 60px;
+        font-size: 28px;
+      }
+    }
+  </style>
+  {% else %}
+  <div class="profile-forms-grid">
+    <div>
+      <form method="post" class="form-card">
+        {{ username_form.hidden_tag() }}
+        <h4><i class="fa fa-user"></i> Change Username</h4>
+        {{ username_form.new_username.label }}
+        {{ username_form.new_username(class_='input-field', placeholder='New Username') }}
+        {{ username_form.submit(class_='btn-sm') }}
+      </form>
+    </div>
+    <div>
+      <form method="post" class="form-card">
+        {{ password_form.hidden_tag() }}
+        <h4><i class="fa fa-lock"></i> Change Password</h4>
+        {{ password_form.current_password.label }}
+        {{ password_form.current_password(class_='input-field', placeholder='Current Password', type='password') }}
+        {{ password_form.new_password.label }}
+        {{ password_form.new_password(class_='input-field', placeholder='New Password', type='password') }}
+        {{ password_form.confirm_new_password.label }}
+        {{ password_form.confirm_new_password(class_='input-field', placeholder='Confirm New Password', type='password')
+        }}
+        {{ password_form.submit(class_='btn-sm') }}
+        <p class="text-muted" style="margin-top:8px;">
+          <i class="fa fa-question-circle"></i>
+          Forgot? <a class="forgot-link" href="{{ url_for('user.reset_password_request') }}">Reset via email</a>
+        </p>
+      </form>
+    </div>
+    <div>
+      <form method="post" class="form-card">
+        {{ email_form.hidden_tag() }}
+        <h4><i class="fa fa-envelope"></i> Change Email</h4>
+        {{ email_form.email.label }}
+        {{ email_form.email(class_='input-field', placeholder='New Email') }}
+        {{ email_form.submit(class_='btn-sm') }}
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<hr class="profile-divider">
+
+<div class="profile-votes-section">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+    <h3 class="profile-section-title" style="margin-bottom: 0;"><i class="fa fa-music"></i> Your Previous Votes</h3>
+    <input id="album-search" class="input-field" style="max-width: 240px; margin: 8px 0;" type="text"
+      placeholder="Search albums...">
+  </div>
+  {% if album_votes %}
+  <div class="profile-album-grid" id="album-votes-list">
+    {% for item in album_votes %}
+    <div class="profile-album-wrapper">
+      <a class="tile-link profile-album-link" href="{{ url_for('user.album_results', album_id=item.album.id) }}"
+        title="View results for {{ item.album.title }}">
+        <div class="profile-album-card fade-in" data-title="{{ item.album.title|lower }}"
+          data-artist="{{ item.album.artist|lower }}" tabindex="0" role="group"
+          aria-label="{{ item.album.title }} by {{ item.album.artist }}">
+          <div class="profile-album-header">
+            <img src="{{ item.album.cover_url }}" alt="Cover">
+            <div>
+              <h4>{{ item.album.title }} <span class="artist-name">- {{ item.album.artist }}</span></h4>
+              {% if item.album_score is not none %}
+              <p class="album-score-line"><i class="fa fa-star"></i> Your album score: <b>{{ '%.1f' % item.album_score
+                  }}</b></p>
+              {% endif %}
+              {% if item.song_score is not none %}
+              <p class="album-score-line"><i class="fa fa-music"></i> Your average song score: <b>{{ '%.1f' %
+                  item.song_score }}</b></p>
+              {% endif %}
+            </div>
+          </div>
+          <div class="results-table-wrapper">
+            <table class="results-table compact">
+              <thead>
+                <tr>
+                  <th>Track</th>
+                  <th>Title</th>
+                  <th>Your Rating</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for song in item.songs %}
+                <tr>
+                  <td>{{ song.track_number }}</td>
+                  <td>{{ song.title }}</td>
+                  <td>
+                    {% set rating = item.song_votes.get(song.track_number) %}
+                    {% if rating %}
+                    <span class="song-rating-badge">{{ rating }}</span>
+                    {% else %}
+                    <span class="text-muted">N/A</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </a>
+      <a href="{{ url_for('user.share_vote_card', album_id=item.album.id) }}" class="btn-share-mini"
+        title="Download Vote Card" onclick="event.stopPropagation();">
+        <i class="fa fa-share-alt"></i>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-muted italic">You haven't voted on any albums yet.</p>
+  {% endif %}
+</div>
+<script>
+  // Simple client-side search for album cards
+  document.addEventListener('DOMContentLoaded', function () {
+    const search = document.getElementById('album-search');
+    const cards = document.querySelectorAll('.profile-album-card');
+    search.addEventListener('input', function () {
+      const val = search.value.trim().toLowerCase();
+      cards.forEach(card => {
+        const title = card.getAttribute('data-title');
+        const artist = card.getAttribute('data-artist');
+        if (!val || title.includes(val) || artist.includes(val)) {
+          card.style.display = '';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+</script>
+<style>
+  .profile-analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .stat-label {
+    font-size: .9rem;
+    opacity: .8
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-top: 4px
+  }
+
+  .chart-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px
+  }
+
+  @media (max-width: 900px) {
+    .profile-analytics-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Fancy tooltips */
+  .tip {
+    position: relative;
+  }
+
+  .tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    bottom: 100%;
+    background:
+      radial-gradient(120px 60px at 50% 50%, rgba(29, 185, 84, 0.22), rgba(29, 185, 84, 0.08)),
+      var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: .85rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    z-index: 5;
+  }
+
+  .tip::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border-color);
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+
+  .tip:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-12px);
+  }
+
+  .tip:hover::before {
+    opacity: 1;
+  }
+
+  .stat-value.glow {
+    text-shadow: 0 0 12px rgba(29, 185, 84, 0.45);
+  }
+
+  /* subtle info-dot for tooltip affordance */
+  .stat-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .info-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    font-size: 10px;
+    line-height: 1;
+    color: var(--text);
+    opacity: .7;
+  }
+
+  /* Hover treatment similar to home tiles */
+  .profile-album-link .profile-album-card {
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+
+  .profile-album-link:hover .profile-album-card,
+  .profile-album-link:focus .profile-album-card {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.35);
+  }
+
+  .profile-album-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .profile-album-card:focus {
+    outline: none;
+  }
+
+  .profile-album-link:focus-visible .profile-album-card {
+    outline: 2px solid var(--accent, #1DB954);
+    outline-offset: 2px;
+  }
+
+  /* Wrapper for album card + share button */
+  .profile-album-wrapper {
+    position: relative;
+  }
+
+  /* Share button on profile album cards */
+  .btn-share-mini {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--accent);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .btn-share-mini:hover {
+    background: #16a247;
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(29, 185, 84, 0.6);
+  }
+
+  .profile-album-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .profile-album-header>div {
+    flex: 1;
+  }
+</style>
+
+<script>
+  // Enhance tooltip for last on-time vote with local time rendering
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.querySelector('.stat-card.tip[data-utc]');
+    if (!el) return;
+    const iso = el.getAttribute('data-utc');
+    if (!iso) return;
+    try {
+      const dt = new Date(iso);
+      if (!isNaN(dt.getTime())) {
+        const utcStr = el.getAttribute('data-tip');
+        const localStr = dt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        el.setAttribute('data-tip', `Local: ${localStr} • ${utcStr}`);
+        // Allow wrapping if needed
+        const styleEl = document.createElement('style');
+        styleEl.textContent = `.tip::after{ white-space: normal; }`;
+        document.head.appendChild(styleEl);
+      }
+    } catch (e) { /* noop */ }
+  });
+</script>
+{% endblock %}

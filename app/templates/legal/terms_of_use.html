@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Terms of Use{% endblock %}
+
+{% block content %}
+<div class="legal-page">
+    <h1 class="legal-title">Terms of Use <span class="gradient-text">byNolo</span></h1>
+    <p class="legal-date"><strong>Effective Date:</strong> June 29, 2025</p>
+    <p class="legal-intro">Welcome to Vinyl Vote, a project <span class="gradient-text">byNolo</span> (the “Platform”). By accessing or using the Platform, you agree to be bound by these Terms of Use. If you do not agree with any part of these terms, please do not use the Platform.</p>
+
+    <div class="legal-section" id="term-1">
+        <h2>1. Eligibility and Access</h2>
+    <p>The Platform is currently accessible to users with a private link, though technically open to the public. We (the Vinyl Vote / <span class="gradient-text" style="font-size:0.9em;">byNolo</span> maintainers) reserve the right to restrict or revoke access to any user at our discretion.</p>
+    </div>
+
+    <div class="legal-section" id="term-2">
+        <h2>2. Account Responsibilities</h2>
+        <p>You must provide accurate registration information. Email addresses are required and may be used for password resets or notifications. You are responsible for maintaining the confidentiality of your credentials and activity on your account.</p>
+    </div>
+
+    <div class="legal-section" id="term-3">
+        <h2>3. Voting and Moderation</h2>
+    <p>Users may rate weekly albums. Aggregated results are shared publicly. Individual votes are only visible to the user and administrators. We reserve the right to:</p>
+        <ul>
+            <li>Ban or suspend any user or email</li>
+            <li>Ignore or exclude votes for any given week</li>
+        </ul>
+    </div>
+
+    <div class="legal-section" id="term-4">
+        <h2>4. User Content and Requests</h2>
+    <p>You may submit profile information, votes, and album requests. You may not use the Platform to post inappropriate content or disrupt others' experience.</p>
+    </div>
+
+    <div class="legal-section" id="term-5">
+        <h2>5. Content Ownership</h2>
+    <p>Album artwork and metadata are provided by third-party services such as Spotify or Apple Music and remain the property of their respective owners. The Vinyl Vote compilation, UI, and original assets are ©<span class="gradient-text">byNolo</span>.</p>
+    </div>
+
+    <div class="legal-section" id="term-6">
+        <h2>6. Termination</h2>
+    <p>We may terminate or restrict access to the Platform at any time for misconduct, technical issues, or violations of these Terms.</p>
+    </div>
+
+    <div class="legal-section" id="term-7">
+        <h2>7. Disclaimer</h2>
+    <p>The Platform is provided "as is" without warranties of any kind. We do not guarantee uptime, availability, or the accuracy of voting results.</p>
+    </div>
+
+    <div class="legal-section" id="term-8">
+        <h2>8. Changes</h2>
+                <p>We may update these Terms periodically. Continued use of the Platform implies acceptance of any updates. Material changes will include an updated effective date.</p>
+        </div>
+        <div class="legal-section" id="term-9">
+                <h2>9. Branding</h2>
+                <p>“Vinyl Vote” is the name of the weekly album rating experience; <span class="gradient-text">byNolo</span> is the parent project identity. References to “we” or “us” refer to the maintainers operating under the <span class="gradient-text">byNolo</span> umbrella.</p>
+    </div>
+
+        <div class="legal-section" id="term-10">
+            <h2>10. KeyN Authentication</h2>
+            <p><strong>Third‑party provider:</strong> You may sign in via KeyN, an independent identity provider. Your use of KeyN is governed by KeyN’s own Terms of Use and Privacy Policy, which are presented during the KeyN login flow.</p>
+            <p><strong>Linking and migration:</strong> On first KeyN login we attempt to link to an existing account (email first, then username). If no match is found, a new account is created and linked to your KeyN identity. Legacy local passwords, if any, are not used for KeyN sign‑ins.</p>
+            <p><strong>Account data:</strong> We receive limited identity data from KeyN according to the scopes you approve (generally id, username/display name, and email) and store a snapshot to manage your account. We do not receive your KeyN password.</p>
+            <p><strong>Compliance and termination:</strong> Access may be suspended if you violate these Terms or the KeyN policies, or if KeyN restricts your identity. We may unlink your KeyN account upon verified request; doing so may limit access to the Platform.</p>
+            <p class="legal-date"><em>KeyN clause added: September 2, 2025.</em></p>
+        </div>
+
+        <div class="legal-section" id="term-11">
+            <h2>11. Vinyl Vote Companion (Browser Extension)</h2>
+            <p><strong>Scope:</strong> The extension adds rating controls on supported music sites (YouTube Music, Spotify, Apple Music) to help you submit weekly votes to your Vinyl Vote account. After you successfully submit this week’s votes, it unlocks an optional Retro section to rate past albums you missed.</p>
+            <p><strong>Permissions:</strong> The extension runs only on the supported music sites and <code>vinylvote.bynolo.ca</code> to read now‑playing metadata and submit your votes. Optional desktop notifications may be used for song‑end and deadline reminders.</p>
+            <p><strong>Acceptable Use:</strong> You may not use the extension to scrape, harvest, or automate actions beyond its intended purpose of assisting with Vinyl Vote ratings. You may not reverse engineer or modify it to bypass eligibility rules (including Retro unlock).</p>
+            <p><strong>Eligibility & Retro Unlock:</strong> Retro voting via the extension is available only after you have successfully completed this week’s votes on the current album. We may change or disable eligibility rules at any time.</p>
+            <p><strong>Termination:</strong> We may disable or limit extension functionality for accounts that violate these Terms or abuse the Platform.</p>
+            <p class="legal-date"><em>Extension clause added: September 17, 2025.</em></p>
+        </div>
+</div>
+<style>
+    .gradient-text { background-image: linear-gradient(90deg,#34d399,#059669); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; font-weight:700; }
+</style>
+{% endblock %}

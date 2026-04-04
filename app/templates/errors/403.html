@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Access Denied{% endblock %}
+{% block content %}
+<section class="error-page" style="display: flex; align-items: center; justify-content: center; min-height: 80vh; background: linear-gradient(135deg, #1DB954, #1ed760);">
+    <div style="background: var(--card-bg); padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); text-align: center;">
+        <div style="margin-bottom: 20px;">
+            <!-- Fancy Shield Icon -->
+            <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+        </div>
+        <h1 style="margin-bottom: 10px; font-size: 2.5em; color: var(--text);">Access Denied</h1>
+        <p style="margin-bottom: 20px; font-size: 1.2em; color: var(--text);">
+            Oops! It looks like you don't have the necessary permissions to view this page.
+        </p>
+        <a href="{{ url_for('user.index') }}" class="btn" style="display: inline-block; padding: 12px 24px; font-size: 1em; background: var(--accent); color: #fff; border-radius: 6px; text-decoration: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: background 0.3s;">
+            Return Home
+        </a>
+    </div>
+</section>
+{% endblock %}

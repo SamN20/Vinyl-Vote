@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="main-hero-bg fade-in">
+  <h2 class="main-hero-title">🎵 Album of the Week</h2>
+  {% if album %}
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const albumCoverUrl = "{{ album.cover_url }}";
+      if (!albumCoverUrl) return;
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = albumCoverUrl;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 32;
+        canvas.height = 32;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, 32, 32);
+        const dynamicFavicon = document.getElementById("dynamic-favicon");
+        dynamicFavicon.href = canvas.toDataURL("image/png");
+      };
+    });
+  </script>
+  <div class="main-hero-album-card">
+    <div class="main-hero-image">
+      <img src="{{ album.cover_url }}" alt="Cover art for {{ album.title }} by {{ album.artist }}" loading="eager"
+        fetchpriority="high" decoding="async" width="200" height="200"
+        style="aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px;">
+    </div>
+    <div class="main-hero-content">
+      <h3>{{ album.title }}</h3>
+      <p><strong>Artist:</strong> {{ album.artist }}</p>
+      <p><strong>Release Date:</strong> {{ album.release_date }}</p>
+      <p class="main-countdown-line"><strong>Voting ends in:</strong> <span id="countdown"
+          aria-live="polite">Loading...</span></p>
+      <div class="music-links better-music-links">
+        <a class="music-link" href="{{ album.spotify_url }}" target="_blank">
+          <img src="https://api.iconify.design/logos:spotify-icon.svg" alt="Spotify" class="icon"> Spotify
+        </a>
+        <a class="music-link" href="{{ album.apple_url }}" target="_blank">
+          <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/apple-music-icon.svg"
+            alt="Apple Music" class="icon"> Apple Music
+        </a>
+        <a class="music-link" href="{{ album.youtube_url }}" target="_blank">
+          <img src="https://api.iconify.design/logos:youtube-icon.svg" alt="YouTube Music" class="icon"> YouTube Music
+        </a>
+      </div>
+      <p><strong>Total Voters:</strong> {{ voter_count }}</p>
+      {% if logged_in %}
+      <a href="{{ url_for('user.vote') }}" class="button go-vote-cta">🗳 Go Vote</a>
+      <a href="{{ url_for('battle.index') }}" class="button go-vote-cta secondary" style="margin-left:8px;">⚡
+        Face-Off</a>
+      {% else %}
+      <a href="{{ url_for('user.login') }}" class="button go-vote-cta">🔑 Log In to Vote</a>
+      <a href="{{ url_for('battle.index') }}" class="button go-vote-cta secondary" style="margin-left:8px;">⚡
+        Face-Off</a>
+      {% endif %}
+      {% if logged_in and user_streak_current is not none %}
+      <div class="streak-chip tip" data-tip="Current on-time streak (completed weeks only)">🔥 Streak: <b>{{
+          user_streak_current }}</b> wk <span class="info-dot" aria-hidden="true">i</span></div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <p>No album is currently active for voting.</p>
+  {% endif %}
+</div>
+
+<div class="section-card leaderboard-section fade-in">
+  <h3>🏆 Top Albums</h3>
+  <div class="main-album-grid">
+    {% for album in top_albums %}
+    <a class="tile-link" href="{{ url_for('user.album_results', album_id=album.id) }}">
+      <div class="main-album-tile pop-in" tabindex="0" role="group" aria-label="{{ album.title }} by {{ album.artist }}"
+        data-album='{"title":"{{ album.title|e }}","artist":"{{ album.artist|e }}","cover":"{{ album.cover_url|e }}","spotify":"{{ album.spotify_url|e }}","apple":"{{ album.apple_url|e }}","youtube":"{{ album.youtube_url|e }}"}'>
+        <div class="album-thumb">
+          <div class="skeleton-box" style="width:140px;height:140px;"></div>
+          <img src="{{ album.cover_url }}" alt="{{ album.title }} cover" loading="lazy" decoding="async" width="140"
+            height="140">
+        </div>
+        <h4>{{ album.title }}</h4>
+        <p>{{ album.artist }}</p>
+        <p><strong>Avg Song Rating:</strong> {{ album.avg }} ⭐</p>
+        <p><strong>Overall Score:</strong> {{ album.avg_album_score }} / 5</p>
+
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="section-card history-section fade-in">
+  <h3>📜 Recent Voting History</h3>
+  <div class="main-album-grid">
+    {% for h in history %}
+    <a class="tile-link" href="{{ url_for('user.album_results', album_id=h.id) }}">
+      <div class="main-album-tile pop-in" tabindex="0" role="group" aria-label="{{ h.title }} by {{ h.artist }}"
+        data-album='{"title":"{{ h.title|e }}","artist":"{{ h.artist|e }}","cover":"{{ h.cover_url|e }}"}'>
+        <div class="album-thumb">
+          <div class="skeleton-box" style="width:140px;height:140px;"></div>
+          <img src="{{ h.cover_url }}" alt="{{ h.title }} cover" loading="lazy" decoding="async" width="140"
+            height="140">
+        </div>
+        <h4>{{ h.title }}</h4>
+        <p>{{ h.artist }}</p>
+        <p><strong>Avg Song Rating:</strong> {{ h.avg_song_score }} ⭐</p>
+        <p><strong>Overall Score:</strong> {{ h.score }} / 5</p>
+
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if not logged_in %}
+<div class="login-cta fade-in">
+  <p><strong>Want to vote on albums and track your ratings?</strong></p>
+  <p><a href="{{ url_for('user.login') }}">Log in</a> or <a href="{{ url_for('user.register') }}">Create an Account</a>
+  </p>
+</div>
+{% endif %}
+
+<script>
+  const endTime = new Date("{{ vote_end }}");
+  const countdownElem = document.getElementById('countdown');
+  let announceTick = 0;
+  function updateCountdown() {
+    const now = new Date();
+    const diff = endTime - now;
+    if (diff <= 0) {
+      countdownElem.innerText = "Voting closed!";
+      return;
+    }
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const mins = Math.floor((diff / (1000 * 60)) % 60);
+    const secs = Math.floor((diff / 1000) % 60);
+    // Only announce roughly once per 10 seconds to avoid SR spam
+    if (announceTick % 10 === 0) {
+      countdownElem.innerText = `${days}d ${hours}h ${mins}m ${secs}s`;
+    } else {
+      // Update textContent silently without triggering aria-live (no reliable standard, but keep minimal)
+      countdownElem.textContent = `${days}d ${hours}h ${mins}m ${secs}s`;
+    }
+    announceTick++;
+  }
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
+  // Skeleton loader: mark album thumbs as loaded when images finish
+  document.querySelectorAll('.album-thumb').forEach(thumb => {
+    const img = thumb.querySelector('img');
+    if (!img) return;
+    if (img.complete) thumb.classList.add('loaded');
+    else img.addEventListener('load', () => thumb.classList.add('loaded'));
+  });
+
+  // Quick view removed per feedback; skeleton loader kept for nicer image loading.
+</script>
+<style>
+  .streak-chip {
+    display: inline-block;
+    margin: 8px 0 4px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: rgba(29, 185, 84, 0.08);
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .streak-chip b {
+    color: var(--accent);
+  }
+
+  /* reuse tooltip styling from profile */
+  .tip {
+    position: relative;
+  }
+
+  .tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    bottom: 100%;
+    background:
+      radial-gradient(120px 60px at 50% 50%, rgba(29, 185, 84, 0.22), rgba(29, 185, 84, 0.08)),
+      var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: .85rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    z-index: 5;
+  }
+
+  .tip::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border-color);
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+
+  .tip:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-12px);
+  }
+
+  .tip:hover::before {
+    opacity: 1;
+  }
+
+  .info-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
+    font-size: 10px;
+    line-height: 1;
+    color: var(--text);
+    opacity: .7;
+    margin-left: 6px;
+  }
+</style>
+{% endblock %}

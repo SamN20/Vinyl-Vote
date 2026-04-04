@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+{% block title %}Manage Albums{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>🎛 Manage Album Queue</h2>
+    <a href="{{ url_for('admin.admin_dashboard') }}" class="button-link">← Admin Dashboard</a>
+  </div>
+
+  <!-- Stats Dashboard -->
+  {% set queued_count = albums | selectattr('queue_order', 'gt', 0) | list | length %}
+  {% set unassigned_count = albums | selectattr('queue_order', 'eq', 0) | list | length %}
+  {% set current_album = albums | selectattr('is_current', 'eq', true) | first %}
+  {% set total_albums = albums | length %}
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Albums</div>
+      <div class="stat-value">{{ total_albums }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">In Queue</div>
+      <div class="stat-value">{{ queued_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Unassigned</div>
+      <div class="stat-value">{{ unassigned_count }}</div>
+    </div>
+    <div class="stat-card {% if current_album %}highlight{% endif %}">
+      <div class="stat-label">Current Album</div>
+      <div class="stat-value-small">{{ current_album.title if current_album else 'None' }}</div>
+    </div>
+  </div>
+
+  <form method="POST">
+    <!-- QUEUED ALBUMS -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="margin: 0;">📦 Queued Albums ({{ queued_count }})</h3>
+        <div class="info-badge">
+          <span>💡 Tip: Change Order numbers to rearrange</span>
+        </div>
+      </div>
+
+      {% if queued_count > 0 %}
+      <div class="table-wrap no-scrollbar">
+        <table class="queue-table">
+          <thead>
+            <tr>
+              <th style="width: 60px;">Cover</th>
+              <th>Title</th>
+              <th>Artist</th>
+              <th class="center" style="width: 80px;">Order</th>
+              <th class="center" style="width: 100px;">Current</th>
+              <th class="center" style="width: 100px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sortable-queue">
+            {% for album in albums if album.queue_order > 0 %}
+            <tr data-album-id="{{ album.id }}" class="{% if album.is_current %}current-album-row{% endif %}">
+              <td>
+                <img src="{{ album.cover_url }}" class="album-cover-thumb" alt="{{ album.title }}">
+              </td>
+              <td class="album-title">
+                {{ album.title }}
+                {% if album.is_current %}
+                  <span class="status-badge ok">Now Playing</span>
+                {% endif %}
+              </td>
+              <td class="album-artist">{{ album.artist }}</td>
+              <td class="center">
+                <input type="number" name="order_{{ album.id }}" value="{{ album.queue_order }}" min="0" class="order-input">
+              </td>
+              <td class="center current-selector">
+                <label class="radio-label">
+                  <input type="radio" name="current_album" value="{{ album.id }}" {% if album.is_current %}checked{% endif %}>
+                  <span class="custom-radio"></span>
+                </label>
+              </td>
+              <td class="center">
+                <a href="{{ url_for('admin.manage_songs', album_id=album.id) }}" class="btn-link">🎵 Songs</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <p>📭 No albums in queue. Add albums from the unassigned section below.</p>
+      </div>
+      {% endif %}
+    </div>
+  
+    <!-- UNASSIGNED ALBUMS -->
+    <div class="card" style="margin-top: 20px;">
+      <h3 style="margin: 0 0 12px 0;">📂 Unassigned Albums ({{ unassigned_count }})</h3>
+      
+      {% if unassigned_count > 0 %}
+      <div class="table-wrap no-scrollbar">
+        <table class="queue-table">
+          <thead>
+            <tr>
+              <th style="width: 60px;">Cover</th>
+              <th>Title</th>
+              <th>Artist</th>
+              <th class="center" style="width: 80px;">Order</th>
+              <th class="center" style="width: 100px;">Current</th>
+              <th class="center" style="width: 100px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sortable-unassigned">
+            {% for album in albums if album.queue_order == 0 %}
+            <tr data-album-id="{{ album.id }}">
+              <td>
+                <img src="{{ album.cover_url }}" class="album-cover-thumb" alt="{{ album.title }}">
+              </td>
+              <td class="album-title">{{ album.title }}</td>
+              <td class="album-artist">{{ album.artist }}</td>
+              <td class="center">
+                <input type="number" name="order_{{ album.id }}" value="0" min="0" class="order-input" placeholder="0">
+              </td>
+              <td class="center current-selector">
+                <label class="radio-label">
+                  <input type="radio" name="current_album" value="{{ album.id }}" {% if album.is_current %}checked{% endif %}>
+                  <span class="custom-radio"></span>
+                </label>
+              </td>
+              <td class="center">
+                <a href="{{ url_for('admin.manage_songs', album_id=album.id) }}" class="btn-link">🎵 Songs</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <p>✅ All albums are assigned to the queue!</p>
+      </div>
+      {% endif %}
+    </div>
+  
+    <div class="action-bar">
+      <button type="submit" class="save-button">💾 Save Changes</button>
+      <a href="{{ url_for('admin.add_album') }}" class="add-button">➕ Add New Album</a>
+    </div>
+  </form>
+
+  <style>
+    /* Stats Grid */
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+      gap: 12px; 
+      margin-bottom: 20px; 
+    }
+    .stat-card { 
+      background: var(--card-bg); 
+      border: 1px solid var(--border-color); 
+      border-radius: 8px; 
+      padding: 16px; 
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .stat-card.highlight {
+      background: linear-gradient(135deg, var(--card-bg) 0%, var(--input-bg) 100%);
+      border-color: var(--accent);
+    }
+    .stat-label { 
+      font-size: 0.85rem; 
+      opacity: 0.7; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-value { 
+      font-size: 2rem; 
+      font-weight: 700; 
+      color: var(--accent); 
+    }
+    .stat-value-small {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.4;
+    }
+
+    /* Card Container */
+    .card { 
+      background: var(--card-bg); 
+      border: 1px solid var(--border-color); 
+      border-radius: 8px; 
+      padding: 20px; 
+    }
+
+    /* Info Badge */
+    .info-badge {
+      background: rgba(52, 152, 219, 0.15);
+      border: 1px solid rgba(52, 152, 219, 0.3);
+      color: #5dade2;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Table Styling */
+    .table-wrap { 
+      overflow-x: auto; 
+      margin-top: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+    .no-scrollbar { 
+      scrollbar-width: none; 
+      -ms-overflow-style: none; 
+    }
+    .no-scrollbar::-webkit-scrollbar { 
+      display: none; 
+    }
+
+    .queue-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+    }
+    .queue-table th { 
+      background: var(--input-bg); 
+      padding: 12px; 
+      text-align: left; 
+      font-weight: 600; 
+      border-bottom: 2px solid var(--border-color); 
+      white-space: nowrap;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.9;
+    }
+    .queue-table td { 
+      padding: 12px; 
+      border-bottom: 1px solid var(--border-color); 
+      vertical-align: middle;
+    }
+    .queue-table tbody tr { 
+      transition: all 0.2s ease;
+    }
+    .queue-table tbody tr:hover { 
+      background: var(--input-bg); 
+    }
+    .queue-table th.center, 
+    .queue-table td.center { 
+      text-align: center; 
+    }
+
+    /* Album Cover */
+    .album-cover-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 6px;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s ease;
+    }
+    .album-cover-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    /* Album Info */
+    .album-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .album-artist {
+      opacity: 0.8;
+      font-size: 0.9rem;
+    }
+
+    /* Current Album Row */
+    .current-album-row {
+      background: rgba(100, 200, 120, 0.08);
+      border-left: 3px solid var(--accent);
+    }
+    .current-album-row:hover {
+      background: rgba(100, 200, 120, 0.12) !important;
+    }
+
+    /* Status Badge */
+    .status-badge { 
+      padding: 4px 10px; 
+      border-radius: 999px; 
+      font-weight: 700; 
+      font-size: 0.7rem; 
+      border: 1px solid var(--border-color); 
+      display: inline-block;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .status-badge.ok { 
+      background: rgba(100, 200, 120, 0.15); 
+      color: #8be28f; 
+    }
+
+    /* Order Input */
+    .order-input {
+      width: 60px;
+      padding: 6px 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--input-bg);
+      color: var(--text);
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+    }
+    .order-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(100, 200, 120, 0.1);
+    }
+    .order-input:hover {
+      border-color: var(--accent);
+    }
+
+    /* Custom Radio Button */
+    .radio-label {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+    }
+    .radio-label input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .custom-radio {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border-color);
+      border-radius: 50%;
+      background: var(--input-bg);
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    .radio-label:hover .custom-radio {
+      border-color: var(--accent);
+    }
+    .radio-label input[type="radio"]:checked + .custom-radio {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .radio-label input[type="radio"]:checked + .custom-radio::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: white;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      opacity: 0.7;
+      font-size: 1rem;
+    }
+    .empty-state p {
+      margin: 0;
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .save-button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(100, 200, 120, 0.3);
+    }
+    .save-button:hover {
+      background: #7ac582;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(100, 200, 120, 0.4);
+    }
+    .save-button:active {
+      transform: translateY(0);
+    }
+
+    .add-button {
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border-color);
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      display: inline-block;
+    }
+    .add-button:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .button-link { 
+      color: var(--accent); 
+      text-decoration: none; 
+      font-weight: 700; 
+      font-size: 0.95rem;
+    }
+    .button-link:hover { 
+      text-decoration: underline; 
+    }
+
+    .btn-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      display: inline-block;
+    }
+    .btn-link:hover {
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .stats-grid { 
+        grid-template-columns: repeat(2, 1fr); 
+      }
+      .info-badge {
+        display: none;
+      }
+      .album-title, .album-artist {
+        font-size: 0.85rem;
+      }
+      .queue-table th,
+      .queue-table td {
+        padding: 8px;
+        font-size: 0.85rem;
+      }
+      .action-bar {
+        flex-direction: column;
+        width: 100%;
+      }
+      .save-button, .add-button {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+{% endblock %}

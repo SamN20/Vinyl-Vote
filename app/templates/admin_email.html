@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Send Email{% endblock %}
+
+{% block content %}
+<h2>📧 Send Email</h2>
+
+<form method="POST" class="form-card" style="max-width:800px;">
+  <h3>Custom Email</h3>
+  <input type="hidden" name="send_type" value="custom">
+  
+  <label for="subject">Subject</label>
+  <input type="text" id="subject" name="subject" class="input-field" placeholder="📬 Your subject line here" required>
+  
+  <label for="message">Plain Text Message (required - fallback for email clients that don't support HTML)</label>
+  <textarea id="message" name="message" rows="6" class="input-field" placeholder="Plain text version of your message..." required></textarea>
+  
+  <label for="html_message">
+    HTML Message (optional - for rich formatting)
+    <small style="display: block; color: #888; margin-top: 4px;">Leave empty to use plain text only, or paste HTML for styled emails</small>
+  </label>
+  <textarea id="html_message" name="html_message" rows="12" class="input-field" placeholder="<div>Your HTML content here...</div>" style="font-family: monospace; font-size: 13px;"></textarea>
+  
+  <label for="recipients">Recipients</label>
+  <select id="recipients" name="recipients" class="input-field">
+    <option value="all">All Users</option>
+    <option value="unvoted">Only Users Who Haven't Voted</option>
+    <option value="admins">Admins Only</option>
+  </select>
+  
+  <button type="submit">Send Custom Email</button>
+</form>
+
+<form method="POST" class="form-card" style="max-width:600px; margin-top:30px;">
+  <h3>Send Vote Reminder</h3>
+  <input type="hidden" name="send_type" value="reminder">
+  <label for="reminder_recipients">Recipients</label>
+  <select id="reminder_recipients" name="recipients" class="input-field">
+    <option value="all">All Users</option>
+    <option value="unvoted">Only Users Who Haven't Voted</option>
+    <option value="admins">Admins Only</option>
+  </select>
+  <button type="submit">Send Reminder</button>
+</form>
+{% endblock %}

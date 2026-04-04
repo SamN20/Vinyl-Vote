@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Unauthorized{% endblock %}
+
+{% block content %}
+<section class="error-page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; background: linear-gradient(135deg, #f39c12, #e67e22);">
+  <div class="form-card pop-in" style="padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); text-align: center;">
+    <div style="margin-bottom: 20px;">
+      <!-- Lock Icon -->
+      <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pop-in" style="animation-delay: 0.3s;">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <circle cx="12" cy="16" r="1"></circle>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+    </div>
+    <h1 style="font-size: 3em; margin-bottom: 16px;">401</h1>
+    <h2 style="margin-bottom: 20px;">Unauthorized</h2>
+    <p style="font-size: 1.1em; margin-bottom: 30px;">
+      You need to log in to access this page.
+    </p>
+    <a href="{{ url_for('user.login') }}" class="btn" style="padding: 12px 24px; font-size: 1em; background: var(--accent); color: #fff; border-radius: 6px; text-decoration: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: background 0.3s; margin-right: 10px;">
+      Login
+    </a>
+    <a href="{{ url_for('user.index') }}" class="btn" style="padding: 12px 24px; font-size: 1em; background: transparent; color: var(--accent); border: 2px solid var(--accent); border-radius: 6px; text-decoration: none; transition: all 0.3s;">
+      Return Home
+    </a>
+  </div>
+</section>
+{% endblock %}

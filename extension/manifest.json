@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Vinyl Vote Companion",
+  "short_name": "Vinyl Vote",
+  "description": "Reminds you to vote on Vinyl Vote and lets you submit scores from supported music sites.",
+  "version": "1.2.2",
+  "icons": {
+    "16": "icon-16.png",
+    "32": "icon-32.png",
+    "64": "icon-64.png",
+    "180": "icon-180.png"
+  },
+  "permissions": ["storage", "notifications"],
+  "host_permissions": [
+    "https://vinylvote.bynolo.ca/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Vinyl Vote Companion",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png",
+      "64": "icon-64.png",
+      "180": "icon-180.png"
+    }
+  },
+  "commands": {
+    "toggle-overlay": {
+      "suggested_key": { "default": "Alt+Shift+V" },
+      "description": "Toggle Vinyl Vote overlay"
+    }
+  },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "homepage_url": "https://vinylvote.bynolo.ca/",
+  "minimum_chrome_version": "100",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://open.spotify.com/*",
+        "https://music.apple.com/*",
+        "https://music.youtube.com/*"
+      ],
+      "js": ["content-script.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle"
+    }
+    ,
+    {
+      "matches": [
+        "https://vinylvote.bynolo.ca/*",
+        "http://127.0.0.1:5000/*"
+      ],
+      "js": ["site-detect.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

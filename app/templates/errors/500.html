@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Server Error{% endblock %}
+
+{% block content %}
+<section class="error-page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; background: linear-gradient(135deg, #e74c3c, #c0392b);">
+  <div class="form-card pop-in" style="padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); text-align: center;">
+    <h1 style="font-size: 3em; margin-bottom: 16px;">500</h1>
+    <h2 style="margin-bottom: 20px;">Internal Server Error</h2>
+    <p style="font-size: 1.1em; margin-bottom: 30px;">
+      Oops! Something went wrong on our end. Please try again later.
+    </p>
+    <a href="{{ url_for('user.index') }}" class="btn" style="padding: 12px 24px; font-size: 1em; background: var(--accent); color: #fff; border-radius: 6px; text-decoration: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: background 0.3s;">
+      Return Home
+    </a>
+  </div>
+</section>
+{% endblock %}

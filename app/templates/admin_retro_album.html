@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Admin: Retro Votes — {{ album.title }}{% endblock %}
+
+{% block content %}
+<h2>🕓 Retro Votes — {{ album.title }} by {{ album.artist }}</h2>
+
+<p class="mobile-help-text">Only retro votes/scores are shown here. Use the buttons to ignore/unignore individual song votes or the album score per user.</p>
+
+<div class="results-table-wrapper no-scrollbar">
+  <table class="results-table">
+    <thead>
+      <tr>
+        <th>User</th>
+        {% for song in songs %}
+          <th title="{{ song.title }}">{{ song.track_number }}</th>
+        {% endfor %}
+        <th>Album Score</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if user_rows|length == 0 %}
+        <tr><td colspan="{{ 3 + songs|length }}">No retro votes/scores for this album.</td></tr>
+      {% endif %}
+      {% for uid, row in user_rows %}
+      <tr>
+        <td><a class="user-link" href="{{ url_for('admin.admin_user_detail', user_id=uid) }}">{{ row.username }}</a></td>
+        {% for song in songs %}
+          {% set cell = row.votes.get(song.id) %}
+          {% set avg = song_avgs.get(song.id) %}
+          {% set delta = (cell.score - avg) if (cell and avg is not none) else none %}
+          {% set delta_class = 'delta-badge neg' if delta is not none and delta <= -1.0 else ('delta-badge pos' if delta is not none and delta >= 1.0 else 'delta-badge neutral') %}
+          <td class="cell-score {% if cell and cell.ignored %}text-muted italic{% endif %}">
+            {% if cell %}
+              <div class="score-line {{ 'low' if cell.score <= 2 else ('high' if cell.score >= 4.5 else '') }}">{{ '%.1f'|format(cell.score) }}</div>
+              {% if delta is not none %}
+                <div class="{{ delta_class }}" title="Delta vs avg ({{ avg }})">{{ '%+.1f'|format(delta) }}</div>
+              {% endif %}
+              <form method="post" action="{{ url_for('admin.retro_toggle_song_ignore', album_id=album.id, user_id=uid, song_id=song.id) }}" style="display:inline">
+                <button class="btn-sm" title="Toggle ignore for this song vote">{% if cell.ignored %}Unignore{% else %}Ignore{% endif %}</button>
+              </form>
+            {% else %}-{% endif %}
+          </td>
+        {% endfor %}
+        <td class="{% if row.album_score_ignored %}text-muted italic{% endif %}">
+          {% if row.album_score is not none %}
+            {{ '%.2f'|format(row.album_score) }}
+          {% else %}-{% endif %}
+        </td>
+        <td>
+          {% if row.album_score is not none %}
+          <form method="post" action="{{ url_for('admin.retro_toggle_album_score_ignore', album_id=album.id, user_id=uid) }}" style="display:inline">
+            <button class="btn-sm">{% if row.album_score_ignored %}Unignore Album{% else %}Ignore Album{% endif %}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p style="margin-top:12px"><a href="{{ url_for('admin.retro_votes') }}">← Back to Retro Overview</a></p>
+
+{% endblock %}
+{% block scripts %}
+<style>
+  /* Make matrix nicer and avoid ugly scrollbars */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .results-table { width: max-content; min-width: 100%; }
+  .results-table th, .results-table td { white-space: nowrap; }
+  .results-table th { position: sticky; top: 0; z-index: 1; }
+  /* Nicer, on-theme user links */
+  .results-table a.user-link { color: var(--text); text-decoration: none; font-weight: 600; }
+  .results-table a.user-link:hover { color: var(--accent); text-decoration: underline; }
+  .cell-score { min-width: 84px; }
+  .score-line.low { color: #ff7a70; font-weight: 700; }
+  .score-line.high { color: #8be28f; font-weight: 700; }
+  .delta-badge { display: inline-block; padding: 2px 6px; border-radius: 999px; font-size: .8rem; margin: 2px 0 0; border: 1px solid var(--border-color); opacity: .9; }
+  .delta-badge.pos { background: rgba(100, 200, 120, 0.12); color: #8be28f; }
+  .delta-badge.neg { background: rgba(231, 76, 60, 0.12); color: #ff8b7e; }
+  .delta-badge.neutral { background: var(--input-bg); color: var(--text); opacity: .6; }
+  .btn-sm { margin-top: 4px; }
+  @media (max-width: 900px){
+    .cell-score { min-width: 72px; }
+  }
+</style>
+{% endblock %}

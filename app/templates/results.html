@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Results{% endblock %}
+
+{% block content %}
+<h2 class="results-title">Results</h2>
+
+<div class="results-album-card fade-in">
+  <img src="{{ album.cover_url }}" alt="Album Cover" class="results-album-cover">
+  <div class="results-meta">
+    <h3>{{ album.title }}</h3>
+    <p><strong>Artist:</strong> {{ album.artist }}</p>
+    <p><strong>Average Song Rating:</strong> {{ avg_song_score }} / 5</p>
+    <p><strong>Average Album Score:</strong> {{ avg_album_score }} / 5</p>
+    <p><strong>Total Voters:</strong> {{ voter_count }}</p>
+  </div>
+</div>
+
+<div class="results-section-card fade-in">
+  <h3 class="results-section-title">🎵 Track Ratings</h3>
+  <div class="results-table-wrapper">
+    <table class="results-table results-table-modern">
+      <thead>
+        <tr>
+          <th>Track</th>
+          <th>Title</th>
+          <th>Group Avg</th>
+          <th class="spark-col">Dist</th>
+          {% if current_user.is_authenticated %}
+          <th>Your Rating</th>
+          {% endif %}
+          <th>Votes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for stat in song_stats %}
+        <tr {% if stat.is_ignored %}class="ignored-song-row"{% endif %}>
+          <td>{{ stat.track }}</td>
+          <td class="results-song-title">
+            {{ stat.title }}
+            {% if stat.is_ignored %}
+              <span class="ignored-badge">IGNORED</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if stat.is_ignored %}
+              <span class="text-muted ignored-text">Excluded</span>
+            {% elif stat.avg != "N/A" %}
+              <span class="song-rating-badge">{{ stat.avg }}</span>
+            {% else %}
+              <span class="text-muted">N/A</span>
+            {% endif %}
+          </td>
+          <td class="spark-col">
+            {% if not stat.is_ignored %}
+            <canvas class="spark" data-dist='{{ stat.dist | tojson }}' width="110" height="28"></canvas>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% if current_user.is_authenticated %}
+          <td>
+            {% if stat.is_ignored %}
+              <span class="text-muted ignored-text">Not counted</span>
+            {% elif stat.user_rating %}
+              {% set delta = (stat.user_rating - stat.avg) if stat.avg != 'N/A' else None %}
+              <span class="user-rating-badge {{ 'low' if stat.user_rating <= 2 else ('high' if stat.user_rating >= 4.5 else '') }}">{{ stat.user_rating }}</span>
+              {% if delta is not none %}
+                {% set cls = 'neutral' %}
+                {% if delta <= -1 %}{% set cls = 'neg' %}{% elif delta >= 1 %}{% set cls = 'pos' %}{% endif %}
+                <span class="delta-badge {{ cls }}">{{ '%+.1f'|format(delta) }}</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">Not rated</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td>{{ stat.count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="results-section-card fade-in">
+  <h3 class="results-section-title">📊 Visuals</h3>
+  <div class="chart-container">
+    <div class="bar-wrapper">
+      <canvas id="songBarChart"></canvas>
+    </div>
+    <div class="pie-wrapper">
+      <canvas id="votePieChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top: 30px;">
+  <a href="{{ url_for('user.vote') }}" class="back-link">← Back to Voting</a>
+</p>
+
+<script id="results-stats" type="application/json">{
+  "labels": {{ song_stats | rejectattr('is_ignored') | map(attribute='title') | list | tojson }},
+  "averages": {{ song_stats | rejectattr('is_ignored') | map(attribute='avg') | list | tojson }}
+}</script>
+<script>
+    const parsed = JSON.parse(document.getElementById('results-stats').textContent || '{}');
+    const songLabels = parsed.labels || [];
+    const songAverages = parsed.averages || [];
+
+    new Chart(document.getElementById("songBarChart"), {
+        type: 'bar',
+        data: {
+            labels: songLabels,
+            datasets: [{
+                label: 'Average Rating',
+                data: songAverages,
+                backgroundColor: 'rgba(30,185,84,0.25)',
+                borderColor: 'rgba(30,185,84,1)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true, max: 5 }
+            }
+        }
+    });
+
+    fetch('{{ url_for("user.vote_distribution", album_id=album.id) }}')
+        .then(res => res.json())
+        .then(data => {
+            new Chart(document.getElementById("votePieChart"), {
+                type: 'pie',
+                data: {
+                    labels: ['⭐1', '⭐2', '⭐3', '⭐4', '⭐5'],
+                    datasets: [{
+                        label: 'Vote Count',
+                        data: data,
+                        backgroundColor: [
+                          '#e74c3c', '#f1c40f', '#1DB954', '#3498db', '#9b59b6'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+        });
+</script>
+<style>
+  /* Compact sparkline column (hidden on small screens) */
+  .spark-col { width: 120px; }
+  @media (max-width: 760px){ .spark-col { display: none; } }
+  /* Delta and rating colors */
+  .user-rating-badge.low { background: rgba(231,76,60,0.15); color: #ff8b7e; }
+  .user-rating-badge.high { background: rgba(100,200,120,0.15); color: #8be28f; }
+  .delta-badge { display:inline-block; margin-left:6px; padding:2px 6px; border-radius:999px; font-size:.8rem; border:1px solid var(--border-color); opacity:.9; }
+  .delta-badge.pos { background: rgba(100,200,120,0.12); color:#8be28f; }
+  .delta-badge.neg { background: rgba(231,76,60,0.12); color:#ff8b7e; }
+  .delta-badge.neutral { background: var(--input-bg); color: var(--text); opacity:.6; }
+  
+  /* Ignored songs styling */
+  .ignored-song-row { opacity: 0.5; background: rgba(231, 76, 60, 0.05); }
+  .ignored-song-row:hover { opacity: 0.65; }
+  .ignored-badge { 
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 8px;
+    background: rgba(231, 76, 60, 0.15);
+    color: #ff8b7e;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    vertical-align: middle;
+  }
+  .ignored-text {
+    font-style: italic;
+    opacity: 0.7;
+  }
+</style>
+
+{% include "components/comments_section.html" %}
+
+<script>
+  // Render tiny distribution sparklines per song (desktop-first)
+  document.addEventListener('DOMContentLoaded', () => {
+    const els = document.querySelectorAll('canvas.spark');
+    els.forEach((el) => {
+      let data = [];
+      try { data = JSON.parse(el.getAttribute('data-dist')) || []; } catch(e) {}
+      const ctx = el.getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels: ['1','2','3','4','5'], datasets: [{
+          data,
+          backgroundColor: 'rgba(255,255,255,0.2)',
+          borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1DB954',
+          borderWidth: 1,
+          barPercentage: 0.9,
+          categoryPercentage: 0.9,
+        }]},
+        options: {
+          responsive: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } },
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

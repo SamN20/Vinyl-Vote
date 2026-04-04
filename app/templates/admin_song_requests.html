@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% block title %}Admin: Album Requests{% endblock %}
+{% block content %}
+  <h2>🛠 Manage Album Requests</h2>
+  
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Requests</div>
+      <div class="stat-value">{{ stats.total }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value" style="color: #ff9800;">{{ stats.pending }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fulfilled</div>
+      <div class="stat-value" style="color: #4caf50;">{{ stats.fulfilled }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Last 30 Days</div>
+      <div class="stat-value">{{ stats.recent_30d }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Unique Users</div>
+      <div class="stat-value">{{ stats.unique_users }}</div>
+    </div>
+  </div>
+  
+  <div class="requests-container">
+    {% for req in requests %}
+    <div class="request-item {% if req.fulfilled %}fulfilled{% endif %}">
+      <div class="request-header">
+        {% if req.cover_url %}
+          <img src="{{ req.cover_url }}" alt="{{ req.title }} cover" class="request-cover">
+        {% else %}
+          <div class="request-cover-placeholder">🎵</div>
+        {% endif %}
+        
+        <div class="request-info">
+          <h3 class="request-title">{{ req.title }}</h3>
+          <p class="request-artist">by {{ req.artist }}</p>
+          {% if req.release_date %}
+            <p class="request-release">Released: {{ req.release_date }}</p>
+          {% endif %}
+        </div>
+        
+        <div class="request-meta">
+          <span class="request-id">#{{ req.id }}</span>
+          <span class="request-user">👤 {{ req.user.username }}</span>
+          <span class="request-timestamp">{{ req.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+          {% if req.fulfilled %}
+            <span class="badge success">✅ Fulfilled</span>
+          {% else %}
+            <span class="badge warning">⏳ Pending</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="request-actions">
+        {% if not req.fulfilled %}
+        <form method="get" action="{{ url_for('admin.fulfill_request', req_id=req.id) }}" style="display:inline" class="fulfill-form">
+          <button type="submit" class="btn-primary fulfill-btn">🎯 Fulfill & Add to Queue</button>
+        </form>
+        {% endif %}
+        
+        {% if req.spotify_url %}
+          <a href="{{ req.spotify_url }}" target="_blank" class="btn-spotify">🎧 Spotify</a>
+        {% endif %}
+        
+        {% if not req.fulfilled %}
+        <form method="post"
+              action="{{ url_for('admin.delete_song_request', req_id=req.id) }}"
+              style="display:inline"
+              onsubmit="return confirm('Are you sure you want to delete this request?')">
+          <button type="submit" class="btn-danger">🗑️ Delete</button>
+        </form>
+        {% else %}
+        <span class="locked-note">🔒 Cannot delete fulfilled requests</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+<style>
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.requests-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.request-item {
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.request-item:hover {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.request-item.fulfilled {
+  background: var(--card-bg);
+  border-color: #4caf50;
+  box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.2);
+}
+
+[data-theme="light"] .request-item.fulfilled {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.request-header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.request-cover {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.request-cover-placeholder {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.request-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.request-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.request-artist {
+  margin: 0 0 0.25rem 0;
+  color: var(--text);
+  opacity: 0.8;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.request-release {
+  margin: 0;
+  color: var(--text);
+  opacity: 0.6;
+  font-size: 0.9rem;
+}
+
+.request-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  text-align: right;
+}
+
+.request-id {
+  font-weight: 700;
+  color: var(--text);
+  opacity: 0.8;
+  font-size: 1.1rem;
+}
+
+.request-user {
+  color: var(--text);
+  opacity: 0.7;
+  font-size: 0.95rem;
+}
+
+.request-timestamp {
+  color: var(--text);
+  opacity: 0.5;
+  font-size: 0.85rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge.success {
+  background: #4caf50;
+  color: white;
+}
+
+.badge.warning {
+  background: #ff9800;
+  color: white;
+}
+
+.request-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-primary, .btn-spotify, .btn-danger {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-spotify {
+  background: #1db954;
+  color: white;
+}
+
+.btn-spotify:hover {
+  background: #1ed760;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
+}
+
+.btn-danger {
+  background: #f44336;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #d32f2f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+.locked-note {
+  color: var(--text);
+  opacity: 0.6;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .request-header {
+    flex-direction: column;
+  }
+  
+  .request-meta {
+    align-items: flex-start;
+    text-align: left;
+  }
+  
+  .request-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .request-actions button,
+  .request-actions a {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+  position: relative;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid white;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const fulfillForms = document.querySelectorAll('.fulfill-form');
+  
+  fulfillForms.forEach(form => {
+    form.addEventListener('submit', function() {
+      const btn = this.querySelector('.fulfill-btn');
+      btn.disabled = true;
+      btn.classList.add('loading');
+      btn.textContent = 'Processing...';
+    });
+  });
+});
+</script>
+{% endblock %}

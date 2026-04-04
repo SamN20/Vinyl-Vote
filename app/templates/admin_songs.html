@@ -1,0 +1,496 @@
+{% extends "base.html" %}
+{% block title %}Manage Songs{% endblock %}
+
+{% block content %}
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>🎵 Manage Songs</h2>
+    <a href="{{ url_for('admin.admin_dashboard') }}" class="button-link">← Admin Dashboard</a>
+  </div>
+
+  <!-- Site-Wide Stats -->
+  <h3 style="margin: 24px 0 12px 0;">📊 Site-Wide Statistics</h3>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Songs</div>
+      <div class="stat-value">{{ total_songs }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Albums</div>
+      <div class="stat-value">{{ total_albums }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">All Votes Cast</div>
+      <div class="stat-value">{{ total_votes_all }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Counted Votes</div>
+      <div class="stat-value">{{ total_votes_counted }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Ignored Votes</div>
+      <div class="stat-value">{{ total_votes_ignored }}</div>
+    </div>
+    <div class="stat-card {% if ignored_songs_count > 0 %}warning{% endif %}">
+      <div class="stat-label">Ignored Songs</div>
+      <div class="stat-value">{{ ignored_songs_count }}</div>
+    </div>
+  </div>
+
+  <!-- Album Selection Bar -->
+  <div class="filter-bar">
+    <label>
+      <span><strong>Select Album</strong></span>
+      <form method="get" action="{{ url_for('admin.manage_songs') }}" style="margin: 0;">
+        <select name="album_id" onchange="this.form.submit()" style="min-width: 300px;">
+          {% for a in albums %}
+            <option value="{{ a.id }}" {% if a.id == album.id %}selected{% endif %}>
+              {{ a.queue_order }}. {{ a.title }} — {{ a.artist }}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    </label>
+  </div>
+
+  <!-- Current Album Header -->
+  <div class="card album-header-card">
+    <h3 style="margin: 0 0 8px 0;">{{ album.title }}</h3>
+    <p style="margin: 0; opacity: 0.8;">{{ album.artist }}</p>
+    {% if album.is_current %}
+      <span class="status-badge ok" style="margin-top: 8px; display: inline-block;">Current Album</span>
+    {% endif %}
+  </div>
+
+  <!-- Album-Level Stats -->
+  <h3 style="margin: 24px 0 12px 0;">📀 Album: {{ album.title }}</h3>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Songs in Album</div>
+      <div class="stat-value">{{ song_stats | length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Votes</div>
+      <div class="stat-value">{{ album_total_votes }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Counted Votes</div>
+      <div class="stat-value">{{ album_counted_votes }}</div>
+    </div>
+    <div class="stat-card {% if album_ignored_votes > 0 %}warning{% endif %}">
+      <div class="stat-label">Ignored Votes</div>
+      <div class="stat-value">{{ album_ignored_votes }}</div>
+    </div>
+    <div class="stat-card {% if album_songs_ignored > 0 %}warning{% endif %}">
+      <div class="stat-label">Ignored Songs</div>
+      <div class="stat-value">{{ album_songs_ignored }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Votes/Song</div>
+      <div class="stat-value">{{ (album_counted_votes / song_stats|length)|round(1) if song_stats|length > 0 else 0 }}</div>
+    </div>
+  </div>
+
+  <!-- Songs Table -->
+  <div class="card" style="margin-top: 24px;">
+    <h3 style="margin: 0 0 16px 0;">🎼 Song Details & Management</h3>
+    
+    {% if song_stats %}
+    <div class="table-wrap no-scrollbar">
+      <table class="songs-table">
+        <thead>
+          <tr>
+            <th class="center" style="width: 40px;">#</th>
+            <th>Title</th>
+            <th class="center">Duration</th>
+            <th class="center">Total<br>Votes</th>
+            <th class="center">Counted<br>Votes</th>
+            <th class="center">Ignored<br>Votes</th>
+            <th class="center">Retro<br>Votes</th>
+            <th class="right">Avg<br>Score</th>
+            <th class="center">Min</th>
+            <th class="center">Max</th>
+            <th class="center">Status</th>
+            <th class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in song_stats %}
+          {% set duration_parts = stat.song.duration.split(':') if stat.song.duration else ['0', '0'] %}
+          {% set duration_seconds = (duration_parts[0]|int * 60) + (duration_parts[1]|int if duration_parts|length > 1 else 0) %}
+          {% set is_very_short = duration_seconds < 90 %}
+          <tr class="{% if stat.is_ignored %}ignored-row{% endif %}">
+            <td class="center track-num">{{ stat.song.track_number }}</td>
+            <td class="song-title">
+              {{ stat.song.title }}
+              {% if stat.is_ignored %}
+                <span class="badge-inline ignored-badge">IGNORED</span>
+              {% endif %}
+              {% if is_very_short %}
+                <span class="badge-inline short-badge" title="Very short track (< 1:30)">SHORT</span>
+              {% endif %}
+            </td>
+            <td class="center {% if is_very_short %}short-duration{% endif %}">
+              {{ stat.song.duration if stat.song.duration else '—' }}
+            </td>
+            <td class="center">{{ stat.total_votes }}</td>
+            <td class="center">{{ stat.counted_votes }}</td>
+            <td class="center {% if stat.ignored_votes > 0 %}warning-text{% endif %}">
+              {{ stat.ignored_votes }}
+            </td>
+            <td class="center {% if stat.retro_count > 0 %}retro-text{% endif %}">
+              {{ stat.retro_count }}
+            </td>
+            <td class="right {% if stat.avg_score and stat.avg_score <= 2.5 %}low{% elif stat.avg_score and stat.avg_score >= 4.0 %}high{% endif %}">
+              {{ stat.avg_score if stat.avg_score else '—' }}
+            </td>
+            <td class="center">{{ stat.min_score if stat.min_score else '—' }}</td>
+            <td class="center">{{ stat.max_score if stat.max_score else '—' }}</td>
+            <td class="center">
+              {% if stat.is_ignored %}
+                <span class="status-badge danger">Ignored</span>
+              {% elif stat.counted_votes == 0 %}
+                <span class="status-badge muted">No Votes</span>
+              {% else %}
+                <span class="status-badge ok">Active</span>
+              {% endif %}
+            </td>
+            <td class="actions">
+              <form method="post" action="{{ url_for('admin.toggle_song_ignore', song_id=stat.song.id) }}" 
+                    onsubmit="return confirm('{% if stat.is_ignored %}Unignore{% else %}Ignore{% endif %} this song and automatically {% if stat.is_ignored %}unignore{% else %}ignore{% endif %} all {{ stat.total_votes }} vote(s)?');">
+                <button type="submit" class="btn-sm {% if stat.is_ignored %}success{% else %}warning{% endif %}">
+                  {% if stat.is_ignored %}Unignore{% else %}Ignore{% endif %}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>📭 No songs found for this album.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Info Box -->
+  <div class="info-box">
+    <h4 style="margin: 0 0 8px 0;">ℹ️ About Song Ignore Feature</h4>
+    <ul style="margin: 0; padding-left: 20px;">
+      <li>When a song is marked as <strong>ignored</strong>, all votes for that song are automatically ignored</li>
+      <li>Users can still cast votes on ignored songs, but they won't count toward averages or results</li>
+      <li>Toggle the ignore status to instantly update all associated votes</li>
+      <li>Songs marked with a <span class="badge-inline short-badge" style="font-size: 0.65rem; padding: 2px 6px;">SHORT</span> badge are under 1:30 in duration (often interludes or skits)</li>
+      <li>Useful for excluding interludes, skits, or problematic tracks from calculations</li>
+      <li>Ignored songs are clearly marked and their stats remain visible for reference</li>
+    </ul>
+  </div>
+
+  <style>
+    /* Filter Bar */
+    .filter-bar { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 10px; 
+      align-items: end; 
+      margin: 10px 0 20px; 
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+    .filter-bar label { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 6px; 
+    }
+
+    /* Album Header Card */
+    .album-header-card {
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--card-bg) 0%, var(--input-bg) 100%);
+    }
+
+    /* Stats Grid */
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+      gap: 12px; 
+      margin-bottom: 20px; 
+    }
+    .stat-card { 
+      background: var(--card-bg); 
+      border: 1px solid var(--border-color); 
+      border-radius: 8px; 
+      padding: 16px; 
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .stat-card.warning {
+      border-color: rgba(241, 196, 15, 0.5);
+      background: linear-gradient(135deg, var(--card-bg) 0%, rgba(241, 196, 15, 0.05) 100%);
+    }
+    .stat-label { 
+      font-size: 0.85rem; 
+      opacity: 0.7; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-value { 
+      font-size: 1.8rem; 
+      font-weight: 700; 
+      color: var(--accent); 
+    }
+
+    /* Card Container */
+    .card { 
+      background: var(--card-bg); 
+      border: 1px solid var(--border-color); 
+      border-radius: 8px; 
+      padding: 16px; 
+    }
+
+    /* Table Styling */
+    .table-wrap { 
+      overflow-x: auto; 
+      margin-top: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+    .no-scrollbar { 
+      scrollbar-width: none; 
+      -ms-overflow-style: none; 
+    }
+    .no-scrollbar::-webkit-scrollbar { 
+      display: none; 
+    }
+
+    .songs-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+    }
+    .songs-table th { 
+      background: var(--input-bg); 
+      padding: 10px 8px; 
+      text-align: left; 
+      font-weight: 600; 
+      border-bottom: 2px solid var(--border-color); 
+      white-space: nowrap;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.9;
+    }
+    .songs-table td { 
+      padding: 12px 8px; 
+      border-bottom: 1px solid var(--border-color); 
+      font-size: 0.9rem;
+    }
+    .songs-table tbody tr { 
+      transition: all 0.2s ease;
+    }
+    .songs-table tbody tr:hover { 
+      background: var(--input-bg); 
+    }
+    .songs-table th.center, 
+    .songs-table td.center { 
+      text-align: center; 
+    }
+    .songs-table th.right, 
+    .songs-table td.right { 
+      text-align: right; 
+    }
+
+    /* Table Cells */
+    .track-num {
+      font-weight: 700;
+      opacity: 0.7;
+    }
+    .song-title {
+      font-weight: 600;
+    }
+    .warning-text {
+      color: #f39c12;
+      font-weight: 700;
+    }
+    .retro-text {
+      color: #bb8fce;
+      font-weight: 700;
+    }
+
+    /* Score Colors */
+    .right.low, .center.low { 
+      color: #ff7a70; 
+      font-weight: 700; 
+    }
+    .right.high, .center.high { 
+      color: #8be28f; 
+      font-weight: 700; 
+    }
+
+    /* Status Badges */
+    .status-badge { 
+      padding: 4px 10px; 
+      border-radius: 999px; 
+      font-weight: 700; 
+      font-size: 0.7rem; 
+      border: 1px solid var(--border-color); 
+      display: inline-block;
+      white-space: nowrap;
+    }
+    .status-badge.ok { 
+      background: rgba(100, 200, 120, 0.15); 
+      color: #8be28f; 
+    }
+    .status-badge.danger { 
+      background: rgba(231, 76, 60, 0.15); 
+      color: #ff8b7e; 
+    }
+    .status-badge.muted { 
+      background: rgba(149, 165, 166, 0.15); 
+      color: #95a5a6; 
+    }
+
+    .badge-inline {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      margin-left: 8px;
+      border: 1px solid;
+      vertical-align: middle;
+    }
+    .badge-inline.ignored-badge {
+      background: rgba(231, 76, 60, 0.15);
+      color: #ff8b7e;
+      border-color: rgba(231, 76, 60, 0.3);
+    }
+    .badge-inline.short-badge {
+      background: rgba(241, 196, 15, 0.15);
+      color: #f39c12;
+      border-color: rgba(241, 196, 15, 0.3);
+    }
+
+    /* Short Duration Highlighting */
+    .short-duration {
+      color: #f39c12;
+      font-weight: 700;
+    }
+
+    /* Ignored Row */
+    .ignored-row { 
+      opacity: 0.6; 
+      background: rgba(231, 76, 60, 0.05);
+    }
+    .ignored-row:hover {
+      opacity: 0.8 !important;
+      background: rgba(231, 76, 60, 0.08) !important;
+    }
+
+    /* Actions */
+    .actions { 
+      display: flex; 
+      gap: 8px; 
+      justify-content: flex-end; 
+    }
+    .actions form {
+      margin: 0;
+    }
+    .btn-sm { 
+      padding: 6px 12px; 
+      font-size: 0.8rem; 
+      border-radius: 4px; 
+      border: 1px solid var(--border-color); 
+      background: var(--input-bg); 
+      color: var(--text); 
+      cursor: pointer; 
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .btn-sm:hover { 
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .btn-sm.warning { 
+      background: rgba(241, 196, 15, 0.15); 
+      color: #f39c12; 
+      border-color: rgba(241, 196, 15, 0.3); 
+    }
+    .btn-sm.warning:hover { 
+      background: #f39c12; 
+      color: white; 
+      border-color: #f39c12; 
+    }
+    .btn-sm.success { 
+      background: rgba(100, 200, 120, 0.15); 
+      color: #8be28f; 
+      border-color: rgba(100, 200, 120, 0.3); 
+    }
+    .btn-sm.success:hover { 
+      background: var(--accent); 
+      color: white; 
+      border-color: var(--accent); 
+    }
+
+    /* Info Box */
+    .info-box {
+      margin-top: 24px;
+      padding: 16px;
+      background: rgba(52, 152, 219, 0.1);
+      border: 1px solid rgba(52, 152, 219, 0.3);
+      border-radius: 8px;
+      color: var(--text);
+    }
+    .info-box h4 {
+      color: #5dade2;
+    }
+    .info-box li {
+      margin-bottom: 6px;
+      line-height: 1.5;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      opacity: 0.7;
+    }
+
+    .button-link { 
+      color: var(--accent); 
+      text-decoration: none; 
+      font-weight: 700; 
+    }
+    .button-link:hover { 
+      text-decoration: underline; 
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .stats-grid { 
+        grid-template-columns: repeat(2, 1fr); 
+      }
+      .songs-table {
+        font-size: 0.8rem;
+      }
+      .songs-table th,
+      .songs-table td {
+        padding: 8px 4px;
+      }
+      .song-title {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  </style>
+{% endblock %}

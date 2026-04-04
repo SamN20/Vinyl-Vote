@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Add Album{% endblock %}
+
+{% block content %}
+<h2>➕ Add a New Album</h2>
+<form method="POST" class="album-search-form">
+  <input type="text" name="album_query" placeholder="e.g. Blonde Frank Ocean" required>
+  <button type="submit">🔍 Search</button>
+</form>
+{% endblock %}

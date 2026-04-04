@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+
+<div class="form-card pop-in login-card enhanced-login" style="animation-delay:0.1s;">
+  <h2 class="pop-in" style="animation-delay:0.15s; margin-bottom:4px;">Sign In <span class="gradient-text" style="font-size:.65em; letter-spacing:.5px; vertical-align:middle;">byNolo</span></h2>
+  <p class="keyn-pitch pop-in" style="animation-delay:0.2s;">
+    Sign in with <strong>KeyN</strong> for secure, unified authentication across all byNolo projects. KeyN provides the best mobile experience with persistent sessions and advanced security features.
+  </p>
+  <div class="primary-action-wrapper pop-in" style="animation-delay:0.22s;">
+    <a href="{{ url_for('oauth.oauth_login') }}" class="keyn-primary-btn">
+      <span class="btn-glow"></span>
+      <i class="fa fa-link"></i> Sign in with KeyN
+      <span class="sub">Persistent Sessions</span>
+    </a>
+  </div>
+  <div class="migration-progress pop-in" style="animation-delay:0.28s;" aria-label="KeyN adoption progress">
+    <div class="bar"><span style="width:75%" data-label="75% Using KeyN"></span></div>
+  </div>
+  <ul class="keyn-benefits pop-in feature-band" style="animation-delay:0.34s;">
+    <li class="feat"><i class="fa fa-clock"></i><span>30-Day Sessions</span></li>
+    <li class="feat"><i class="fa fa-shield-alt"></i><span>Enhanced Security</span></li>
+    <li class="feat"><i class="fa fa-sync"></i><span>Cross-Site Login</span></li>
+    <li class="feat"><i class="fa fa-mobile-alt"></i><span>Mobile Optimized</span></li>
+  </ul>
+  <div class="legacy-box pop-in" style="animation-delay:0.4s;">
+    <button type="button" class="legacy-toggle" onclick="toggleLegacyLogin()" id="legacy-toggle-btn">
+      Legacy Username/Password Login ▾
+    </button>
+    <div id="legacy-login" class="legacy-form" style="display:none;">
+      <form method="POST" style="margin-top:14px;">
+        {{ form.hidden_tag() }}
+        <label for="username">{{ form.username.label }}</label>
+        {{ form.username(class_='input-field', placeholder='Your legacy username') }}
+        <div class="password-container">
+          <label for="password">{{ form.password.label }}</label>
+          {{ form.password(class_='input-field', placeholder='Password', id='password-field') }}
+          <button type="button" id="show-password" class="show-password-btn" aria-label="Show password">👁️</button>
+        </div>
+        <div class="remember-me-container">
+          {{ form.remember_me(id='remember_me', class_='remember-checkbox') }}
+          <label for="remember_me" class="remember-label">{{ form.remember_me.label.text }}</label>
+        </div>
+        <button type="submit" class="legacy-submit">Login (Legacy)</button>
+        <a href="/reset_password_request" class="forgot-password">Forgot password?</a>
+      </form>
+      <p class="legacy-warning"><i class="fa fa-triangle-exclamation"></i> Legacy logins will be phased out after migration.</p>
+    </div>
+  </div>
+  <p class="form-footer" style="margin-top:18px;">
+    New here? Just use <strong>Continue with KeyN</strong> above.
+  </p>
+</div>
+
+<script>
+  function toggleLegacyLogin(){
+    const box = document.getElementById('legacy-login');
+    const btn = document.getElementById('legacy-toggle-btn');
+    const open = box.style.display === 'block';
+    box.style.display = open ? 'none':'block';
+    btn.textContent = open ? 'Legacy Username/Password Login ▾' : 'Hide Legacy Login ▴';
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    const showPasswordBtn = document.getElementById('show-password');
+    if(showPasswordBtn){
+      const passwordField = document.getElementById('password-field');
+      showPasswordBtn.addEventListener('mousedown', () => passwordField.type = 'text');
+      ['mouseup','mouseleave','blur'].forEach(ev=>showPasswordBtn.addEventListener(ev, () => passwordField.type = 'password'));
+    }
+  });
+</script>
+<style>
+  .gradient-text{background-image:linear-gradient(90deg,#34d399,#059669);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;font-weight:700;}
+  .login-card{max-width:660px;}
+  .enhanced-login{background:linear-gradient(145deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005)); position:relative; overflow:hidden;}
+  .enhanced-login:before{content:""; position:absolute; inset:-1px; background:radial-gradient(circle at 80% 0%,rgba(29,185,84,0.25),transparent 70%); opacity:.25; pointer-events:none;}
+  .primary-action-wrapper{position:relative;}
+  .keyn-primary-btn{position:relative; display:flex; align-items:center; justify-content:center; gap:10px; background:#1DB954; color:#fff; padding:16px 22px; border-radius:14px; font-weight:600; text-align:center; text-decoration:none; font-size:1.05rem; box-shadow:0 8px 30px -10px rgba(29,185,84,.6); transition:.25s background,.25s transform; letter-spacing:.3px;}
+  .keyn-primary-btn .sub{background:rgba(255,255,255,.15); padding:3px 8px; border-radius:20px; font-size:.55rem; letter-spacing:1px; text-transform:uppercase; font-weight:700;}
+  .keyn-primary-btn:hover{background:#17a746; transform:translateY(-3px);} 
+  .keyn-pitch{font-size:.92rem; line-height:1.4; opacity:.92; margin-bottom:14px;}
+  .feature-band{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:10px 14px; border-radius:12px; margin-top:4px;}
+  .keyn-benefits{list-style:none; padding:0; margin:0 0 18px; display:flex; flex-wrap:wrap; gap:10px 18px; font-size:.68rem; letter-spacing:.5px; text-transform:uppercase;}
+  .keyn-benefits .feat{display:flex; gap:6px; align-items:center; opacity:.78; font-weight:600;}
+  .keyn-benefits .feat i{color:#1DB954; font-size:.85rem;}
+  .migration-progress{margin:12px 0 10px;}
+  .migration-progress .bar{height:10px; background:#222; border-radius:40px; position:relative; overflow:hidden; border:1px solid #2c2c2c;}
+  .migration-progress .bar span{display:block; height:100%; background:linear-gradient(90deg,#1DB954,#29c468); border-radius:40px; position:relative;}
+  .migration-progress .bar span:after{content:attr(data-label); position:absolute; right:6px; top:50%; transform:translateY(-50%); font-size:.55rem; letter-spacing:.5px; color:#fff; font-weight:600;}
+  .legacy-box{margin-top:4px; background:var(--input-bg); border:1px solid var(--border-color); border-radius:10px; padding:14px 16px;}
+  .legacy-toggle{background:transparent; border:none; color:var(--accent); font-weight:600; cursor:pointer; font-size:.85rem; letter-spacing:.5px;}
+  .legacy-form label{font-size:.75rem; text-transform:uppercase; letter-spacing:.6px; opacity:.7; margin-top:10px; display:block;}
+  .legacy-form .input-field{margin-top:4px;}
+  .legacy-submit{margin-top:14px; width:100%; background:#333; color:#fff; border:none; padding:10px 14px; border-radius:6px; font-weight:600; cursor:pointer;}
+  .legacy-submit:hover{background:#3d3d3d;}
+  .remember-me-container{display:flex; align-items:center; gap:8px; margin-top:12px;}
+  .remember-checkbox{width:16px; height:16px; accent-color:#1DB954;}
+  .remember-label{font-size:.8rem !important; margin:0 !important; text-transform:none !important; letter-spacing:normal !important; opacity:0.9 !important; cursor:pointer;}
+  .legacy-warning{margin-top:10px; font-size:.65rem; letter-spacing:.5px; text-transform:uppercase; opacity:.6;}
+  .forgot-password{display:inline-block; margin-top:10px; font-size:.75rem;}
+  @media (max-width:600px){.keyn-benefits{flex-direction:column; gap:6px;}}
+</style>
+{% endblock %}

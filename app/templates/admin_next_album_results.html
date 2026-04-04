@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Next Album Results{% endblock %}
+{% block content %}
+<h2>📈 Next Album Vote Totals</h2>
+<table class="results-table">
+  <thead><tr><th>Album</th><th>Votes</th></tr></thead>
+  <tbody>
+    {% for album, count in tallies %}
+    <tr>
+      <td>{{ album.title }} — {{ album.artist }}</td>
+      <td>{{ count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

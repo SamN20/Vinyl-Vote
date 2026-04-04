@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy{% endblock %}
+
+{% block content %}
+<div class="legal-page">
+    <h1 class="legal-title">Privacy Policy <span class="gradient-text">byNolo</span></h1>
+    <p class="legal-date"><strong>Effective Date:</strong> June 29, 2025</p>
+
+    <div class="legal-section" id="privacy-1">
+        <h2>1. Information We Collect</h2>
+        <ul>
+            <li><strong>Account Information:</strong> Username and hashed password (legacy accounts) or external identity link via KeyN. Email address is required and may be used for password resets (legacy) or notifications.</li>
+            <li><strong>Votes and Requests:</strong> We store your album and song ratings, and any album requests you submit.</li>
+            <li><strong>Push Notification Data:</strong> Subscription tokens provided by your browser if you enable notifications.</li>
+            <li><strong>Session Data:</strong> We use cookies for persistent login sessions.</li>
+            <li><strong>Analytics:</strong> Cloudflare collects basic traffic stats (browser, region, visit counts).</li>
+        </ul>
+    </div>
+
+    <div class="legal-section" id="privacy-2">
+        <h2>2. How We Use Information</h2>
+        <ul>
+            <li>To manage your account and voting history</li>
+            <li>To send optional push or email notifications</li>
+            <li>To display aggregated vote results</li>
+            <li>To improve site functionality and prevent abuse</li>
+        </ul>
+    </div>
+
+    <div class="legal-section" id="privacy-3">
+        <h2>3. Data Sharing</h2>
+        <p>We do not sell your personal information. Administrators may export anonymized or aggregated vote data and contact users via email for moderation or support purposes. Metadata is fetched from third-party services like Spotify, Apple Music, and YouTube Music.</p>
+    </div>
+
+    <div class="legal-section" id="privacy-4">
+        <h2>4. Vote Visibility</h2>
+        <p>Aggregated results are shown to all users. Your individual votes are visible only to you and administrators operating under the <span class="gradient-text" style="font-size:0.9em;">byNolo</span> project.</p>
+    </div>
+
+    <div class="legal-section" id="privacy-5">
+        <h2>5. Data Retention</h2>
+        <p>We retain your account and voting history indefinitely unless you request deletion. There is currently no self-service deletion tool. Contact us directly to request data removal. If you authenticate via KeyN, some profile attributes are synchronized from the KeyN identity provider.</p>
+    </div>
+
+    <div class="legal-section" id="privacy-6">
+        <h2>6. Cookies</h2>
+        <p>Cookies are used for login sessions only. No third-party advertising or tracking cookies are used.</p>
+    </div>
+
+    <div class="legal-section" id="privacy-7">
+        <h2>7. Security</h2>
+        <p>Your password (legacy accounts only) is stored securely using hashing. We implement reasonable protections but cannot guarantee absolute security. KeyN-managed accounts rely on the security model of that provider plus our session layer.</p>
+    </div>
+
+    <div class="legal-section" id="privacy-8">
+        <h2>8. Contact</h2>
+        <p>For questions or data removal requests, please contact the administrator at <a href="mailto:Support.VinylVote@it.nolanbc.ca" target="_blank" rel="noopener noreferrer" class="site-link">Support.VinylVote@it.nolanbc.ca</a>. Please mention "byNolo / Vinyl Vote" in the subject.</p>
+    </div>
+
+    <div class="legal-section" id="privacy-9">
+        <h2>9. KeyN Authentication</h2>
+        <p><strong>What we receive from KeyN:</strong> When you choose to sign in with KeyN, we receive identity data limited to the scopes you approve (typically <em>id</em>, <em>username/display name</em>, and <em>email</em>).</p>
+        <p><strong>What we store:</strong> We store your KeyN user id, your KeyN username/display name, and a JSON snapshot of profile attributes returned within the approved scopes. This snapshot is refreshed on each login. We do not receive or store your KeyN password.</p>
+        <p><strong>Linking and migration:</strong> On first KeyN login, we attempt to link to an existing Vinyl Vote account by matching email, then username. If no match is found, a new local account is created and marked as migrated to KeyN. Legacy password hashes may remain in the database for older accounts, until all accounts are merged, but are not used for KeyN sign-ins.</p>
+        <p><strong>Independent provider:</strong> KeyN is a separate identity provider with its own Terms of Use and Privacy Policy, which are presented during the KeyN sign-in flow. Your use of KeyN is governed by those documents.</p>
+        <p><strong>Data changes and deletion:</strong> To change or delete data held by KeyN, use KeyN’s processes. You may request that we unlink your KeyN account and/or delete local snapshots we store for authentication and account management, subject to account verification.</p>
+        <p class="legal-date"><em>KeyN clause added: September 2, 2025.</em></p>
+    </div>
+
+    <div class="legal-section" id="privacy-10">
+        <h2>10. Vinyl Vote Companion (Browser Extension)</h2>
+        <p><strong>Purpose:</strong> The extension adds a small control on supported music sites (YouTube Music, Spotify, Apple Music) to help you rate the current week’s album and, after you complete this week’s votes, optionally rate past albums (Retro).</p>
+        <p><strong>Data processed by the Extension:</strong> On supported music sites, it reads the now‑playing song title/artist and basic playback state to time prompts. This processing occurs locally in your browser. When you choose to submit votes, the extension sends your song and album scores to the Vinyl Vote service for your account.</p>
+        <p><strong>Local storage:</strong> The extension stores non‑PII settings and state in your browser (e.g., feature toggles, button position, last prompt times, drafted scores until submission). You can clear this in the extension’s Options or by uninstalling it.</p>
+        <p><strong>Permissions:</strong> The extension is scoped to the music sites above and <code>vinylvote.bynolo.ca</code> to read now‑playing metadata and submit your votes. Optional desktop notifications are used for song‑end or deadline reminders and can be disabled.</p>
+        <p><strong>What it does not do:</strong> It does not collect or sell personal data, does not access your general browsing history or keystrokes, and does not run remote code.</p>
+        <p><strong>Controls:</strong> You can disable features, per‑platform behavior, and notifications in the Options page. Retro voting in the extension only becomes available after you successfully submit this week’s votes.</p>
+        <p class="legal-date"><em>Extension notice added: September 17, 2025.</em></p>
+    </div>
+</div>
+<style>
+  .gradient-text { background-image: linear-gradient(90deg,#34d399,#059669); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; font-weight:700; }
+</style>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Top Songs{% endblock %}
+
+{% block content %}
+  <h2>🎵 Top Songs of All Time</h2>
+
+  <form class="search-form" method="get" action="{{ url_for('user.top_songs') }}">
+    <input
+      type="text"
+      name="q"
+      value="{{ q }}"
+      placeholder="🔍 Search songs, artists, or albums…"
+      class="search-input"
+    >
+    <button type="submit" class="search-button">Search</button>
+  </form>
+
+  <div class="top-songs-table-wrapper">
+    <table class="top-songs-table">
+      <thead>
+        <tr>
+          <th>Song</th>
+          <th>Artist</th>
+          <th>Album</th>
+          <th>Avg Rating</th>
+          <th>Ratings</th>
+          <th>Links</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for song in songs %}
+        <tr>
+          <td>{{ song.title }}</td>
+          <td>{{ song.artist }}</td>
+          <td>{{ song.album_title }}</td>
+          <td>{{ "%.2f"|format(song.avg_score) }}</td>
+          <td>{{ song.vote_count }}</td>
+          <!-- Update the links cell in top_songs.html -->
+          <td class="song-links">
+              <div class="music-links2">
+        {% if song.spotify_url %}
+        <a class="music-link2" href="{{ song.spotify_url }}" target="_blank" title="Spotify">
+          <img src="https://api.iconify.design/logos:spotify-icon.svg" alt="Spotify" class="icon" loading="lazy" decoding="async" width="24" height="24">
+        </a>
+        {% endif %}
+              {% if song.apple_url %}
+        <a class="music-link2" href="{{ song.apple_url }}" target="_blank" title="Apple Music">
+          <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/apple-music-icon.svg" alt="Apple Music" class="icon" loading="lazy" decoding="async" width="24" height="24">
+              </a>
+              {% endif %}
+              {% if song.youtube_url %}
+        <a class="music-link2" href="{{ song.youtube_url }}" target="_blank" title="YouTube Music">
+          <img src="https://api.iconify.design/logos:youtube-icon.svg" alt="YouTube Music" class="icon" loading="lazy" decoding="async" width="24" height="24">
+              </a>
+              {% endif %}
+              </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

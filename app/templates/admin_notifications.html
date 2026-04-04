@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Manage Notifications{% endblock %}
+
+{% block content %}
+<h2>🔔 Manage Notifications</h2>
+
+<form method="POST" class="form-card" style="max-width: 600px;">
+  <label for="message">Message</label>
+  <textarea name="message" id="message" rows="3" class="input-field" required></textarea>
+
+  <label for="type">Type</label>
+  <select name="type" id="type" class="input-field" required>
+    <option value="banner">Banner</option>
+    <option value="popup">Popup</option>
+  </select>
+
+  <label for="start_time">Start (UTC)</label>
+  <input type="datetime-local" name="start_time" class="input-field" required>
+
+  <label for="end_time">End (UTC)</label>
+  <input type="datetime-local" name="end_time" class="input-field" required>
+
+  <button type="submit">➕ Schedule</button>
+</form>
+
+
+<h3>📋 Scheduled Notifications</h3>
+<table class="results-table">
+  <thead>
+    <tr>
+      <th>Message</th>
+      <th>Type</th>
+      <th>Start</th>
+      <th>End</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for n in notifications %}
+    <tr>
+      <td>{{ n.message }}</td>
+      <td>{{ n.type }}</td>
+      <td>{{ n.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{{ n.end_time.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{{ "Active" if n.is_active else "Inactive" }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('admin.toggle_notification', id=n.id) }}" style="display:inline;">
+          <button type="submit">{{ "Disable" if n.is_active else "Enable" }}</button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.delete_notification', id=n.id) }}" style="display:inline;">
+          <button type="submit" onclick="return confirm('Delete this notification?')">🗑</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

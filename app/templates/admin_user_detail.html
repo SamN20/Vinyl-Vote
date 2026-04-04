@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Admin: User Detail{% endblock %}
+
+{% block content %}
+  <h2>👤 User Detail: {{ user.username }}</h2>
+
+  <div class="meta-card">
+    <div class="meta-item">
+      <div class="label"><i class="fa-solid fa-envelope"></i> Email</div>
+      <div class="value">{{ user.email or '—' }}</div>
+    </div>
+    <div class="meta-item">
+      <div class="label"><i class="fa-regular fa-calendar-plus"></i> Joined</div>
+      <div class="value">{{ user.date_joined.strftime('%Y-%m-%d %H:%M') if user.date_joined else '—' }}</div>
+    </div>
+    <div class="meta-item">
+      <div class="label"><i class="fa-regular fa-clock"></i> Last Login</div>
+      <div class="value">{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '—' }}</div>
+    </div>
+    <div class="meta-item">
+      <div class="label"><i class="fa-solid fa-user-shield"></i> Admin</div>
+      <div class="value">{{ 'Yes' if user.is_admin else 'No' }}</div>
+    </div>
+    <div class="meta-item">
+      <div class="label"><i class="fa-solid fa-ban"></i> Banned</div>
+      <div class="value">{{ 'Yes' if user.is_banned else 'No' }}</div>
+    </div>
+  </div>
+
+  <div class="totals-grid">
+    <div class="stat-card"><div class="stat-label">Total Votes</div><div class="stat-value" id="total-votes">—</div></div>
+    <div class="stat-card"><div class="stat-label">Album Scores</div><div class="stat-value" id="total-album-scores">—</div></div>
+    <div class="stat-card"><div class="stat-label">Requests</div><div class="stat-value" id="total-requests">—</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Votes over time (180 d)</h3>
+      <div class="chart-wrap"><canvas id="chart-user-votes"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Score distribution</h3>
+      <div class="chart-wrap"><canvas id="chart-score-distribution"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Top albums</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Album — Artist</th><th class="right">Score</th></tr>
+          </thead>
+          <tbody id="top-albums-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Recent votes</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Song — Album (Artist)</th><th class="right">Score</th><th class="right">When</th></tr>
+          </thead>
+          <tbody id="recent-votes-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <p><a href="{{ url_for('admin.admin_users') }}">← Back to Users</a></p>
+
+  {% block scripts %}
+  <script>
+    window.__USER_ID__ = {{ user.id | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='js/admin_user_detail.js') }}?v={{ asset_version }}" defer></script>
+  <style>
+    .meta-card { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; margin-bottom: 16px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; }
+    .meta-item { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 10px; }
+    .meta-item .label { opacity: .85; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .meta-item .label i { color: var(--accent); }
+    .meta-item .value { font-weight: 600; }
+    .totals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0 22px; }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; }
+    .stat-label { font-size: .9rem; opacity: .8; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; margin-top: 6px; }
+
+    .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+    .chart-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; }
+  .chart-wrap { position: relative; height: 260px; }
+  .table-wrap { overflow-x: auto; }
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); text-align: left; }
+  .data-table th { background: var(--input-bg); }
+  .data-table td.right, .data-table th.right { text-align: right; }
+
+    @media (max-width: 900px){
+      .meta-card { grid-template-columns: 1fr; }
+      .meta-item { grid-template-columns: 130px 1fr; }
+      .totals-grid { grid-template-columns: 1fr; }
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  {% endblock %}
+{% endblock %}

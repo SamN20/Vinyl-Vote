@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# Open Graph tags – dynamic via Jinja variables #}
+  <meta property="og:type" content="{{ og_type   or 'website' }}" />
+  <meta property="og:title" content="{{ og_title or 'Vinyl Vote - byNolo' }}" />
+  <meta property="og:description"
+    content="{{ og_description or 'Weekly collaborative album ratings on Vinyl Vote — a project byNolo.' }}" />
+  <meta name="description"
+    content="{{ og_description or 'Weekly collaborative album ratings on Vinyl Vote — a project byNolo.' }}" />
+  <meta property="og:image"
+    content="{{ og_image or url_for('static', filename='favicon_64x64.png', _external=True) }}" />
+  <meta property="og:url" content="{{ og_url     or request.url }}" />
+  <title>{% block title %}Album Vote{% endblock %}</title>
+  <!-- Favicon Setup -->
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+
+  <!-- Dynamic override -->
+  <link id="dynamic-favicon" rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
+  <meta name="theme-color" content="#1DB954">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Prevent flash of wrong theme -->
+  <style>
+    html {
+      visibility: hidden;
+    }
+
+    html[data-theme] {
+      visibility: visible;
+    }
+  </style>
+
+  <!-- Theme loader -->
+  <script>
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  </script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ asset_version }}">
+  <style>
+    .gradient-text {
+      background-image: linear-gradient(90deg, #34d399, #059669);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      font-weight: 700;
+    }
+
+    /* Inline brand footnote to appear to the right of site name */
+    .brand-footnote {
+      font-size: .7rem;
+      letter-spacing: .4px;
+      opacity: .7;
+      display: inline-block;
+      margin: 0 0 0 10px;
+      position: relative;
+      top: -2px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+  <!-- Cloudflare Web Analytics -->
+  <script defer src='https://static.cloudflareinsights.com/beacon.min.js'
+    data-cf-beacon='{"token": "c5c3903f70384180aa2e00d065ceed0c"}'></script><!-- End Cloudflare Web Analytics -->
+
+</head>
+<script defer>
+  window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.flash.error').forEach(el => {
+      el.classList.add('shake');
+      setTimeout(() => el.classList.remove('shake'), 400);
+    });
+  });
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const queue = document.getElementById("sortable-queue");
+    const unassigned = document.getElementById("sortable-unassigned");
+
+    // Check if device is mobile (screen width <= 700px to match CSS breakpoint)
+    const isMobile = () => window.innerWidth <= 700;
+
+    const updateOrders = () => {
+      // Renumber queue starting at 1
+      [...queue.children].forEach((row, i) => {
+        const albumId = row.dataset.albumId;
+        const input = row.querySelector(`input[name="order_${albumId}"]`);
+        if (input) input.value = i + 1;
+      });
+
+      // Reset all unassigned rows to 0
+      [...unassigned.children].forEach(row => {
+        const albumId = row.dataset.albumId;
+        const input = row.querySelector(`input[name="order_${albumId}"]`);
+        if (input) input.value = 0;
+      });
+    };
+
+    // Only enable sortable on desktop
+    if (!isMobile()) {
+      const commonOptions = {
+        group: "albums",
+        animation: 150,
+        handle: "td",
+        onEnd: updateOrders
+      };
+      if (queue) Sortable.create(queue, commonOptions);
+      if (unassigned) Sortable.create(unassigned, commonOptions);
+    }
+
+    // Handle window resize to enable/disable sortable if screen size changes
+    let queueSortable = null;
+    let unassignedSortable = null;
+
+    const handleResize = () => {
+      if (isMobile()) {
+        // Disable sortable on mobile
+        if (queueSortable) {
+          queueSortable.destroy();
+          queueSortable = null;
+        }
+        if (unassignedSortable) {
+          unassignedSortable.destroy();
+          unassignedSortable = null;
+        }
+      } else {
+        // Enable sortable on desktop
+        if (queue && !queueSortable) {
+          const commonOptions = {
+            group: "albums",
+            animation: 150,
+            handle: "td",
+            onEnd: updateOrders
+          };
+          queueSortable = Sortable.create(queue, commonOptions);
+          if (unassigned) {
+            unassignedSortable = Sortable.create(unassigned, commonOptions);
+          }
+        }
+      }
+    };
+
+    // Initialize sortable based on current screen size
+    handleResize();
+
+    // Listen for window resize events
+    window.addEventListener('resize', handleResize);
+  });
+</script>
+
+
+<script>
+  function dismissPopup(id) {
+    localStorage.setItem(`dismissed_popup_${id}`, 'true');
+    document.querySelector(`[data-popup-id="${id}"]`)?.remove();
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('.site-popup-backdrop').forEach(el => {
+      const id = el.dataset.popupId;
+      if (localStorage.getItem(`dismissed_popup_${id}`)) {
+        el.remove();
+      }
+    });
+  });
+</script>
+
+
+
+
+{% block scripts %}{% endblock %}
+</body>
+
+<header>
+  <div class="header-container">
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
+    <!-- Branding / Logo -->
+    <a href="{{ url_for('user.index') }}" class="brand-link"
+      style="text-decoration:none; color:var(--text); display:flex; align-items:center;">
+      <h1 style="margin:0; font-size:1.5rem; display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='favicon_64x64.png') }}" alt="Vinyl Vote logo" width="40" height="40"
+          style="border-radius: 50%; margin-right: 10px;">
+        <span>Vinyl Vote <span class="brand-footnote"><span class="gradient-text">byNolo</span></span></span>
+      </h1>
+    </a>
+
+    <!-- Mobile hamburger toggle -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-expanded="false" aria-controls="main-nav"
+      aria-label="Toggle navigation">☰</button>
+
+    <!-- Main Navigation -->
+    <nav id="main-nav" class="nav-links" aria-label="Main navigation">
+
+      <!-- Center Group: Primary Navigation -->
+      <div class="nav-group primary-group">
+        <a href="{{ url_for('user.index') }}" {% if request.endpoint=='user.index' %}aria-current="page" class="active"
+          {% endif %}>Home</a>
+
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('user.vote') }}" {% if request.endpoint=='user.vote' %}aria-current="page" class="active" {%
+          endif %}>Vote</a>
+
+        <a href="{{ url_for('battle.index') }}" {% if request.endpoint=='battle.index' %}aria-current="page"
+          class="active" {% endif %}>Face-Off</a>
+
+        <a href="{{ url_for('user.retro_hub') }}" {% if request.endpoint=='user.retro_hub' %}aria-current="page"
+          class="active" {% endif %}>Retro Hub</a>
+        {% endif %}
+
+        <!-- Data Dropdown -->
+        <div class="dropdown">
+          <button class="dropbtn" type="button" aria-haspopup="true" aria-expanded="false">
+            Data <i class="fa fa-caret-down" style="font-size:0.8em; margin-left:4px;"></i>
+          </button>
+          <div class="dropdown-content">
+            <a href="{{ url_for('user.results') }}" {% if request.endpoint=='user.results' %}class="active" {% endif
+              %}>Weekly Results</a>
+
+            <div class="dropdown-divider"></div>
+            <a href="{{ url_for('user.top_albums') }}" {% if request.endpoint=='user.top_albums' %}class="active" {%
+              endif %}>Top Albums</a>
+            <a href="{{ url_for('user.top_artists') }}" {% if request.endpoint=='user.top_artists' %}class="active" {%
+              endif %}>Top Artists</a>
+            <a href="{{ url_for('user.top_songs') }}" {% if request.endpoint=='user.top_songs' %}class="active" {% endif
+              %}>Top Songs</a>
+            <a href="{{ url_for('battle.leaderboard') }}" {% if request.endpoint=='battle.leaderboard' %}class="active"
+              {% endif %}>Face-Off Leaderboard</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Group: User Actions & System -->
+      <div class="nav-group user-group">
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('user.song_requests') }}" class="nav-btn request-btn" {% if
+          request.endpoint=='user.song_requests' %}aria-current="page" {% endif %}>
+          <i class="fa fa-plus-circle"></i> Request
+        </a>
+
+        <!-- User Dropdown -->
+        <div class="dropdown user-dropdown">
+          <button class="dropbtn user-dropbtn" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="user-avatar-small">{{ current_user.username[:1]|upper }}</span>
+            <i class="fa fa-caret-down" style="font-size:0.8em; margin-left:4px;"></i>
+          </button>
+          <div class="dropdown-content dropdown-right">
+            <div class="dropdown-header">Signed in as <strong>{{ current_user.username }}</strong></div>
+            <a href="{{ url_for('user.profile') }}" {% if request.endpoint=='user.profile' %}class="active" {% endif
+              %}>Profile</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('admin.admin_dashboard') }}" {% if request.endpoint=='admin.admin_dashboard'
+              %}class="active" {% endif %}>Admin Dashboard</a>
+            {% endif %}
+            <div class="dropdown-divider"></div>
+            <a href="{{ url_for('user.logout') }}">Sign Out</a>
+          </div>
+        </div>
+        {% else %}
+        <a href="{{ url_for('user.login') }}" class="nav-btn login-btn" {% if request.endpoint=='user.login'
+          %}aria-current="page" {% endif %}>Login</a>
+        {% endif %}
+
+        <button class="theme-toggle-icon" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle Theme">
+          <i class="fa fa-moon"></i>
+        </button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+{% set banner_shown = false %}
+{% for n in notifications %}
+{% if n.type == "banner" and not banner_shown %}
+<div class="site-banner">{{ n.message }}</div>
+{% set banner_shown = true %}
+{% elif n.type == "popup" %}
+<div class="site-popup-backdrop" data-popup-id="{{ n.id }}">
+  <div class="site-popup">
+    <p>{{ n.message }}</p>
+    <button onclick="dismissPopup('{{ n.id }}')">Close</button>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+
+<main>
+  <div class="main-content-container" id="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <ul class="flash-messages">
+      {% for category, message in messages %}
+      <li class="flash {{ category }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<!-- Extension suggestion chip (hidden by default) -->
+<div id="vv-ext-chip" class="vv-ext-chip" role="status" aria-live="polite" hidden>
+  <button type="button" class="vv-ext-chip__close" aria-label="Dismiss">&times;</button>
+  <div class="vv-ext-chip__text">
+    <strong>Get the Vinyl Vote Companion</strong>
+    <span class="vv-ext-chip__sub">Quick voting from Spotify, Apple Music, and YouTube</span>
+  </div>
+  <a class="vv-ext-chip__cta" href="{{ url_for('user.extension') }}" target="_blank" rel="noopener">Install</a>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Auto-dismiss flash messages after 4 seconds
+    setTimeout(() => {
+      document.querySelectorAll('.flash-messages li').forEach(el => {
+        el.style.transition = 'opacity 0.5s ease';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 500); // remove from DOM after fade
+      });
+    }, 4000);
+  });
+</script>
+
+
+<!-- Push Notifications -->
+<script defer>
+  async function registerPush() {
+    try {
+      if (!('serviceWorker' in navigator)) return;
+      const reg = await navigator.serviceWorker.register('/static/js/service-worker.js');
+      if (!('Notification' in window)) return;
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const res = await fetch('/vapid-public-key');
+      if (!res.ok) return; // server may not have key configured
+      const key = (await res.text()).trim();
+      if (!key) return;
+      const converted = urlBase64ToUint8Array(key);
+      if (!converted) return;
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: converted
+      });
+
+      await fetch('/subscribe', {
+        method: 'POST',
+        body: JSON.stringify(sub),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (_) {
+      // no-op: push is optional
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    try {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = window.atob(base64);
+      return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  window.addEventListener('load', registerPush);
+</script>
+
+<!-- Theme Toggle Handler -->
+<script defer>
+  window.addEventListener("DOMContentLoaded", () => {
+    const toggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const updateThemeUI = (theme) => {
+      const icon = toggle.querySelector('i');
+      if (icon) {
+        // localized check: if dark, show sun (to switch to light), else moon
+        icon.className = theme === 'dark' ? 'fa fa-sun' : 'fa fa-moon';
+      }
+      toggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode');
+      toggle.setAttribute('title', theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode');
+      toggle.setAttribute('aria-pressed', theme === 'dark' ? 'false' : 'true');
+    };
+
+    updateThemeUI(current);
+
+    toggle.addEventListener('click', () => {
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeUI(next);
+    });
+
+    // Mobile nav toggle
+    const menuBtn = document.getElementById('mobile-menu-toggle');
+    const nav = document.getElementById('main-nav');
+    if (menuBtn && nav) {
+      menuBtn.addEventListener('click', () => {
+        const isOpen = nav.classList.toggle('open');
+        menuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
+
+    // Mobile-friendly dropdown toggle for "TOP" menu
+    const dropdowns = document.querySelectorAll('.dropdown');
+    dropdowns.forEach(dd => {
+      const btn = dd.querySelector('.dropbtn');
+      const content = dd.querySelector('.dropdown-content');
+      if (!btn || !content) return;
+
+      // Add ARIA attributes
+      btn.setAttribute('aria-haspopup', 'true');
+      btn.setAttribute('aria-expanded', 'false');
+
+      const isMobile = () => window.matchMedia('(max-width: 700px)').matches;
+
+      const toggleDropdown = (e) => {
+        if (!isMobile()) return; // desktop uses hover
+        e.preventDefault();
+        const nowOpen = dd.classList.toggle('open');
+        btn.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+      };
+
+      btn.addEventListener('click', toggleDropdown);
+
+      // Close when clicking outside on mobile
+      document.addEventListener('click', (e) => {
+        if (!isMobile()) return;
+        if (!dd.contains(e.target)) {
+          dd.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+  });
+</script>
+
+{% if current_user.is_authenticated and not current_user.email and update_email_form %}
+<div class="site-popup-backdrop" id="update-email-popup"
+  style="position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000;">
+  <div class="site-popup"
+    style="background: var(--card-bg); color: var(--text); padding: 30px; max-width: 500px; width: 90%; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); text-align: center;">
+    <p>Please update your email address to receive notifications:</p>
+    <form action="{{ url_for('user.update_email') }}" method="POST">
+      {{ update_email_form.hidden_tag() }}
+      {{ update_email_form.email(class_="input-field", placeholder="Your Email") }}
+      <button type="submit">Update Email</button>
+    </form>
+  </div>
+</div>
+<script>
+  // Auto-focus on the email field when the popup loads
+  document.addEventListener("DOMContentLoaded", () => {
+    const popup = document.getElementById("update-email-popup");
+    if (popup) {
+      const emailInput = popup.querySelector('input[name="email"]');
+      if (emailInput) emailInput.focus();
+    }
+  });
+</script>
+{% endif %}
+<footer class="site-footer">
+  <p>&copy; {{ current_year }} Vinyl Vote - <span class="gradient-text">byNolo</span> &middot;
+    <a href="{{ url_for('user.terms') }}">Terms &amp; Conditions</a> |
+    <a href="{{ url_for('user.privacy') }}">Privacy Policy</a> |
+    <a href="{{ url_for('user.extension') }}" target="_blank" rel="noopener">Browser Extension</a>
+  </p>
+</footer>
+
+<!-- PWA Install Banner (deferred, mobile-friendly) -->
+<div id="install-banner" class="install-banner" role="region" aria-label="Install app">
+  <div class="message">
+    <img src="{{ url_for('static', filename='favicon_64x64.png') }}" alt="" width="28" height="28"
+      style="border-radius:6px;" />
+    <div>
+      <div style="font-weight:600;">Install Vinyl Vote</div>
+      <div class="text-muted" id="install-subtext">Get quick access and notifications</div>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="install-dismiss" class="dismiss" aria-label="Dismiss install">Not now</button>
+    <button id="install-action" class="button install-btn">Install</button>
+  </div>
+</div>
+
+<script defer>
+  // PWA Install prompt handling with Android beforeinstallprompt and iOS fallback
+  (function () {
+    const banner = document.getElementById('install-banner');
+    const btnInstall = document.getElementById('install-action');
+    const btnDismiss = document.getElementById('install-dismiss');
+    const key = 'dismiss_install_banner_v1';
+    let deferredPrompt = null;
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (!banner || !isMobile || isStandalone || localStorage.getItem(key)) return;
+
+    // Android: capture beforeinstallprompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('install-subtext').textContent = 'Install the app to your home screen';
+      banner.classList.add('show');
+    });
+
+    // iOS fallback (no beforeinstallprompt): show guidance banner after short delay
+    window.addEventListener('load', () => {
+      if (isIOS && !isStandalone && !deferredPrompt) {
+        setTimeout(() => {
+          document.getElementById('install-subtext').textContent = 'Tap Share → Add to Home Screen';
+          banner.classList.add('show');
+        }, 1200);
+      }
+    });
+
+    btnDismiss?.addEventListener('click', () => {
+      localStorage.setItem(key, '1');
+      banner.classList.remove('show');
+    });
+
+    btnInstall?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome !== 'accepted') {
+          // user dismissed; remember it
+          localStorage.setItem(key, '1');
+        }
+        deferredPrompt = null;
+        banner.classList.remove('show');
+      } else if (isIOS) {
+        // Just provide hint; dismiss on second click
+        alert('On iOS: tap the Share button, then "Add to Home Screen" to install.');
+        localStorage.setItem(key, '1');
+        banner.classList.remove('show');
+      }
+    });
+  })();
+</script>
+
+<!-- Detect extension presence and show chip on supported browsers only -->
+<script defer>
+  (function () {
+    const LS_KEY = 'vv_ext_chip_dismiss_v1';
+    const chip = document.getElementById('vv-ext-chip');
+    if (!chip) return;
+
+    function isChromiumLike() {
+      const ua = navigator.userAgent;
+      // Desktop Chromium family (Chrome, Edge, Brave, Opera, Vivaldi)
+      const chromiumVendors = /(Chrome|CriOS|Edg|OPR|Vivaldi)/i.test(ua);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+      return chromiumVendors && !isMobile;
+    }
+
+    function isSupportedBrowser() {
+      // We currently support Chromium-based desktop browsers (Chrome, Edge, etc.)
+      return isChromiumLike();
+    }
+
+    function isPWA() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    }
+
+    function hasExtensionMark() {
+      return document.documentElement.getAttribute('data-vv-ext') === '1';
+    }
+
+    function maybeShowChip() {
+      if (!isSupportedBrowser()) return;
+      if (isPWA()) return; // don't nudge inside installed app
+      if (localStorage.getItem(LS_KEY)) return;
+      if (hasExtensionMark()) return; // extension already installed
+      // Also don't show on small screens
+      if (window.matchMedia('(max-width: 700px)').matches) return;
+      chip.hidden = false;
+      chip.classList.add('is-visible');
+    }
+
+    // Use delegated click handling to reliably catch clicks on the close button
+    chip.addEventListener('click', (ev) => {
+      const close = ev.target.closest && ev.target.closest('.vv-ext-chip__close');
+      if (close) {
+        try { localStorage.setItem(LS_KEY, '1'); } catch (_) { }
+        // remove from DOM to avoid layout reflow issues
+        chip.remove();
+      }
+    });
+
+    // If the extension content script signals detection later, hide the chip
+    window.addEventListener('vinylvote:extension-detected', () => {
+      chip.classList.remove('is-visible');
+      chip.hidden = true;
+    });
+
+    // Run after a short delay to allow content script to set the marker at document_start
+    // Run after a short delay to allow content script to set the marker at document_start
+    window.addEventListener('load', () => setTimeout(maybeShowChip, 200));
+    // Also run once on DOMContentLoaded in case of cached pages
+    document.addEventListener('DOMContentLoaded', () => setTimeout(maybeShowChip, 200));
+  })();
+</script>
+
+{% if request.endpoint == 'user.index' and current_user.is_authenticated %}
+<div class="mobile-vote-bar" id="mobile-vote-bar" role="region" aria-label="Quick vote">
+  <span class="label">Ready to rate?</span>
+  <div class="actions">
+    <a class="button" href="{{ url_for('user.vote') }}">Vote now</a>
+    <button class="dismiss" id="mobile-vote-dismiss" aria-label="Dismiss vote prompt">Dismiss</button>
+  </div>
+</div>
+<script defer>
+  // Show quick vote bar on mobile unless dismissed
+  (function () {
+    const bar = document.getElementById('mobile-vote-bar');
+    const btn = document.getElementById('mobile-vote-dismiss');
+    if (!bar || !btn) return;
+    const key = 'dismiss_quick_vote';
+    const isMobile = () => window.matchMedia('(max-width: 900px)').matches;
+    const show = () => { if (isMobile() && !localStorage.getItem(key)) { bar.classList.add('show'); } };
+    const hide = () => bar.classList.remove('show');
+    btn.addEventListener('click', () => { localStorage.setItem(key, '1'); hide(); });
+    window.addEventListener('resize', () => { if (!isMobile()) hide(); else show(); });
+    show();
+  })();
+</script>
+{% endif %}
+
+<!-- Mobile PWA Session Management -->
+<script defer>
+  (function () {
+    // Enhanced session management for mobile PWAs
+    if ('serviceWorker' in navigator) {
+      // Handle app resume/visibility changes
+      let appHidden = false;
+
+      function handleVisibilityChange() {
+        if (document.visibilityState === 'hidden') {
+          appHidden = true;
+        } else if (document.visibilityState === 'visible' && appHidden) {
+          appHidden = false;
+
+          // Only do special handling for PWA or mobile
+          const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+          const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+          if (isPWA || isMobile) {
+            // Check session validity after app resume
+            if (navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage({
+                type: 'APP_RESUME',
+                timestamp: Date.now()
+              });
+            }
+
+            // Optionally ping server to validate session
+            fetch('/api/session-check', {
+              method: 'GET',
+              credentials: 'same-origin'
+            }).catch(() => {
+              // Silently fail - server might not implement this endpoint
+            });
+          }
+        }
+      }
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      // Handle messages from service worker
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'CHECK_SESSION') {
+          // Could implement session refresh logic here if needed
+        }
+      });
+    }
+
+    // Store session context for mobile apps (doesn't affect PC)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      localStorage.setItem('isPWA', 'true');
+    }
+  })();
+</script>
+</body>
+
+</html>

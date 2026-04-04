@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Top Albums{% endblock %}
+
+{% block content %}
+  <h2>🏆 Top Albums of All Time</h2>
+
+  <!-- Search form -->
+  <form class="search-form" method="get" action="{{ url_for('user.top_albums') }}">
+    <input
+      type="text"
+      name="q"
+      value="{{ q }}"
+      placeholder="🔍 Search by title or artist…"
+      class="search-input"
+    >
+    <button type="submit" class="search-button">Search</button>
+  </form>
+
+  <div class="top-albums-table-wrapper">
+    <table class="top-albums-table">
+      <thead>
+        <tr>
+          <th>Cover</th>
+          <th>Title</th>
+          <th>Artist</th>
+          <th>Release Date</th>
+          <th>Avg Song Rating</th>
+          <th>Avg Album Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for album in album_data %}
+        <tr class="click-row" role="link" tabindex="0" data-href="{{ url_for('user.album_results', album_id=album.id) }}">
+          <td>
+            <div class="cover-thumb">
+              <div class="skeleton-box"></div>
+              <img src="{{ album.cover_url }}" alt="cover" class="album-cover" loading="lazy" decoding="async" width="60" height="60">
+            </div>
+          </td>
+          <td>{{ album.title }}</td>
+          <td>{{ album.artist }}</td>
+          <td>{{ album.release_date }}</td>
+          <td>{{ album.avg_song_score }}</td>
+          <td>{{ album.avg_album_score }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.cover-thumb').forEach(th => {
+      const img = th.querySelector('img');
+      if (!img) return;
+      if (img.complete) th.classList.add('loaded');
+      else img.addEventListener('load', () => th.classList.add('loaded'));
+    });
+
+    // Make table rows clickable with hover feedback (like home tiles)
+    const rows = document.querySelectorAll('.top-albums-table tbody tr.click-row');
+    rows.forEach(row => {
+      const href = row.getAttribute('data-href');
+      if (!href) return;
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', (e) => {
+        // Avoid triggering when selecting text
+        if (getSelection().toString().length > 0) return;
+        window.location.href = href;
+      });
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          window.location.href = href;
+        }
+      });
+    });
+  });
+  </script>
+<style>
+  /* Subtle hover effect to mirror the home page tiles feel */
+  .top-albums-table tbody tr.click-row:hover {
+    background: rgba(255,255,255,0.03);
+    transition: background .15s ease;
+  }
+  .top-albums-table tbody tr.click-row:focus {
+    outline: 2px solid var(--accent, #1DB954);
+    outline-offset: -2px;
+  }
+  .cover-thumb img { display: block; }
+  .cover-thumb.loaded .skeleton-box { opacity: 0; }
+  .cover-thumb .skeleton-box { transition: opacity .2s ease; }
+</style>
+{% endblock %}

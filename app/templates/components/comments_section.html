@@ -1,0 +1,188 @@
+<div id="comments-section" data-album-id="{{ album.id }}" data-current-user-id="{{ current_user.id if current_user.is_authenticated else '' }}" class="comments-container mt-4">
+    <h3 class="section-title">💬 Discussion</h3>
+    
+    <div id="comments-list" class="comments-list">
+        <p class="no-comments">Loading comments...</p>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <form id="comment-form" class="comment-form mt-3">
+        <div class="form-group">
+            <textarea id="comment-input" class="comment-input" rows="3" placeholder="Share your thoughts on this album..." required></textarea>
+        </div>
+        <button type="submit" id="comment-submit" class="button mt-2">Post Comment</button>
+    </form>
+    {% else %}
+    <p class="mt-3 login-prompt"><a href="{{ url_for('user.login') }}">Log in</a> to join the discussion.</p>
+    {% endif %}
+</div>
+
+<script src="{{ url_for('static', filename='js/comments.js') }}"></script>
+<style>
+    .comments-container {
+        background: var(--card-bg);
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .section-title {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+    }
+
+    .comment-card {
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px 0;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .comment-card:last-child {
+        border-bottom: none;
+    }
+    
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .comment-header strong {
+        color: var(--accent);
+        font-size: 1.1em;
+    }
+    
+    .comment-date {
+        color: var(--text);
+        opacity: 0.6;
+        font-size: 0.85em;
+    }
+    
+    .comment-body {
+        white-space: pre-wrap;
+        line-height: 1.5;
+        color: var(--text);
+    }
+    
+    .comment-footer {
+        margin-top: 8px;
+        text-align: right;
+    }
+    
+    .flag-btn {
+        color: var(--text);
+        opacity: 0.5;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 0.85em;
+        transition: opacity 0.2s;
+    }
+    
+    .flag-btn:hover {
+        opacity: 1;
+        color: var(--error-color);
+        text-decoration: underline;
+    }
+
+    .comment-input {
+        width: 100%;
+        background: var(--input-bg);
+        color: var(--text);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 80px;
+        box-sizing: border-box;
+    }
+    
+    .comment-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.2);
+    }
+
+    .no-comments {
+        color: var(--text);
+        opacity: 0.6;
+        font-style: italic;
+        padding: 10px 0;
+    }
+    
+    .login-prompt a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: bold;
+    }
+    
+    .login-prompt a:hover {
+        text-decoration: underline;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .replies-container {
+        margin-left: 20px;
+        border-left: 2px solid var(--border-color);
+        padding-left: 10px;
+        margin-top: 10px;
+    }
+    
+    .action-btn {
+        background: none;
+        border: none;
+        color: var(--text);
+        opacity: 0.6;
+        cursor: pointer;
+        font-size: 0.85em;
+        margin-left: 10px;
+        padding: 0;
+    }
+    
+    .action-btn:first-child {
+        margin-left: 0;
+    }
+    
+    .action-btn:hover {
+        opacity: 1;
+        text-decoration: underline;
+    }
+    
+    .delete-btn:hover {
+        color: var(--error-color);
+    }
+    
+    .reply-btn:hover {
+        color: var(--accent);
+    }
+    
+    .button.small {
+        padding: 4px 10px;
+        font-size: 0.85em;
+    }
+    
+    .button.secondary {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text) !important;
+    }
+    
+    .button.secondary:hover {
+        background: var(--input-bg);
+    }
+    
+    .comment-input.small {
+        min-height: 40px;
+        font-size: 0.9em;
+    }
+</style>
