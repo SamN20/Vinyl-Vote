@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible bug in Vinyl Vote.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+      placeholder: Briefly describe the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include exact steps, inputs, and any relevant context.
+      placeholder: |
+        1. Go to...
+        2. Click...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Affected area
+      description: Which part of the app is impacted?
+      placeholder: app/routes/api.py, frontend voting flow, scheduler, etc.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste tracebacks, API responses, or screenshots when possible.
+      render: shell
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Example: local Docker, local venv, production.
+      placeholder: docker compose local

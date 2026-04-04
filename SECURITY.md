@@ -8,7 +8,7 @@ Security updates are focused on the latest `main` branch and active deployment b
 
 Please report vulnerabilities privately:
 
-- Email: security@vinylvote.example (replace with real contact)
+- Email: security@bynolo.ca
 - Subject: `[Vinyl Vote Security] <short summary>`
 
 Include:

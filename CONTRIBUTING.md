@@ -9,6 +9,11 @@ Thanks for your interest in contributing.
 - Keep PRs focused and small.
 - Never commit secrets, production data, or local DB files.
 
+Use GitHub templates when opening issues and PRs:
+
+- Issue templates: `.github/ISSUE_TEMPLATE/`
+- PR template: `.github/pull_request_template.md`
+
 ## Development Setup
 
 ```bash
@@ -36,11 +41,20 @@ make test
 ## Branching and PRs
 
 - Branch naming: `feature/<name>`, `fix/<name>`, `chore/<name>`.
+- Create branches from an issue whenever practical and reference the issue in the PR.
 - Include a short PR description with:
   - What changed
   - Why it changed
   - How it was tested
 - Link related issues.
+
+Recommended flow:
+
+1. Open an issue using a template.
+2. Create a focused branch for that issue.
+3. Implement a minimal scoped change.
+4. Run checks (`make lint` and `make test`).
+5. Open a PR using the PR template and link the issue.
 
 ## Commit Style
 
