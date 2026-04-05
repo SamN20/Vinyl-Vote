@@ -1,0 +1,40 @@
+name: Chore / maintenance
+description: Track non-feature, non-bug maintenance work.
+title: "chore: "
+labels:
+  - chore
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What maintenance work is needed?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this matters
+      description: Explain impact on reliability, DX, security, or operations.
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Task list
+      description: Break the work into actionable items.
+      placeholder: |
+        - [ ] Item 1
+        - [ ] Item 2
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      placeholder: |
+        - [ ] Lint and tests pass
+        - [ ] Docs updated (if needed)
+        - [ ] No behavior regression
+    validations:
+      required: true

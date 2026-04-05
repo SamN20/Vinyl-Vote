@@ -75,6 +75,15 @@ make lint
 - Follow `SECURITY.md` for vulnerability reporting.
 - Read `CONTRIBUTING.md` before opening PRs.
 
+## AI Agent Contributor Guidance
+
+To keep AI-assisted contributions consistent and reviewable:
+
+- Canonical policy: `AGENTS.md`
+- GitHub Copilot: `.github/copilot-instructions.md`
+- Claude Code compatibility: `CLAUDE.md`
+- Gemini CLI compatibility: `GEMINI.md`
+
 ## KeyN OAuth Notes
 
 Set these in `.env`:

@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose an improvement or new feature.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Propose a focused change that is easy to review and ship.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user or maintainer problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change you want to make.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Keep this narrowly scoped and list impacted areas.
+      placeholder: API route, React page, template, docs, tests
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide a checklist of done conditions.
+      placeholder: |
+        - [ ] Behavior implemented
+        - [ ] Tests added or updated
+        - [ ] Docs updated
+    validations:
+      required: true
