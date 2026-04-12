@@ -77,6 +77,7 @@ def create_app():
     app.register_blueprint(user.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(api.bp)
+    app.register_blueprint(api.bp_v1)
     app.register_blueprint(comments.bp)
     app.register_blueprint(battle.bp)
     # OAuth blueprint for KeyN integration

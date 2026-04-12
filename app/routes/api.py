@@ -6,6 +6,7 @@ from .. import db
 from ..models import Album, Vote, AlbumScore, VotePeriod
 
 bp = Blueprint('api', __name__, url_prefix='/api')
+bp_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 
 def _allowed_origin(origin: str) -> bool:
     """Return True if the request origin is allowed to receive CORS headers."""
@@ -19,6 +20,7 @@ def _allowed_origin(origin: str) -> bool:
 
 
 @bp.before_request
+@bp_v1.before_request
 def handle_preflight():
     """Return the appropriate response for CORS preflight checks."""
     if request.method == 'OPTIONS':
@@ -37,6 +39,7 @@ def handle_preflight():
 
 
 @bp.after_request
+@bp_v1.after_request
 def inject_cors_headers(response):
     origin = request.headers.get('Origin')
     if origin and _allowed_origin(origin):
@@ -47,6 +50,7 @@ def inject_cors_headers(response):
 
 
 @bp.route('/session-check', methods=['GET'])
+@bp_v1.route('/session-check', methods=['GET'])
 def session_check():
     """Simple endpoint for mobile PWAs to verify session validity."""
     if current_user.is_authenticated:
@@ -99,6 +103,7 @@ def _album_payload(album: Album, vote_end: str, user_votes: dict, personal_score
 
 
 @bp.route('/current-album', methods=['GET'])
+@bp_v1.route('/current-album', methods=['GET'])
 @login_required
 def get_current_album():
     album = (
@@ -131,6 +136,7 @@ def get_current_album():
 
 
 @bp.route('/votes', methods=['POST'])
+@bp_v1.route('/votes', methods=['POST'])
 @login_required
 def submit_votes():
     data = request.get_json(silent=True) or {}
@@ -233,6 +239,7 @@ def _user_has_any_votes_for_album(user_id: int, album: Album) -> bool:
 
 
 @bp.route('/retro-albums', methods=['GET'])
+@bp_v1.route('/retro-albums', methods=['GET'])
 @login_required
 def list_retro_albums():
     """Return a list of past albums the current user hasn't voted on yet."""
@@ -266,6 +273,7 @@ def list_retro_albums():
 
 
 @bp.route('/retro-album/<int:album_id>', methods=['GET'])
+@bp_v1.route('/retro-album/<int:album_id>', methods=['GET'])
 @login_required
 def get_retro_album(album_id):
     """Fetch details for a retro-eligible album, if the user hasn't already voted on it."""
@@ -283,6 +291,7 @@ def get_retro_album(album_id):
 
 
 @bp.route('/retro-votes/<int:album_id>', methods=['POST'])
+@bp_v1.route('/retro-votes/<int:album_id>', methods=['POST'])
 @login_required
 def submit_retro_votes(album_id):
     """Submit retro votes for a past album; marks votes/scores with retroactive=True."""
