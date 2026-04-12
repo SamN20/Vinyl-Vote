@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getRetroAlbum, getRetroAlbums, submitRetroVotes } from "../api";
+import { getRetroAlbum, getRetroRecommendations, submitRetroVotes } from "../api";
 
 function readScore(song, songVotes) {
   const fromSong = song?.score;
@@ -15,6 +15,20 @@ function readScore(song, songVotes) {
   return "";
 }
 
+function parseScore(raw) {
+  if (raw === "" || raw === undefined || raw === null) {
+    return null;
+  }
+  const value = Number(raw);
+  return Number.isNaN(value) ? null : value;
+}
+
+function sameScore(left, right) {
+  const l = parseScore(left);
+  const r = parseScore(right);
+  return l === r;
+}
+
 export function useRetroVotingFlow(isEnabled) {
   const [albums, setAlbums] = useState([]);
   const [albumsState, setAlbumsState] = useState("idle");
@@ -26,6 +40,8 @@ export function useRetroVotingFlow(isEnabled) {
 
   const [songScores, setSongScores] = useState({});
   const [albumScore, setAlbumScore] = useState("");
+  const [baselineSongScores, setBaselineSongScores] = useState({});
+  const [baselineAlbumScore, setBaselineAlbumScore] = useState("");
 
   const [submitState, setSubmitState] = useState("idle");
   const [feedback, setFeedback] = useState("");
@@ -36,6 +52,8 @@ export function useRetroVotingFlow(isEnabled) {
   const resetVoteForm = useCallback(() => {
     setSongScores({});
     setAlbumScore("");
+    setBaselineSongScores({});
+    setBaselineAlbumScore("");
     setFeedback("");
     setError("");
     setSubmitState("idle");
@@ -50,9 +68,12 @@ export function useRetroVotingFlow(isEnabled) {
       nextScores[song.id] = readScore(song, songVotes);
     }
     setSongScores(nextScores);
+    setBaselineSongScores(nextScores);
 
     const nextAlbumScore = payload?.user?.album_score;
-    setAlbumScore(nextAlbumScore === null || nextAlbumScore === undefined ? "" : String(nextAlbumScore));
+    const normalizedAlbumScore = nextAlbumScore === null || nextAlbumScore === undefined ? "" : String(nextAlbumScore);
+    setAlbumScore(normalizedAlbumScore);
+    setBaselineAlbumScore(normalizedAlbumScore);
   }, []);
 
   const loadAlbums = useCallback(async () => {
@@ -66,7 +87,7 @@ export function useRetroVotingFlow(isEnabled) {
     setAlbumsError("");
 
     try {
-      const payload = await getRetroAlbums();
+      const payload = await getRetroRecommendations();
       const nextAlbums = payload?.albums || [];
       setAlbums(nextAlbums);
       setAlbumsState("ready");
@@ -81,7 +102,7 @@ export function useRetroVotingFlow(isEnabled) {
 
       const stillValid = nextAlbums.some((album) => String(album.id) === String(selectedAlbumId));
       if (!stillValid) {
-        setSelectedAlbumId(String(nextAlbums[0].id));
+        setSelectedAlbumId("");
       }
     } catch (loadError) {
       setAlbumsState("error");
@@ -186,6 +207,57 @@ export function useRetroVotingFlow(isEnabled) {
     }
   }, [applyAlbumPayload, buildVotePayload, loadAlbums, selectedAlbumId]);
 
+  const hasUnsavedChanges = useMemo(() => {
+    if (!songs.length) {
+      return false;
+    }
+
+    for (const song of songs) {
+      if (!sameScore(songScores[song.id], baselineSongScores[song.id])) {
+        return true;
+      }
+    }
+
+    return !sameScore(albumScore, baselineAlbumScore);
+  }, [albumScore, baselineAlbumScore, baselineSongScores, songScores, songs]);
+
+  const ratedTracks = useMemo(() => {
+    let count = 0;
+    for (const song of songs) {
+      const score = parseScore(songScores[song.id]);
+      if (score !== null && score > 0) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [songScores, songs]);
+
+  const totalTracks = songs.length;
+  const remainingTracks = Math.max(totalTracks - ratedTracks, 0);
+  const progressPercent = totalTracks > 0 ? Math.round((ratedTracks / totalTracks) * 100) : 0;
+
+  const hasSavedVotes = useMemo(() => {
+    if (albumPayload?.user?.has_voted) {
+      return true;
+    }
+
+    for (const song of songs) {
+      const score = parseScore(baselineSongScores[song.id]);
+      if (score !== null && score > 0) {
+        return true;
+      }
+    }
+
+    const baseAlbumScore = parseScore(baselineAlbumScore);
+    return baseAlbumScore !== null && baseAlbumScore > 0;
+  }, [albumPayload?.user?.has_voted, baselineAlbumScore, baselineSongScores, songs]);
+
+  const statusLabel = hasUnsavedChanges
+    ? "Unsubmitted changes"
+    : hasSavedVotes
+      ? "VOTED!"
+      : "No votes submitted";
+
   return {
     albumPayload,
     albumScore,
@@ -195,7 +267,12 @@ export function useRetroVotingFlow(isEnabled) {
     albumState,
     error,
     feedback,
+    hasSavedVotes,
+    hasUnsavedChanges,
     loadAlbums,
+    progressPercent,
+    ratedTracks,
+    remainingTracks,
     saveVotes,
     selectedAlbumId,
     setAlbumScore,
@@ -203,6 +280,7 @@ export function useRetroVotingFlow(isEnabled) {
     setSongScore,
     songScores,
     songs,
+    statusLabel,
     submitState,
   };
 }

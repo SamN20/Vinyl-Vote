@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import RetroVoteCard from "../components/retro/RetroVoteCard";
 import "./RetroHubPage.css";
 
 export default function RetroHubPage({ retro }) {
@@ -15,12 +14,8 @@ export default function RetroHubPage({ retro }) {
     });
   }, [query, retro.albums]);
 
-  function selectAlbum(albumId) {
-    retro.setSelectedAlbumId(String(albumId));
-    const card = document.getElementById("retro-vote-card");
-    if (card) {
-      card.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+  function openRetroVote(albumId) {
+    window.location.hash = `#/retro-vote/${albumId}`;
   }
 
   return (
@@ -29,7 +24,7 @@ export default function RetroHubPage({ retro }) {
         <p className="eyebrow">Vinyl Vote V2</p>
         <h1>Retro Vote Hub</h1>
         <p className="subtitle">
-          Catch up on albums you missed. Pick a record from the grid, then submit retro votes below.
+          Catch up on albums you missed. Recommendations are sorted by predicted taste match.
         </p>
       </section>
 
@@ -70,9 +65,11 @@ export default function RetroHubPage({ retro }) {
                     <h3>{album.title}</h3>
                     <p>{album.artist}</p>
                     <small>{album.song_count || 0} tracks</small>
+                    <p className="retro-match">{album.match_percent || 0}% Match</p>
+                    {album.reason ? <p className="retro-why">Why: {album.reason}</p> : null}
                   </div>
-                  <button className="btn btn-secondary" type="button" onClick={() => selectAlbum(album.id)}>
-                    {selected ? "Selected" : "Vote This Album"}
+                  <button className="btn btn-secondary" type="button" onClick={() => openRetroVote(album.id)}>
+                    {selected ? "Continue Voting" : "Vote This Album"}
                   </button>
                 </article>
               );
@@ -80,30 +77,6 @@ export default function RetroHubPage({ retro }) {
           </div>
         ) : null}
       </section>
-
-      <div id="retro-vote-card">
-        <RetroVoteCard
-          albumPayload={retro.albumPayload}
-          albumScore={retro.albumScore}
-          albums={retro.albums}
-          albumsError={retro.albumsError}
-          albumsState={retro.albumsState}
-          albumState={retro.albumState}
-          error={retro.error}
-          feedback={retro.feedback}
-          loadAlbums={retro.loadAlbums}
-          saveVotes={retro.saveVotes}
-          selectedAlbumId={retro.selectedAlbumId}
-          setAlbumScore={retro.setAlbumScore}
-          setSelectedAlbumId={retro.setSelectedAlbumId}
-          setSongScore={retro.setSongScore}
-          songScores={retro.songScores}
-          songs={retro.songs}
-          submitState={retro.submitState}
-          title="Retro Album Voting"
-          subtitle="Submit your retro scores for the selected missed album."
-        />
-      </div>
     </>
   );
 }

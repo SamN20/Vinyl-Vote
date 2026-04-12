@@ -78,6 +78,10 @@ export function getRetroAlbums() {
   return request("/api/v1/retro-albums");
 }
 
+export function getRetroRecommendations() {
+  return request("/api/v1/retro-recommendations");
+}
+
 export function getRetroAlbum(albumId) {
   return request(`/api/v1/retro-album/${albumId}`);
 }

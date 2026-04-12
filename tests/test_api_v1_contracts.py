@@ -129,6 +129,40 @@ def test_votes_validation_error_contract_matches_v1():
         db.drop_all()
 
 
+def test_retro_recommendations_contract_matches_v1():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        past = Album(
+            title="Past Album",
+            artist="Past Artist",
+            is_current=False,
+            queue_order=5,
+        )
+        db.session.add(past)
+        db.session.flush()
+        db.session.add(Song(album_id=past.id, title="Past Track", track_number=1))
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/retro-recommendations")
+    v1 = client.get("/api/v1/retro-recommendations")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+    assert "albums" in v1.get_json()
+
+    with app.app_context():
+        db.drop_all()
+
+
 def test_v1_session_check_allows_configured_cors_origin():
     app = _build_app()
     with app.app_context():

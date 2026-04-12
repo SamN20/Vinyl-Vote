@@ -68,6 +68,10 @@ export default function VoteCard({
   songs,
   statusLabel,
   submitState,
+  title = "Current Album",
+  submitLabel = "Save Votes",
+  showPostVoteActions = true,
+  showRefreshButton = true,
 }) {
   const [lazyMode, setLazyMode] = useState(false);
   const [pipSupported, setPipSupported] = useState(false);
@@ -114,10 +118,12 @@ export default function VoteCard({
     <section className="card vote-card">
       <header className="vote-header">
         <div>
-          <h2>Current Album</h2>
+          <h2>{title}</h2>
           <p className="vote-end">Voting closes: {formatVoteEnd(albumPayload?.vote_end)}</p>
         </div>
-        <button className="btn btn-ghost" type="button" onClick={loadAlbum}>Refresh</button>
+        {showRefreshButton ? (
+          <button className="btn btn-ghost" type="button" onClick={loadAlbum}>Refresh</button>
+        ) : null}
       </header>
 
       {albumState === "loading" && <p>Loading current album and your saved votes...</p>}
@@ -217,7 +223,7 @@ export default function VoteCard({
             </div>
 
             {feedback && <p className="success-text">{feedback}</p>}
-            {feedback && albumPayload?.album?.id ? (
+            {feedback && albumPayload?.album?.id && showPostVoteActions ? (
               <div className="post-vote-actions">
                 <a className="btn btn-secondary" href={legacyPageHref(`/share-card/${albumPayload.album.id}`)}>
                   Download Vote Card
@@ -230,7 +236,7 @@ export default function VoteCard({
             {error && <p className="error-text">{error}</p>}
 
             <button className="btn btn-primary" id="vote-submit" type="submit" disabled={submitState === "saving"}>
-              {submitState === "saving" ? "Saving..." : "Save Votes"}
+              {submitState === "saving" ? "Saving..." : submitLabel}
             </button>
           </form>
 

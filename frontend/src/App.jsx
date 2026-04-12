@@ -6,24 +6,36 @@ import Header from "./components/layout/Header";
 import RetroVoteCard from "./components/retro/RetroVoteCard";
 import VoteCard from "./components/vote/VoteCard";
 import RetroHubPage from "./pages/RetroHubPage";
+import RetroVotePage from "./pages/RetroVotePage";
 import { useRetroVotingFlow } from "./hooks/useRetroVotingFlow";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useVotingFlow } from "./hooks/useVotingFlow";
 import { useEffect, useState } from "react";
 
-function normalizeHashRoute(hash) {
+function parseHashRoute(hash) {
   const raw = (hash || "").replace(/^#/, "").trim();
   if (!raw || raw === "/") {
-    return "/vote";
+    return { page: "/vote", albumId: null };
   }
-  return raw.startsWith("/") ? raw : `/${raw}`;
+
+  const normalized = raw.startsWith("/") ? raw : `/${raw}`;
+  const retroVoteMatch = normalized.match(/^\/retro-vote\/(\d+)$/);
+  if (retroVoteMatch) {
+    return { page: "/retro-vote", albumId: retroVoteMatch[1] };
+  }
+
+  if (normalized === "/retro-hub") {
+    return { page: "/retro-hub", albumId: null };
+  }
+
+  return { page: "/vote", albumId: null };
 }
 
 function App() {
   const showDevLogin = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_LOGIN === "true";
   const showRetroPreviewOnHome = (import.meta.env.VITE_SHOW_RETRO_PREVIEW_ON_HOME || "false") === "true";
   const devLoginUsername = import.meta.env.VITE_DEV_LOGIN_USERNAME || "dev-user";
-  const [route, setRoute] = useState(normalizeHashRoute(window.location.hash));
+  const [route, setRoute] = useState(parseHashRoute(window.location.hash));
   const { theme, toggleTheme } = useThemePreference("dark");
   const {
     albumPayload,
@@ -48,10 +60,11 @@ function App() {
     submitState,
   } = useVotingFlow();
   const retro = useRetroVotingFlow(sessionState === "authenticated");
+  const { setSelectedAlbumId } = retro;
 
   useEffect(() => {
     function onHashChange() {
-      setRoute(normalizeHashRoute(window.location.hash));
+      setRoute(parseHashRoute(window.location.hash));
     }
 
     window.addEventListener("hashchange", onHashChange);
@@ -59,6 +72,12 @@ function App() {
       window.removeEventListener("hashchange", onHashChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (route.page === "/retro-vote" && route.albumId) {
+      setSelectedAlbumId(route.albumId);
+    }
+  }, [route.albumId, route.page, setSelectedAlbumId]);
 
   return (
     <div className="app-shell">
@@ -69,11 +88,11 @@ function App() {
         sessionState={sessionState}
         theme={theme}
         toggleTheme={toggleTheme}
-        route={route}
+        route={route.page}
       />
 
       <main className="page">
-        {route !== "/retro-hub" ? (
+        {route.page !== "/retro-hub" && route.page !== "/retro-vote" ? (
           <section className="hero">
             <p className="eyebrow">Vinyl Vote V2</p>
             <h1>Vote Flow Migration</h1>
@@ -105,7 +124,7 @@ function App() {
           />
         ) : null}
 
-        {sessionState === "authenticated" && route === "/vote" ? (
+        {sessionState === "authenticated" && route.page === "/vote" ? (
           <>
             <VoteCard
               albumPayload={albumPayload}
@@ -157,8 +176,12 @@ function App() {
           </>
         ) : null}
 
-        {sessionState === "authenticated" && route === "/retro-hub" ? (
+        {sessionState === "authenticated" && route.page === "/retro-hub" ? (
           <RetroHubPage retro={retro} />
+        ) : null}
+
+        {sessionState === "authenticated" && route.page === "/retro-vote" ? (
+          <RetroVotePage retro={retro} />
         ) : null}
       </main>
     </div>

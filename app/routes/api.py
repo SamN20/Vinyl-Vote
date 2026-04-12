@@ -1,9 +1,10 @@
 from flask import Blueprint, jsonify, request, current_app, make_response
 from flask_login import login_required, current_user
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from .. import db
-from ..models import Album, Vote, AlbumScore, VotePeriod
+from ..models import Album, Vote, AlbumScore, VotePeriod, Song
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 bp_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -238,6 +239,121 @@ def _user_has_any_votes_for_album(user_id: int, album: Album) -> bool:
     return bool(existing_score or existing_vote)
 
 
+def _retro_recommendations_for_user(user_id: int):
+    import json
+    from collections import defaultdict
+
+    current = Album.query.filter_by(is_current=True).first()
+    if not current:
+        return []
+
+    candidates = Album.query.filter(
+        Album.queue_order < current.queue_order,
+        Album.queue_order > 0,
+    ).all()
+
+    scored_album_ids = set(
+        s.album_id for s in AlbumScore.query.filter_by(user_id=user_id).all()
+    )
+    voted_album_ids = set(
+        v.song.album_id
+        for v in Vote.query.filter_by(user_id=user_id).join(Song).all()
+    )
+    done_ids = scored_album_ids.union(voted_album_ids)
+    unvoted_albums = [a for a in candidates if a.id not in done_ids]
+
+    user_artist_avgs = {}
+    user_scores = (
+        AlbumScore.query.filter_by(user_id=user_id)
+        .options(joinedload(AlbumScore.album))
+        .all()
+    )
+    user_artist_scores = defaultdict(list)
+    user_genre_counts = defaultdict(int)
+
+    for score_row in user_scores:
+        if not score_row.album:
+            continue
+
+        user_artist_scores[score_row.album.artist].append(score_row.personal_score)
+
+        if score_row.personal_score >= 3.5 and score_row.album.spotify_data:
+            try:
+                spotify_data = json.loads(score_row.album.spotify_data)
+                for genre in spotify_data.get('genres', []):
+                    user_genre_counts[genre] += 1
+            except Exception:
+                continue
+
+    for artist, scores in user_artist_scores.items():
+        user_artist_avgs[artist] = sum(scores) / len(scores)
+
+    top_user_genres = {genre for genre, count in user_genre_counts.items() if count >= 1}
+
+    global_avgs = {}
+    for album in unvoted_albums:
+        avg_score = (
+            db.session.query(func.avg(AlbumScore.personal_score))
+            .filter_by(album_id=album.id, ignored=False)
+            .scalar()
+        )
+        # Use 5.0 because historical model in legacy route used a 10-point scale prediction.
+        global_avgs[album.id] = avg_score if avg_score is not None else 5.0
+
+    recommendations = []
+
+    for album in unvoted_albums:
+        base_score = global_avgs.get(album.id, 5.0)
+        artist_avg = user_artist_avgs.get(album.artist)
+        artist_bonus = 0.0
+        match_reason = 'Global favorite'
+
+        if artist_avg is not None:
+            artist_bonus = (artist_avg - 5.0) * 0.6
+            match_reason = f'You rated {album.artist} {artist_avg:.1f} avg'
+
+        spotify_bonus = 0.0
+
+        if album.spotify_data:
+            try:
+                data = json.loads(album.spotify_data)
+                popularity = data.get('popularity', 0)
+                spotify_bonus += (popularity / 100.0) * 0.3
+
+                candidate_genres = data.get('genres', [])
+                matching_genres = [g for g in candidate_genres if g in top_user_genres]
+
+                if matching_genres and artist_bonus <= 0:
+                    genre_boost = min(1.5, len(matching_genres) * 0.5)
+                    spotify_bonus += genre_boost
+
+                    if match_reason == 'Global favorite':
+                        display_genres = ', '.join(g.title() for g in matching_genres[:2])
+                        match_reason = f'Matches your taste in {display_genres}'
+            except Exception:
+                pass
+
+        predicted = min(9.9, max(0.1, base_score + artist_bonus + spotify_bonus))
+        match_percent = max(1, min(99, int(round(predicted * 10))))
+
+        recommendations.append({
+            'id': album.id,
+            'title': album.title,
+            'artist': album.artist,
+            'cover_url': album.cover_url,
+            'spotify_url': album.spotify_url,
+            'apple_url': album.apple_url,
+            'youtube_url': album.youtube_url,
+            'song_count': len(album.songs),
+            'predicted': round(predicted, 2),
+            'match_percent': match_percent,
+            'reason': match_reason,
+        })
+
+    recommendations.sort(key=lambda row: row['predicted'], reverse=True)
+    return recommendations
+
+
 @bp.route('/retro-albums', methods=['GET'])
 @bp_v1.route('/retro-albums', methods=['GET'])
 @login_required
@@ -270,6 +386,14 @@ def list_retro_albums():
         })
 
     return jsonify({'albums': result})
+
+
+@bp.route('/retro-recommendations', methods=['GET'])
+@bp_v1.route('/retro-recommendations', methods=['GET'])
+@login_required
+def list_retro_recommendations():
+    recommendations = _retro_recommendations_for_user(current_user.id)
+    return jsonify({'albums': recommendations})
 
 
 @bp.route('/retro-album/<int:album_id>', methods=['GET'])
