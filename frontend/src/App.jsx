@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   devLoginHref,
   getCurrentAlbum,
+  legacyPageHref,
   legacyLoginHref,
   oauthLoginHref,
   sessionCheck,
@@ -44,6 +45,9 @@ function readScore(song, songVotes) {
 function App() {
   const showDevLogin = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_LOGIN === "true";
   const devLoginUsername = import.meta.env.VITE_DEV_LOGIN_USERNAME || "dev-user";
+  const [theme, setTheme] = useState("dark");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState(null);
   const [sessionState, setSessionState] = useState("loading");
   const [albumState, setAlbumState] = useState("idle");
   const [albumPayload, setAlbumPayload] = useState(null);
@@ -56,10 +60,17 @@ function App() {
   const songs = useMemo(() => albumPayload?.album?.songs || [], [albumPayload]);
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    setTheme(savedTheme);
+    document.documentElement.setAttribute("data-theme", savedTheme);
+  }, []);
+
+  useEffect(() => {
     async function bootstrap() {
       setError("");
       try {
         const session = await sessionCheck();
+        setSessionInfo(session);
         if (!session.authenticated) {
           setSessionState("anonymous");
           setAlbumState("idle");
@@ -76,6 +87,13 @@ function App() {
 
     bootstrap();
   }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    localStorage.setItem("theme", nextTheme);
+  }
 
   async function loadAlbum() {
     setAlbumState("loading");
@@ -180,142 +198,203 @@ function App() {
   }
 
   return (
-    <main className="page">
-      <section className="hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
-        <h1>Vote Flow Migration</h1>
-        <p className="subtitle">
-          This screen is wired to the versioned API and KeyN session flow. It is the first
-          production-facing V2 slice for authenticated voting.
-        </p>
-      </section>
+    <div className="app-shell">
+      <header className="site-header">
+        <div className="header-container">
+          <a className="brand-link" href="/">
+            Vinyl Vote <span className="brand-footnote">byNolo</span>
+          </a>
 
-      {sessionState === "loading" && (
-        <section className="card status-card">
-          <p>Checking your session...</p>
-        </section>
-      )}
+          <button
+            className="mobile-menu-toggle"
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen ? "true" : "false"}
+            aria-controls="v2-nav"
+          >
+            ☰
+          </button>
 
-      {sessionState === "error" && (
-        <section className="card status-card error-card">
-          <h2>Session check failed</h2>
-          <p>{error || "Could not validate your session."}</p>
-        </section>
-      )}
-
-      {sessionState === "anonymous" && (
-        <section className="card auth-card">
-          <h2>Sign in to vote</h2>
-          <p>
-            Vinyl Vote V2 uses KeyN as the default authentication flow. If you are still on a
-            legacy account, you can use the fallback login route.
-          </p>
-          <div className="button-row">
-            <a className="btn btn-primary" href={oauthLoginHref()}>
-              Continue with KeyN
-            </a>
-            <a className="btn btn-secondary" href={legacyLoginHref()}>
-              Legacy Login
-            </a>
-            {showDevLogin && (
-              <a className="btn btn-secondary" href={devLoginHref(devLoginUsername)}>
-                Dev Login (No KeyN)
-              </a>
-            )}
-          </div>
-        </section>
-      )}
-
-      {sessionState === "authenticated" && (
-        <section className="card vote-card">
-          <header className="vote-header">
-            <div>
-              <h2>Current Album</h2>
-              <p className="vote-end">Voting closes: {formatVoteEnd(albumPayload?.vote_end)}</p>
+          <nav id="v2-nav" className={`nav-links ${menuOpen ? "open" : ""}`}>
+            <div className="nav-group primary-group">
+              <a href="/">Home</a>
+              <a href={legacyPageHref("/results")}>Weekly Results</a>
+              <a href={legacyPageHref("/top-albums")}>Top Albums</a>
+              <a href={legacyPageHref("/top-artists")}>Top Artists</a>
+              <a href={legacyPageHref("/top-songs")}>Top Songs</a>
             </div>
-            <button className="btn btn-ghost" type="button" onClick={loadAlbum}>
-              Refresh
-            </button>
-          </header>
 
-          {albumState === "loading" && <p>Loading current album and your saved votes...</p>}
+            <div className="nav-group user-group">
+              {sessionState === "authenticated" ? (
+                <>
+                  <a href={legacyPageHref("/profile")} className="nav-btn">
+                    {sessionInfo?.username ? `Profile (${sessionInfo.username})` : "Profile"}
+                  </a>
+                  <a href={legacyPageHref("/logout")} className="nav-btn">
+                    Sign Out
+                  </a>
+                </>
+              ) : (
+                <>
+                  <a className="nav-btn" href={oauthLoginHref()}>
+                    Login
+                  </a>
+                  <a className="nav-btn" href={legacyLoginHref()}>
+                    Legacy Login
+                  </a>
+                </>
+              )}
+              <button
+                className="theme-toggle-icon"
+                type="button"
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? "☀" : "🌙"}
+              </button>
+            </div>
+          </nav>
+        </div>
+      </header>
 
-          {albumState === "error" && (
-            <p className="error-text">{error || "Could not load voting data right now."}</p>
-          )}
-
-          {albumState === "empty" && (
-            <p className="empty-text">{error || "No album is currently open for voting."}</p>
-          )}
-
-          {albumState === "ready" && albumPayload?.album && (
-            <>
-              <article className="album-panel">
-                {albumPayload.album.cover_url && (
-                  <img
-                    src={albumPayload.album.cover_url}
-                    alt={`${albumPayload.album.title} cover`}
-                    className="cover"
-                  />
-                )}
-                <div>
-                  <h3>{albumPayload.album.title}</h3>
-                  <p className="artist">{albumPayload.album.artist}</p>
-                  <p className="meta">{songs.length} tracks</p>
-                  {albumPayload.user?.has_voted && (
-                    <span className="badge">You have already submitted votes</span>
-                  )}
-                </div>
-              </article>
-
-              <form className="vote-form" onSubmit={handleSubmit}>
-                <div className="tracks-grid">
-                  {songs.map((song) => (
-                    <label className="track-row" key={song.id}>
-                      <span className="track-name">
-                        <strong>{song.track_number ? `${song.track_number}. ` : ""}</strong>
-                        {song.title}
-                      </span>
-                      <input
-                        className="score-input"
-                        type="number"
-                        min="1"
-                        max="5"
-                        step="0.5"
-                        value={songScores[song.id] ?? ""}
-                        onChange={(event) => updateSongScore(song.id, event.target.value)}
-                        placeholder="1-5"
-                      />
-                    </label>
-                  ))}
-                </div>
-
-                <label className="album-score-row">
-                  <span>Album score</span>
-                  <input
-                    className="score-input"
-                    type="number"
-                    min="1"
-                    max="5"
-                    step="0.5"
-                    value={albumScore}
-                    onChange={(event) => setAlbumScore(event.target.value)}
-                    placeholder="1-5"
-                  />
-                </label>
-
-                {feedback && <p className="success-text">{feedback}</p>}
-                {error && <p className="error-text">{error}</p>}
-
-                <button className="btn btn-primary" type="submit" disabled={submitState === "saving"}>
-                  {submitState === "saving" ? "Saving..." : "Save Votes"}
-                </button>
-              </form>
-            </>
-          )}
+      <main className="page">
+        <section className="hero">
+          <p className="eyebrow">Vinyl Vote V2</p>
+          <h1>Vote Flow Migration</h1>
+          <p className="subtitle">
+            V2 keeps the V1 visual shell while this React page incrementally replaces server-rendered
+            voting screens. Theme preference persists across refreshes.
+          </p>
         </section>
-      )}
-    </main>
+
+        {sessionState === "loading" && (
+          <section className="card status-card">
+            <p>Checking your session...</p>
+          </section>
+        )}
+
+        {sessionState === "error" && (
+          <section className="card status-card error-card">
+            <h2>Session check failed</h2>
+            <p>{error || "Could not validate your session."}</p>
+          </section>
+        )}
+
+        {sessionState === "anonymous" && (
+          <section className="card auth-card">
+            <h2>Sign in to vote</h2>
+            <p>
+              KeyN remains the default flow, but dev and legacy routes remain available during V2
+              migration.
+            </p>
+            <div className="button-row">
+              <a className="btn btn-primary" href={oauthLoginHref()}>
+                Continue with KeyN
+              </a>
+              <a className="btn btn-secondary" href={legacyLoginHref()}>
+                Legacy Login
+              </a>
+              {showDevLogin && (
+                <a className="btn btn-secondary" href={devLoginHref(devLoginUsername)}>
+                  Dev Login (No KeyN)
+                </a>
+              )}
+            </div>
+          </section>
+        )}
+
+        {sessionState === "authenticated" && (
+          <section className="card vote-card">
+            <header className="vote-header">
+              <div>
+                <h2>Current Album</h2>
+                <p className="vote-end">Voting closes: {formatVoteEnd(albumPayload?.vote_end)}</p>
+              </div>
+              <button className="btn btn-ghost" type="button" onClick={loadAlbum}>
+                Refresh
+              </button>
+            </header>
+
+            {albumState === "loading" && <p>Loading current album and your saved votes...</p>}
+
+            {albumState === "error" && (
+              <p className="error-text">{error || "Could not load voting data right now."}</p>
+            )}
+
+            {albumState === "empty" && (
+              <p className="empty-text">{error || "No album is currently open for voting."}</p>
+            )}
+
+            {albumState === "ready" && albumPayload?.album && (
+              <>
+                <article className="album-panel">
+                  {albumPayload.album.cover_url && (
+                    <img
+                      src={albumPayload.album.cover_url}
+                      alt={`${albumPayload.album.title} cover`}
+                      className="cover"
+                    />
+                  )}
+                  <div>
+                    <h3>{albumPayload.album.title}</h3>
+                    <p className="artist">{albumPayload.album.artist}</p>
+                    <p className="meta">{songs.length} tracks</p>
+                    {albumPayload.user?.has_voted && (
+                      <span className="badge">You have already submitted votes</span>
+                    )}
+                  </div>
+                </article>
+
+                <form className="vote-form" onSubmit={handleSubmit}>
+                  <div className="tracks-grid">
+                    {songs.map((song) => (
+                      <label className="track-row" key={song.id}>
+                        <span className="track-name">
+                          <strong>{song.track_number ? `${song.track_number}. ` : ""}</strong>
+                          {song.title}
+                        </span>
+                        <input
+                          className="score-input"
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.5"
+                          value={songScores[song.id] ?? ""}
+                          onChange={(event) => updateSongScore(song.id, event.target.value)}
+                          placeholder="1-5"
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  <label className="album-score-row">
+                    <span>Album score</span>
+                    <input
+                      className="score-input"
+                      type="number"
+                      min="1"
+                      max="5"
+                      step="0.5"
+                      value={albumScore}
+                      onChange={(event) => setAlbumScore(event.target.value)}
+                      placeholder="1-5"
+                    />
+                  </label>
+
+                  {feedback && <p className="success-text">{feedback}</p>}
+                  {error && <p className="error-text">{error}</p>}
+
+                  <button className="btn btn-primary" type="submit" disabled={submitState === "saving"}>
+                    {submitState === "saving" ? "Saving..." : "Save Votes"}
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
+        )}
+      </main>
+    </div>
   );
 }
 

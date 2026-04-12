@@ -1,4 +1,7 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const LEGACY_BASE_URL = (
+  import.meta.env.VITE_LEGACY_BASE_URL || (import.meta.env.DEV ? "http://127.0.0.1:5000" : "")
+).replace(/\/$/, "");
 
 function buildUrl(path) {
   if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -86,4 +89,12 @@ export function devLoginHref(username = "") {
     query.set("username", username);
   }
   return `${buildUrl("/dev/login")}?${query.toString()}`;
+}
+
+export function legacyPageHref(path) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (!LEGACY_BASE_URL) {
+    return normalizedPath;
+  }
+  return `${LEGACY_BASE_URL}${normalizedPath}`;
 }
