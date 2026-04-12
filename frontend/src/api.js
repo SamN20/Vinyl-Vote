@@ -74,6 +74,44 @@ export function submitVotes(payload) {
   });
 }
 
+export function getRetroAlbums() {
+  return request("/api/v1/retro-albums");
+}
+
+export function getRetroAlbum(albumId) {
+  return request(`/api/v1/retro-album/${albumId}`);
+}
+
+export function submitRetroVotes(albumId, payload) {
+  return request(`/api/v1/retro-votes/${albumId}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAlbumComments(albumId) {
+  return request(`/api/comments/${albumId}`);
+}
+
+export function postAlbumComment(albumId, text, parentId = null) {
+  return request(`/api/comments/${albumId}`, {
+    method: "POST",
+    body: JSON.stringify({ text, parent_id: parentId }),
+  });
+}
+
+export function deleteAlbumComment(commentId) {
+  return request(`/api/comments/${commentId}`, {
+    method: "DELETE",
+  });
+}
+
+export function flagAlbumComment(commentId) {
+  return request(`/api/comments/${commentId}/flag`, {
+    method: "POST",
+  });
+}
+
 export function oauthLoginHref() {
   return buildUrl("/oauth/login");
 }

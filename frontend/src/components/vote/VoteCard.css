@@ -1,0 +1,257 @@
+.vote-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.vpf-bar {
+  height: 6px;
+  background: var(--input-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.vpf-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0;
+}
+
+.vote-end {
+  margin: 0;
+  color: var(--muted);
+}
+
+.album-panel {
+  display: grid;
+  grid-template-columns: minmax(120px, 170px) 1fr;
+  gap: 1rem;
+  padding: 0.9rem;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.artist,
+.meta {
+  margin: 0.2rem 0;
+  color: var(--muted);
+}
+
+.pip-action-row {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  background: rgba(29, 185, 84, 0.16);
+  color: var(--accent);
+  border: 1px solid rgba(29, 185, 84, 0.35);
+  border-radius: 999px;
+  padding: 0.24rem 0.55rem;
+  font-size: 0.82rem;
+}
+
+.vote-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.lazy-toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.lazy-toggle-row input {
+  accent-color: var(--accent);
+}
+
+.tracks-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.track-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.track-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.track-row .score-input {
+  width: 96px;
+  justify-self: end;
+}
+
+.track-row.lazy {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.lazy-stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: end;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.star-btn,
+.half-btn {
+  border: 1px solid var(--border-color);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 6px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0.2rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.star-btn.active,
+.half-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.half-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.score-input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.48rem 0.5rem;
+  font-size: 0.95rem;
+}
+
+.score-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.album-score-row {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.vote-status {
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  background: var(--bg);
+}
+
+.vote-status.voted {
+  color: var(--success-color);
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.vote-status.unsaved {
+  color: #d69a00;
+  border-color: rgba(214, 154, 0, 0.45);
+}
+
+.vote-status.not-voted {
+  color: var(--muted);
+}
+
+.post-vote-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.vote-progress-footer {
+  position: sticky;
+  bottom: 12px;
+  background: color-mix(in oklab, var(--card-bg) 90%, transparent);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 950;
+  backdrop-filter: blur(6px);
+}
+
+.vpf-left {
+  flex: 1;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .album-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .track-row,
+  .album-score-row {
+    grid-template-columns: 1fr;
+  }
+
+  .lazy-stars {
+    margin-top: 2px;
+    justify-self: start;
+  }
+
+  .track-row .score-input {
+    width: 100%;
+  }
+
+  .vote-progress-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
