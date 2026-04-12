@@ -22,7 +22,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 cp .env.example .env
-python db_create.py
+flask --app run.py db upgrade
+```
+
+Poetry setup (optional):
+
+```bash
+poetry install
+cp .env.example .env
+poetry run flask --app run.py db upgrade
 ```
 
 Run locally:
