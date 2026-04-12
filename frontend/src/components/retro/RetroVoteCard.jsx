@@ -19,6 +19,8 @@ export default function RetroVoteCard({
   songScores,
   songs,
   submitState,
+  title = "Retro Hub (Preview)",
+  subtitle = "Vote on missed albums from earlier weeks.",
 }) {
   async function onSubmit(event) {
     event.preventDefault();
@@ -31,8 +33,8 @@ export default function RetroVoteCard({
     <section className="card retro-card">
       <header className="retro-header">
         <div>
-          <h2>Retro Hub (Preview)</h2>
-          <p className="retro-subtitle">Vote on missed albums from earlier weeks.</p>
+          <h2>{title}</h2>
+          <p className="retro-subtitle">{subtitle}</p>
         </div>
         <button className="btn btn-ghost" type="button" onClick={loadAlbums}>Refresh Retro List</button>
       </header>

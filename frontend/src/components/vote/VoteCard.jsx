@@ -70,6 +70,7 @@ export default function VoteCard({
   submitState,
 }) {
   const [lazyMode, setLazyMode] = useState(false);
+  const [pipSupported, setPipSupported] = useState(false);
   const [popoutHint, setPopoutHint] = useState("");
 
   useEffect(() => {
@@ -79,6 +80,13 @@ export default function VoteCard({
     } catch {
       setLazyMode(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const supported =
+      typeof window.documentPictureInPicture === "object"
+      && typeof window.documentPictureInPicture.requestWindow === "function";
+    setPipSupported(Boolean(supported));
   }, []);
 
   async function onSubmit(event) {
@@ -141,10 +149,12 @@ export default function VoteCard({
               {albumPayload.user?.has_voted && (
                 <span className="badge">You have already submitted votes</span>
               )}
-              <div className="pip-action-row">
-                <button className="btn btn-secondary" type="button" onClick={openPopout}>Pop out voting window</button>
-                {popoutHint ? <span className="muted">{popoutHint}</span> : null}
-              </div>
+              {pipSupported ? (
+                <div className="pip-action-row">
+                  <button className="btn btn-secondary" type="button" onClick={openPopout}>Pop out voting window</button>
+                  {popoutHint ? <span className="muted">{popoutHint}</span> : null}
+                </div>
+              ) : null}
             </div>
           </article>
 

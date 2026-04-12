@@ -46,6 +46,7 @@ function MoonIcon() {
 export default function Header({
   loginHref,
   legacyLoginHref,
+  route,
   sessionInfo,
   sessionState,
   theme,
@@ -112,9 +113,9 @@ export default function Header({
 
             {sessionState === "authenticated" && (
               <>
-                <a href="/" className="active" onClick={closeMobileOverlays}>Vote</a>
+                <a href="#/vote" className={route === "/vote" ? "active" : ""} onClick={closeMobileOverlays}>Vote</a>
                 <a href={legacyPageHref("/battle")} onClick={closeMobileOverlays}>Face-Off</a>
-                <a href={legacyPageHref("/retro_hub")} onClick={closeMobileOverlays}>Retro Hub</a>
+                <a href="#/retro-hub" className={route === "/retro-hub" ? "active" : ""} onClick={closeMobileOverlays}>Retro Hub</a>
               </>
             )}
 

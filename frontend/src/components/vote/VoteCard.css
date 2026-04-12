@@ -222,6 +222,11 @@
 
 .album-score-row.lazy {
   grid-template-columns: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.album-score-row.lazy .lazy-stars {
+  justify-self: end;
 }
 
 .vote-status {
