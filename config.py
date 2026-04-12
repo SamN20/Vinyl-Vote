@@ -61,6 +61,9 @@ class Config:
     FORCE_KEYN_REGISTRATION = os.environ.get('FORCE_KEYN_REGISTRATION', 'true').lower() in ('1','true','yes')
     # If True, /login will redirect immediately to KeyN OAuth (phase out legacy login)
     FORCE_KEYN_LOGIN = os.environ.get('FORCE_KEYN_LOGIN', 'true').lower() in ('1','true','yes')
+    # Dev-only local auth bypass (never enable in production)
+    DEV_AUTH_BYPASS = os.environ.get('DEV_AUTH_BYPASS', 'false').lower() in ('1', 'true', 'yes')
+    DEV_AUTH_BYPASS_DEFAULT_USERNAME = os.environ.get('DEV_AUTH_BYPASS_DEFAULT_USERNAME', 'dev-user')
 
     # --- Nolofication settings ---
     NOLOFICATION_URL = os.getenv('NOLOFICATION_URL', 'https://nolofication.bynolo.ca')

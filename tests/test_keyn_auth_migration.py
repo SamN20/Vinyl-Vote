@@ -8,7 +8,7 @@ from app.oauth import bp_oauth
 from app.routes import user as user_routes
 
 
-def _build_app(force_login=True, force_registration=True):
+def _build_app(force_login=True, force_registration=True, dev_auth_bypass=False):
     templates = Path(__file__).resolve().parents[1] / "app" / "templates"
     app = Flask(__name__, template_folder=str(templates))
     app.config.update(
@@ -23,6 +23,8 @@ def _build_app(force_login=True, force_registration=True):
         KEYN_CLIENT_ID="test-client-id",
         KEYN_CLIENT_SECRET="test-client-secret",
         KEYN_CLIENT_REDIRECT="http://localhost/oauth/callback",
+        DEV_AUTH_BYPASS=dev_auth_bypass,
+        DEV_AUTH_BYPASS_DEFAULT_USERNAME="dev-user",
     )
 
     db.init_app(app)
@@ -138,3 +140,38 @@ def test_oauth_error_redirects_to_legacy_login_when_keyn_forced():
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/legacy/login")
+
+
+def test_dev_login_bypass_disabled_by_default():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    client = app.test_client()
+    response = client.get("/dev/login")
+
+    assert response.status_code == 404
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_dev_login_bypass_creates_local_user_and_logs_in():
+    app = _build_app(dev_auth_bypass=True)
+    with app.app_context():
+        db.create_all()
+
+    client = app.test_client()
+    response = client.get("/dev/login?username=localdev&next=/")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/")
+
+    with client.session_transaction() as session:
+        assert session.get("_user_id") is not None
+
+    with app.app_context():
+        user = User.query.filter_by(username="localdev").first()
+        assert user is not None
+        assert user.keyn_id is None
+        db.drop_all()

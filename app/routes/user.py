@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from datetime import timedelta, timezone
 import pytz
+import secrets
 
 from .. import db
 from ..models import User, BattleVote
@@ -375,6 +376,51 @@ def legacy_register():
         return redirect(url_for('user.index'))
 
     return _legacy_register_flow()
+
+
+@bp.route('/dev/login', methods=['GET'])
+def dev_login():
+    if not current_app.config.get('DEV_AUTH_BYPASS', False):
+        return "Not Found", 404
+
+    if current_user.is_authenticated:
+        target = request.args.get('next', url_for('user.index'))
+        if isinstance(target, str) and target.startswith('/'):
+            return redirect(target)
+        return redirect(url_for('user.index'))
+
+    configured_default = current_app.config.get('DEV_AUTH_BYPASS_DEFAULT_USERNAME', 'dev-user')
+    username = (request.args.get('username') or configured_default or 'dev-user').strip()
+    username = username[:64] or 'dev-user'
+
+    user = User.query.filter_by(username=username).first()
+    created = False
+
+    if not user:
+        user = User(
+            username=username,
+            password_hash=generate_password_hash(secrets.token_hex(32)),
+            keyn_migrated=False,
+            is_banned=False,
+        )
+        db.session.add(user)
+        created = True
+
+    user.last_login = datetime.utcnow()
+    db.session.commit()
+
+    login_user(user, remember=True)
+    session.permanent = True
+
+    if created:
+        flash(f"Dev login created local user '{username}'.", 'info')
+    else:
+        flash(f"Logged in as local dev user '{username}'.", 'info')
+
+    target = request.args.get('next', '/')
+    if isinstance(target, str) and target.startswith('/'):
+        return redirect(target)
+    return redirect(url_for('user.index'))
 
 
 def _legacy_register_flow():

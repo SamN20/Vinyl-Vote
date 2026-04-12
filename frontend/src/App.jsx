@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  devLoginHref,
   getCurrentAlbum,
   legacyLoginHref,
   oauthLoginHref,
@@ -41,6 +42,8 @@ function readScore(song, songVotes) {
 }
 
 function App() {
+  const showDevLogin = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_LOGIN === "true";
+  const devLoginUsername = import.meta.env.VITE_DEV_LOGIN_USERNAME || "dev-user";
   const [sessionState, setSessionState] = useState("loading");
   const [albumState, setAlbumState] = useState("idle");
   const [albumPayload, setAlbumPayload] = useState(null);
@@ -214,6 +217,11 @@ function App() {
             <a className="btn btn-secondary" href={legacyLoginHref()}>
               Legacy Login
             </a>
+            {showDevLogin && (
+              <a className="btn btn-secondary" href={devLoginHref(devLoginUsername)}>
+                Dev Login (No KeyN)
+              </a>
+            )}
           </div>
         </section>
       )}

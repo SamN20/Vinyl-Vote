@@ -78,3 +78,12 @@ export function oauthLoginHref() {
 export function legacyLoginHref() {
   return buildUrl("/legacy/login");
 }
+
+export function devLoginHref(username = "") {
+  const query = new URLSearchParams();
+  query.set("next", "/");
+  if (username) {
+    query.set("username", username);
+  }
+  return `${buildUrl("/dev/login")}?${query.toString()}`;
+}
