@@ -15,6 +15,7 @@ function formatTimestamp(value) {
 
 export default function CommentsCard({ albumId, currentUserId }) {
   const [text, setText] = useState("");
+  const [replyTo, setReplyTo] = useState(null);
   const {
     comments,
     error,
@@ -29,14 +30,75 @@ export default function CommentsCard({ albumId, currentUserId }) {
     return null;
   }
 
+  const commentById = new Map(comments.map((comment) => [comment.id, comment]));
+  const childrenByParent = new Map();
+
+  for (const comment of comments) {
+    const key = comment.parent_id ?? 0;
+    if (!childrenByParent.has(key)) {
+      childrenByParent.set(key, []);
+    }
+    childrenByParent.get(key).push(comment);
+  }
+
   async function onSubmit(event) {
     event.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) {
       return;
     }
-    await submitComment(trimmed);
+    await submitComment(trimmed, replyTo?.id ?? null);
     setText("");
+    setReplyTo(null);
+  }
+
+  function onReply(comment) {
+    setReplyTo(comment);
+  }
+
+  function cancelReply() {
+    setReplyTo(null);
+  }
+
+  function renderThread(parentId = 0, depth = 0) {
+    const children = childrenByParent.get(parentId) || [];
+    return children.map((comment) => {
+      const isMine = Number(currentUserId) === Number(comment.user_id);
+      const isReply = depth > 0;
+      const parent = comment.parent_id ? commentById.get(comment.parent_id) : null;
+
+      return (
+        <div key={comment.id} className={`comment-thread depth-${Math.min(depth, 3)}`}>
+          <article className={`comment-item ${isReply ? "reply" : ""}`}>
+            <div className="comment-meta">
+              <strong>{comment.user}</strong>
+              <span>{formatTimestamp(comment.timestamp)}</span>
+            </div>
+
+            {parent ? (
+              <p className="comment-replying-to">Replying to {parent.user}</p>
+            ) : null}
+
+            <p>{comment.text}</p>
+            <div className="comment-actions">
+              <button className="btn btn-secondary" type="button" onClick={() => onReply(comment)}>
+                Reply
+              </button>
+              {isMine ? (
+                <button className="btn btn-secondary" type="button" onClick={() => removeComment(comment.id)}>
+                  Delete
+                </button>
+              ) : (
+                <button className="btn btn-secondary" type="button" onClick={() => flagComment(comment.id)}>
+                  Flag
+                </button>
+              )}
+            </div>
+          </article>
+          {renderThread(comment.id, depth + 1)}
+        </div>
+      );
+    });
   }
 
   return (
@@ -46,15 +108,24 @@ export default function CommentsCard({ albumId, currentUserId }) {
       </header>
 
       <form className="comment-form" onSubmit={onSubmit}>
+        {replyTo ? (
+          <div className="reply-banner">
+            <span>
+              Replying to <strong>{replyTo.user}</strong>
+            </span>
+            <button className="btn btn-secondary" type="button" onClick={cancelReply}>Cancel</button>
+          </div>
+        ) : null}
+
         <textarea
           className="comment-input"
           value={text}
           onChange={(event) => setText(event.target.value)}
           rows="3"
-          placeholder="Leave a comment about this album..."
+          placeholder={replyTo ? `Reply to ${replyTo.user}...` : "Leave a comment about this album..."}
         />
         <button className="btn btn-primary" type="submit" disabled={submitState === "saving"}>
-          {submitState === "saving" ? "Posting..." : "Post Comment"}
+          {submitState === "saving" ? "Posting..." : replyTo ? "Post Reply" : "Post Comment"}
         </button>
       </form>
 
@@ -62,29 +133,7 @@ export default function CommentsCard({ albumId, currentUserId }) {
       {error ? <p className="error-text">{error}</p> : null}
 
       <div className="comment-list">
-        {comments.map((comment) => {
-          const isMine = Number(currentUserId) === Number(comment.user_id);
-          return (
-            <article key={comment.id} className="comment-item">
-              <div className="comment-meta">
-                <strong>{comment.user}</strong>
-                <span>{formatTimestamp(comment.timestamp)}</span>
-              </div>
-              <p>{comment.text}</p>
-              <div className="comment-actions">
-                {isMine ? (
-                  <button className="btn btn-secondary" type="button" onClick={() => removeComment(comment.id)}>
-                    Delete
-                  </button>
-                ) : (
-                  <button className="btn btn-secondary" type="button" onClick={() => flagComment(comment.id)}>
-                    Flag
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        })}
+        {renderThread()}
       </div>
 
       {state === "ready" && comments.length === 0 ? (

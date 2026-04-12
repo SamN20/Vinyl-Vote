@@ -5,6 +5,10 @@
   gap: 1rem;
   margin-bottom: 1rem;
 }
+
+.vote-card {
+  overflow-x: hidden;
+}
 .vpf-bar {
   height: 6px;
   background: var(--input-bg);
@@ -70,17 +74,50 @@
 .vote-form {
   display: grid;
   gap: 1rem;
+  min-width: 0;
+  padding-bottom: 14px;
 }
 
 .lazy-toggle-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 600;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 10px 12px;
 }
 
 .lazy-toggle-row input {
-  accent-color: var(--accent);
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lazy-checkbox {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  background: var(--input-bg);
+  flex: 0 0 auto;
+}
+
+.lazy-toggle-row.active {
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--border-color));
+}
+
+.lazy-toggle-row.active .lazy-checkbox {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .tracks-grid {
@@ -112,6 +149,7 @@
 
 .track-row.lazy {
   grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
 }
 
 .visually-hidden {
@@ -129,9 +167,10 @@
   align-items: center;
   gap: 4px;
   justify-self: end;
-  max-width: 100%;
-  overflow-x: auto;
+  max-width: none;
+  overflow: visible;
   padding-bottom: 2px;
+  min-width: 0;
 }
 
 .star-btn,
@@ -178,6 +217,11 @@
   grid-template-columns: 1fr 110px;
   gap: 0.75rem;
   align-items: center;
+  min-width: 0;
+}
+
+.album-score-row.lazy {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .vote-status {
@@ -221,10 +265,17 @@
   gap: 12px;
   z-index: 950;
   backdrop-filter: blur(6px);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.vote-progress-footer.docked {
+  margin-top: 14px;
 }
 
 .vpf-left {
   flex: 1;
+  min-width: 0;
 }
 
 .muted {
@@ -238,6 +289,10 @@
 
   .track-row,
   .album-score-row {
+    grid-template-columns: 1fr;
+  }
+
+  .album-score-row.lazy {
     grid-template-columns: 1fr;
   }
 

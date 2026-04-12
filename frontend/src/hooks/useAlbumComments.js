@@ -36,7 +36,7 @@ export function useAlbumComments(albumId) {
     loadComments();
   }, [loadComments]);
 
-  const submitComment = useCallback(async (text) => {
+  const submitComment = useCallback(async (text, parentId = null) => {
     if (!albumId) {
       return;
     }
@@ -45,7 +45,7 @@ export function useAlbumComments(albumId) {
     setError("");
 
     try {
-      await postAlbumComment(albumId, text);
+      await postAlbumComment(albumId, text, parentId);
       setSubmitState("saved");
       await loadComments();
     } catch (saveError) {

@@ -149,8 +149,9 @@ export default function VoteCard({
           </article>
 
           <form className="vote-form" onSubmit={onSubmit}>
-            <label className="lazy-toggle-row">
+            <label className={`lazy-toggle-row ${lazyMode ? "active" : ""}`}>
               <input type="checkbox" checked={lazyMode} onChange={toggleLazyMode} />
+              <span className="lazy-checkbox" aria-hidden="true">✓</span>
               <span>Lazy vote mode</span>
             </label>
 
@@ -181,7 +182,7 @@ export default function VoteCard({
               ))}
             </div>
 
-            <label className="album-score-row">
+            <label className={`album-score-row ${lazyMode ? "lazy" : ""}`}>
               <span>Album score</span>
               <input
                 className={`score-input ${lazyMode ? "visually-hidden" : ""}`}
@@ -223,7 +224,7 @@ export default function VoteCard({
             </button>
           </form>
 
-          <div className="vote-progress-footer" aria-live="polite">
+          <div className="vote-progress-footer docked" aria-live="polite">
             <div className="vpf-left">
               <strong>Tracks rated: {ratedTracks}/{songs.length}</strong>
               <span className="muted" style={{ marginLeft: 8 }}>
