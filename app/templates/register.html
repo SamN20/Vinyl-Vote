@@ -50,7 +50,12 @@
   </form>
 
   <p class="form-footer pop-in" style="animation-delay: 0.55s;">
-  Already have an account? <a href="{{ url_for('user.login') }}">Login</a>
+  Already have an account?
+  {% if legacy_mode %}
+  <a href="{{ url_for('user.legacy_login') }}">Login</a>
+  {% else %}
+  <a href="{{ url_for('user.login') }}">Login</a>
+  {% endif %}
   <br><small style="display:block; margin-top:6px; opacity:0.8;">Legacy registration will be disabled after migration to KeyN.</small>
   </p>
 </div>

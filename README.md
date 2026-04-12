@@ -116,6 +116,17 @@ KEYN_CLIENT_REDIRECT=http://127.0.0.1:5000/oauth/callback
 KEYN_DEFAULT_SCOPES=id,username,email,display_name,is_verified
 ```
 
+Auth defaults in V2 migration:
+
+- `FORCE_KEYN_LOGIN=true` (default)
+- `FORCE_KEYN_REGISTRATION=true` (default)
+
+This makes `/login` and `/register` KeyN-first by default.
+Legacy fallback routes remain available during migration:
+
+- `/legacy/login`
+- `/legacy/register`
+
 Migration helper:
 
 ```bash

@@ -9,6 +9,12 @@ from datetime import datetime
 bp_oauth = Blueprint('oauth', __name__, url_prefix='/oauth')
 
 
+def _oauth_error_redirect():
+    if current_app.config.get('FORCE_KEYN_LOGIN'):
+        return redirect(url_for('user.legacy_login'))
+    return redirect(url_for('user.login'))
+
+
 def _scopes_list():
     scopes = current_app.config.get('KEYN_DEFAULT_SCOPES', 'id,username,email').split(',')
     return [s.strip() for s in scopes if s.strip()]
@@ -45,17 +51,17 @@ def oauth_callback():
     error = request.args.get('error')
     if error:
         flash(f'OAuth error: {error}', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     state = request.args.get('state')
     if not state or state != session.get('oauth_state'):
         flash('Invalid OAuth state, please try again.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     code = request.args.get('code')
     if not code:
         flash('Missing authorization code.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     data = {
         'grant_type': 'authorization_code',
@@ -69,18 +75,18 @@ def oauth_callback():
     except requests.RequestException as e:
         current_app.logger.error(f'KeyN token exchange error: {e}')
         flash('Network error during authentication. Please try again.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     if token_resp.status_code != 200:
         current_app.logger.error(f'KeyN token response error: {token_resp.status_code} - {token_resp.text}')
         flash('Authentication failed. Please try again.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     access_token = token_resp.json().get('access_token')
     if not access_token:
         current_app.logger.error('KeyN token response missing access_token')
         flash('Authentication failed. Please try again.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     # Fetch user scoped data
     try:
@@ -88,12 +94,12 @@ def oauth_callback():
     except requests.RequestException as e:
         current_app.logger.error(f'KeyN user profile error: {e}')
         flash('Failed to retrieve user profile. Please try again.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     if user_resp.status_code != 200:
         current_app.logger.error(f'KeyN user profile response error: {user_resp.status_code} - {user_resp.text}')
         flash('Failed to retrieve user profile. Please try again.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     data = user_resp.json()
     keyn_id = str(data.get('id')) if data.get('id') is not None else None
@@ -102,7 +108,7 @@ def oauth_callback():
     if not keyn_id:
         current_app.logger.error('KeyN response missing id scope')
         flash('KeyN response missing required information. Please ensure all permissions are granted.', 'error')
-        return redirect(url_for('user.login'))
+        return _oauth_error_redirect()
 
     # Migration / linking logic:
     user = None

@@ -80,6 +80,14 @@ React SPA work is being added incrementally.
 - Add tests for new API contracts.
 - Document endpoint changes in PR descriptions.
 
+## Auth Migration Notes
+
+- V2 now defaults to KeyN-first auth (`/login` and `/register` redirect to KeyN by default).
+- Legacy form routes are still available for transition/testing:
+  - `/legacy/login`
+  - `/legacy/register`
+- Keep auth changes backward-compatible and include route-level tests in PRs.
+
 ## Security
 
 Please do not report security issues publicly. See `SECURITY.md`.

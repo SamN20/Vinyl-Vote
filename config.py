@@ -58,9 +58,9 @@ class Config:
     # Comma separated default scopes to request
     KEYN_DEFAULT_SCOPES = os.getenv('KEYN_DEFAULT_SCOPES', 'id,username,email,display_name,is_verified')
     # If True, /register will redirect immediately to KeyN OAuth
-    FORCE_KEYN_REGISTRATION = os.environ.get('FORCE_KEYN_REGISTRATION', 'false').lower() in ('1','true','yes')
+    FORCE_KEYN_REGISTRATION = os.environ.get('FORCE_KEYN_REGISTRATION', 'true').lower() in ('1','true','yes')
     # If True, /login will redirect immediately to KeyN OAuth (phase out legacy login)
-    FORCE_KEYN_LOGIN = os.environ.get('FORCE_KEYN_LOGIN', 'false').lower() in ('1','true','yes')
+    FORCE_KEYN_LOGIN = os.environ.get('FORCE_KEYN_LOGIN', 'true').lower() in ('1','true','yes')
 
     # --- Nolofication settings ---
     NOLOFICATION_URL = os.getenv('NOLOFICATION_URL', 'https://nolofication.bynolo.ca')
