@@ -52,11 +52,12 @@ export default function RetroHubPage({ retro }) {
 
         {filteredAlbums.length > 0 ? (
           <div className="retro-grid">
-            {filteredAlbums.map((album) => {
+            {filteredAlbums.map((album, index) => {
               const selected = String(album.id) === String(retro.selectedAlbumId);
               return (
                 <article key={album.id} className={`retro-tile ${selected ? "selected" : ""}`}>
                   <div className="retro-cover-wrap">
+                    <span className="retro-rank">#{index + 1}</span>
                     {album.cover_url ? (
                       <img src={album.cover_url} alt={`${album.title} cover`} className="retro-tile-cover" />
                     ) : null}
@@ -64,11 +65,13 @@ export default function RetroHubPage({ retro }) {
                   <div className="retro-tile-content">
                     <h3>{album.title}</h3>
                     <p>{album.artist}</p>
-                    <small>{album.song_count || 0} tracks</small>
-                    <p className="retro-match">{album.match_percent || 0}% Match</p>
-                    {album.reason ? <p className="retro-why">Why: {album.reason}</p> : null}
+                    <small className="retro-meta">{album.song_count || 0} tracks</small>
+                    <p className="retro-match">
+                      <span className="retro-match-pill">{album.match_percent || 0}% Match</span>
+                    </p>
+                    {album.reason ? <p className="retro-why">Why this pick: {album.reason}</p> : null}
                   </div>
-                  <button className="btn btn-secondary" type="button" onClick={() => openRetroVote(album.id)}>
+                  <button className="btn btn-secondary retro-cta" type="button" onClick={() => openRetroVote(album.id)}>
                     {selected ? "Continue Voting" : "Vote This Album"}
                   </button>
                 </article>
