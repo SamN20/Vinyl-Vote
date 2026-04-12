@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { legacyPageHref } from "../../api";
 import StreamingLinks from "../common/StreamingLinks";
 import { formatVoteEnd } from "../../hooks/useVotingFlow";
@@ -74,6 +74,8 @@ export default function VoteCard({
   showRefreshButton = true,
 }) {
   const [lazyMode, setLazyMode] = useState(false);
+  const submitRef = useRef(null);
+  const [isDocked, setIsDocked] = useState(true);
   const [pipSupported, setPipSupported] = useState(false);
   const [popoutHint, setPopoutHint] = useState("");
 
@@ -92,6 +94,37 @@ export default function VoteCard({
       && typeof window.documentPictureInPicture.requestWindow === "function";
     setPipSupported(Boolean(supported));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !submitRef.current) return;
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const submitButton = submitRef.current;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        // Keep footer fixed while voting through tracks, then release it
+        // when the submit area is visible to match V1 behavior.
+        if (entry.isIntersecting) {
+          setIsDocked(false);
+          return;
+        }
+        setIsDocked(true);
+      },
+      {
+        threshold: 0,
+        rootMargin: "0px 0px -20% 0px",
+      }
+    );
+
+    observer.observe(submitButton);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [albumState, songs.length]);
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -112,6 +145,38 @@ export default function VoteCard({
     }
     window.open(window.location.href, "vinyl-vote-popout", "width=980,height=920,resizable=yes,scrollbars=yes");
     setPopoutHint("Opened in a new window.");
+  }
+
+  function renderProgressFooter(linkTabIndex) {
+    const isComplete = remainingTracks <= 0;
+    return (
+      <>
+        <div className="vpf-left">
+          <strong>Tracks rated: {ratedTracks}/{songs.length}</strong>
+          <span className={`muted ${isComplete ? "vpf-complete-text" : ""}`} style={{ marginLeft: 8 }}>
+            {remainingTracks > 0 ? `${remainingTracks} remaining` : "Ready to submit"}
+          </span>
+          <div
+            className={`vpf-bar ${isComplete ? "complete" : ""}`}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progressPercent)}
+            aria-label="Track rating progress"
+          >
+            <div className="vpf-fill" style={{ width: `${progressPercent}%` }} />
+          </div>
+        </div>
+        <a
+          href="#vote-submit"
+          className="btn btn-ghost"
+          style={{ whiteSpace: "nowrap" }}
+          tabIndex={linkTabIndex}
+        >
+          Review &amp; Submit
+        </a>
+      </>
+    );
   }
 
   return (
@@ -164,7 +229,7 @@ export default function VoteCard({
             </div>
           </article>
 
-          <form className="vote-form" onSubmit={onSubmit}>
+          <form className={`vote-form ${isDocked ? "with-fixed-footer" : "with-inline-footer"}`} onSubmit={onSubmit}>
             <label className={`lazy-toggle-row ${lazyMode ? "active" : ""}`}>
               <input type="checkbox" checked={lazyMode} onChange={toggleLazyMode} />
               <span className="lazy-checkbox" aria-hidden="true">✓</span>
@@ -235,22 +300,31 @@ export default function VoteCard({
             ) : null}
             {error && <p className="error-text">{error}</p>}
 
-            <button className="btn btn-primary" id="vote-submit" type="submit" disabled={submitState === "saving"}>
+            <button
+              ref={submitRef}
+              className="btn btn-primary"
+              id="vote-submit"
+              type="submit"
+              disabled={submitState === "saving"}
+            >
               {submitState === "saving" ? "Saving..." : submitLabel}
             </button>
           </form>
 
-          <div className="vote-progress-footer docked" aria-live="polite">
-            <div className="vpf-left">
-              <strong>Tracks rated: {ratedTracks}/{songs.length}</strong>
-              <span className="muted" style={{ marginLeft: 8 }}>
-                {remainingTracks > 0 ? `${remainingTracks} remaining` : "Ready to submit"}
-              </span>
-              <div className="vpf-bar">
-                <div className="vpf-fill" style={{ width: `${progressPercent}%` }} />
-              </div>
-            </div>
-            <a href="#vote-submit" className="btn btn-ghost" style={{ whiteSpace: "nowrap" }}>Review &amp; Submit</a>
+          <div
+            className={`vote-progress-footer fixed ${isDocked ? "is-visible" : "is-hidden"}`}
+            aria-live={isDocked ? "polite" : "off"}
+            aria-hidden={!isDocked}
+          >
+            {renderProgressFooter(isDocked ? 0 : -1)}
+          </div>
+
+          <div
+            className={`vote-progress-footer in-flow ${isDocked ? "is-hidden" : "is-visible"}`}
+            aria-live={!isDocked ? "polite" : "off"}
+            aria-hidden={isDocked}
+          >
+            {renderProgressFooter(isDocked ? -1 : 0)}
           </div>
         </>
       )}
