@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "./AdditionalInsights.css";
 
 function safeNumber(value) {
@@ -5,7 +6,7 @@ function safeNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function StarDistributionChart({ distribution }) {
+function StarDistributionChart({ distribution, isOpen }) {
   const labels = ["1 Star", "2 Star", "3 Star", "4 Star", "5 Star"];
   const total = distribution.reduce((sum, value) => sum + safeNumber(value), 0);
 
@@ -18,7 +19,13 @@ function StarDistributionChart({ distribution }) {
           <div key={label} className="insight-row">
             <span className="insight-label">{label}</span>
             <div className="insight-bar-track">
-              <div className="insight-bar-fill" style={{ width: `${percent}%` }} />
+              <div
+                className="insight-bar-fill"
+                style={{
+                  "--bar-width": `${isOpen ? percent : 0}%`,
+                  "--bar-delay": isOpen ? `${index * 55}ms` : `${(labels.length - 1 - index) * 45}ms`,
+                }}
+              />
             </div>
             <span className="insight-value">{count}</span>
             <span className="insight-percent">{percent}%</span>
@@ -29,7 +36,7 @@ function StarDistributionChart({ distribution }) {
   );
 }
 
-function TopTracksChart({ songs }) {
+function TopTracksChart({ songs, isOpen }) {
   const ranked = [...songs]
     .filter((song) => !song.ignored && song.avg_score !== null && song.avg_score !== undefined)
     .sort((a, b) => safeNumber(b.avg_score) - safeNumber(a.avg_score))
@@ -40,14 +47,26 @@ function TopTracksChart({ songs }) {
       {ranked.length === 0 ? (
         <p className="empty-text">No ranked tracks available yet.</p>
       ) : (
-        ranked.map((song) => {
+        ranked.map((song, rankIndex) => {
           const score = safeNumber(song.avg_score);
           const percent = Math.round((score / 5) * 100);
+          const showFullTitleOnHover = (song.title || "").length > 20;
           return (
             <div key={song.id} className="insight-row">
-              <span className="insight-label track-label">{song.title}</span>
+              <span
+                className="insight-label track-label"
+                title={showFullTitleOnHover ? song.title : undefined}
+              >
+                {song.title}
+              </span>
               <div className="insight-bar-track">
-                <div className="insight-bar-fill accent" style={{ width: `${percent}%` }} />
+                <div
+                  className="insight-bar-fill accent"
+                  style={{
+                    "--bar-width": `${isOpen ? percent : 0}%`,
+                    "--bar-delay": isOpen ? `${Math.max(80, rankIndex * 70)}ms` : `${Math.max(40, (ranked.length - 1 - rankIndex) * 55)}ms`,
+                  }}
+                />
               </div>
               <span className="insight-value">{score.toFixed(2)}</span>
             </div>
@@ -59,6 +78,7 @@ function TopTracksChart({ songs }) {
 }
 
 export default function AdditionalInsights({ payload }) {
+  const [isOpen, setIsOpen] = useState(false);
   const summary = payload?.summary || {};
   const songs = payload?.songs || [];
   const distribution = summary.vote_distribution || [0, 0, 0, 0, 0];
@@ -67,24 +87,36 @@ export default function AdditionalInsights({ payload }) {
   const countedSongs = Math.max(songs.length - ignoredSongs, 0);
 
   return (
-    <details className="card additional-insights" open={false}>
-      <summary>
-        Additional Insights and Graphs
+    <section className={`card additional-insights ${isOpen ? "open" : ""}`}>
+      <button
+        type="button"
+        className="insights-toggle"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen ? "true" : "false"}
+        aria-controls="additional-insights-content"
+      >
+        <span className="summary-title">Additional Insights and Graphs</span>
         <span className="summary-meta">{totalVotes} total ratings captured</span>
-      </summary>
+        <span className="toggle-chevron" aria-hidden="true">▾</span>
+      </button>
 
-      <div className="insights-grid">
-        <section className="insight-panel">
+      <div
+        id="additional-insights-content"
+        className="insights-content"
+        aria-hidden={isOpen ? "false" : "true"}
+      >
+        <div className="insights-grid">
+        <section className="insight-panel" style={{ "--panel-delay-open": "0ms", "--panel-delay-close": "120ms" }}>
           <h3>Overall Star Distribution</h3>
-          <StarDistributionChart distribution={distribution} />
+          <StarDistributionChart distribution={distribution} isOpen={isOpen} />
         </section>
 
-        <section className="insight-panel">
+        <section className="insight-panel" style={{ "--panel-delay-open": "60ms", "--panel-delay-close": "60ms" }}>
           <h3>Top Rated Tracks</h3>
-          <TopTracksChart songs={songs} />
+          <TopTracksChart songs={songs} isOpen={isOpen} />
         </section>
 
-        <section className="insight-panel insight-kpis">
+        <section className="insight-panel insight-kpis" style={{ "--panel-delay-open": "120ms", "--panel-delay-close": "0ms" }}>
           <h3>Quick Stats</h3>
           <div className="kpi-grid">
             <article>
@@ -105,7 +137,8 @@ export default function AdditionalInsights({ payload }) {
             </article>
           </div>
         </section>
+        </div>
       </div>
-    </details>
+    </section>
   );
 }
