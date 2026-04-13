@@ -290,19 +290,25 @@ def _retro_recommendations_for_user(user_id: int):
 
     top_user_genres = {genre for genre, count in user_genre_counts.items() if count >= 1}
 
+    album_ids = [album.id for album in unvoted_albums]
     global_avgs = {}
-    for album in unvoted_albums:
-        avg_score = (
-            db.session.query(func.avg(AlbumScore.personal_score))
-            .filter_by(album_id=album.id, ignored=False)
-            .scalar()
+
+    if album_ids:
+        avg_rows = (
+            db.session.query(
+                AlbumScore.album_id,
+                func.avg(AlbumScore.personal_score),
+            )
+            .filter(AlbumScore.album_id.in_(album_ids), AlbumScore.ignored.is_(False))
+            .group_by(AlbumScore.album_id)
+            .all()
         )
-        # Use 5.0 because historical model in legacy route used a 10-point scale prediction.
-        global_avgs[album.id] = avg_score if avg_score is not None else 5.0
+        global_avgs = {album_id: avg_score for album_id, avg_score in avg_rows}
 
     recommendations = []
 
     for album in unvoted_albums:
+        # Use 5.0 because historical model in legacy route used a 10-point scale prediction.
         base_score = global_avgs.get(album.id, 5.0)
         artist_avg = user_artist_avgs.get(album.artist)
         artist_bonus = 0.0
