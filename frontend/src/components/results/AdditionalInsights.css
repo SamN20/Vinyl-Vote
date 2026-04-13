@@ -1,0 +1,132 @@
+.additional-insights {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.additional-insights summary {
+  cursor: pointer;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.additional-insights summary::-webkit-details-marker {
+  color: var(--accent);
+}
+
+.summary-meta {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.insights-grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 0.4rem;
+}
+
+.insight-panel {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--card-bg) 90%, var(--bg));
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.insight-panel h3 {
+  font-size: 1rem;
+}
+
+.insight-chart {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.insight-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 46px 48px;
+  align-items: center;
+  gap: 8px;
+}
+
+.track-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insight-label {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.insight-bar-track {
+  height: 11px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: color-mix(in oklab, var(--bg) 65%, var(--card-bg));
+}
+
+.insight-bar-fill {
+  height: 100%;
+  background: color-mix(in oklab, #5ec2f5 70%, var(--accent));
+}
+
+.insight-bar-fill.accent {
+  background: color-mix(in oklab, var(--accent) 78%, #ffffff 8%);
+}
+
+.insight-value,
+.insight-percent {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-size: 0.82rem;
+}
+
+.insight-kpis .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.kpi-grid article {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0.55rem;
+}
+
+.kpi-label {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.kpi-value {
+  margin: 0.32rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .additional-insights summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .insight-row {
+    grid-template-columns: 64px 1fr 42px 44px;
+    gap: 6px;
+  }
+
+  .insight-kpis .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}

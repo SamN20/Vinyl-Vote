@@ -1,5 +1,6 @@
 import CommentsCard from "../components/comments/CommentsCard";
 import StatusCard from "../components/common/StatusCard";
+import AdditionalInsights from "../components/results/AdditionalInsights";
 import ResultsCard from "../components/results/ResultsCard";
 import { useResultsFlow } from "../hooks/useResultsFlow";
 
@@ -40,6 +41,7 @@ export default function ResultsPage({ routeAlbumId }) {
       {resultsState === "ready" ? (
         <>
           <ResultsCard payload={resultsPayload} />
+          <AdditionalInsights payload={resultsPayload} />
           <CommentsCard albumId={resultsPayload?.album?.id} />
         </>
       ) : null}
