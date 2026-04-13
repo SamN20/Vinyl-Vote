@@ -256,8 +256,13 @@ def _retro_recommendations_for_user(user_id: int):
         s.album_id for s in AlbumScore.query.filter_by(user_id=user_id).all()
     )
     voted_album_ids = set(
-        v.song.album_id
-        for v in Vote.query.filter_by(user_id=user_id).join(Song).all()
+        album_id
+        for (album_id,) in (
+            Vote.query.filter_by(user_id=user_id)
+            .join(Song)
+            .with_entities(Song.album_id)
+            .all()
+        )
     )
     done_ids = scored_album_ids.union(voted_album_ids)
     unvoted_albums = [a for a in candidates if a.id not in done_ids]
