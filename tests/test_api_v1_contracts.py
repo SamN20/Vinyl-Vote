@@ -253,3 +253,47 @@ def test_results_contract_matches_v1_for_latest_and_album_routes():
 
     with app.app_context():
         db.drop_all()
+
+
+def test_results_exclude_ignored_votes_and_scores_from_summary():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+        songs = Song.query.filter_by(album_id=current_album.id).order_by(Song.track_number.asc()).all()
+        song_a, song_b = songs[0], songs[1]
+
+        db.session.add_all(
+            [
+                Vote(user_id=user_id, song_id=song_a.id, score=5, ignored=False),
+                Vote(user_id=user_id, song_id=song_b.id, score=1, ignored=True),
+                AlbumScore(user_id=user_id, album_id=current_album.id, personal_score=4.0, ignored=False),
+                AlbumScore(user_id=user_id, album_id=current_album.id, personal_score=1.0, ignored=True),
+            ]
+        )
+        db.session.commit()
+
+        target_album_id = current_album.id
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    response = client.get(f"/api/v1/results/album/{target_album_id}")
+    assert response.status_code == 200
+
+    payload = response.get_json()
+    assert payload["summary"]["counted_votes"] == 1
+    assert payload["summary"]["ignored_votes"] == 1
+    assert payload["summary"]["avg_song_score"] == 5.0
+    assert payload["summary"]["avg_album_score"] == 4.0
+
+    song_b_row = next(row for row in payload["songs"] if row["id"] == song_b.id)
+    assert song_b_row["user_score"] is None
+    assert song_b_row["vote_count"] == 0
+
+    with app.app_context():
+        db.drop_all()

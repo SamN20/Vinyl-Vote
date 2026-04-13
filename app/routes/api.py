@@ -17,7 +17,7 @@ def _results_summary_for_album(album: Album):
         user_votes = {
             vote.song_id: vote.score
             for vote in Vote.query.filter_by(user_id=current_user.id)
-            .filter(Vote.song_id.in_(song_ids))
+            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(False))
             .all()
         }
 
@@ -71,6 +71,8 @@ def _results_summary_for_album(album: Album):
     )
 
     vote_distribution = [0, 0, 0, 0, 0]
+    counted_vote_total = 0
+    ignored_vote_total = 0
     if song_ids:
         distribution_rows = (
             db.session.query(Vote.score, func.count(Vote.id))
@@ -81,6 +83,19 @@ def _results_summary_for_album(album: Album):
         for score, bucket_count in distribution_rows:
             if 1 <= score <= 5:
                 vote_distribution[int(score) - 1] += bucket_count
+
+        counted_vote_total = int(
+            db.session.query(func.count(Vote.id))
+            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(False))
+            .scalar()
+            or 0
+        )
+        ignored_vote_total = int(
+            db.session.query(func.count(Vote.id))
+            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(True))
+            .scalar()
+            or 0
+        )
 
     return {
         'album': {
@@ -98,6 +113,8 @@ def _results_summary_for_album(album: Album):
             'avg_album_score': avg_album_score,
             'voter_count': int(voter_count or 0),
             'vote_distribution': vote_distribution,
+            'counted_votes': counted_vote_total,
+            'ignored_votes': ignored_vote_total,
         },
         'songs': song_stats,
     }

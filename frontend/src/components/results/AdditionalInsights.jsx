@@ -83,6 +83,8 @@ export default function AdditionalInsights({ payload }) {
   const songs = payload?.songs || [];
   const distribution = summary.vote_distribution || [0, 0, 0, 0, 0];
   const totalVotes = distribution.reduce((sum, value) => sum + safeNumber(value), 0);
+  const countedVotes = summary.counted_votes;
+  const ignoredVotes = summary.ignored_votes;
   const ignoredSongs = songs.filter((song) => song.ignored).length;
   const countedSongs = Math.max(songs.length - ignoredSongs, 0);
 
@@ -120,12 +122,12 @@ export default function AdditionalInsights({ payload }) {
           <h3>Quick Stats</h3>
           <div className="kpi-grid">
             <article>
-              <p className="kpi-label">Tracks Counted</p>
-              <p className="kpi-value">{countedSongs}</p>
+              <p className="kpi-label">Votes Counted</p>
+              <p className="kpi-value">{countedVotes ?? countedSongs}</p>
             </article>
             <article>
-              <p className="kpi-label">Tracks Ignored</p>
-              <p className="kpi-value">{ignoredSongs}</p>
+              <p className="kpi-label">Votes Ignored</p>
+              <p className="kpi-value">{ignoredVotes ?? ignoredSongs}</p>
             </article>
             <article>
               <p className="kpi-label">Avg Song Score</p>
