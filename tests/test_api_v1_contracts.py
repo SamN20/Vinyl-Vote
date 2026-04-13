@@ -266,6 +266,7 @@ def test_results_exclude_ignored_votes_and_scores_from_summary():
         current_album = Album.query.filter_by(is_current=True).first()
         songs = Song.query.filter_by(album_id=current_album.id).order_by(Song.track_number.asc()).all()
         song_a, song_b = songs[0], songs[1]
+        song_b_id = song_b.id
 
         db.session.add_all(
             [
@@ -291,7 +292,7 @@ def test_results_exclude_ignored_votes_and_scores_from_summary():
     assert payload["summary"]["avg_song_score"] == 5.0
     assert payload["summary"]["avg_album_score"] == 4.0
 
-    song_b_row = next(row for row in payload["songs"] if row["id"] == song_b.id)
+    song_b_row = next(row for row in payload["songs"] if row["id"] == song_b_id)
     assert song_b_row["user_score"] is None
     assert song_b_row["vote_count"] == 0
 

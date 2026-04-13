@@ -42,11 +42,24 @@ export default function ResultsCard({ payload }) {
       <section className="card results-album-card">
         {album.cover_url ? <img src={album.cover_url} alt={`${album.title} cover`} className="results-album-cover" /> : null}
         <div className="results-meta">
+          <p className="results-kicker">Album Recap</p>
           <h2>{album.title || "Weekly Results"}</h2>
-          <p><strong>Artist:</strong> {album.artist || "Unknown"}</p>
-          <p><strong>Average Song Rating:</strong> {formatScore(summary.avg_song_score)} / 5</p>
-          <p><strong>Average Album Score:</strong> {formatScore(summary.avg_album_score)} / 5</p>
-          <p><strong>Total Voters:</strong> {summary.voter_count || 0}</p>
+          <p className="results-artist">{album.artist || "Unknown Artist"}</p>
+
+          <div className="results-kpi-grid">
+            <article className="results-kpi">
+              <p className="kpi-label">Average Song Rating</p>
+              <p className="kpi-value">{formatScore(summary.avg_song_score)} / 5</p>
+            </article>
+            <article className="results-kpi">
+              <p className="kpi-label">Average Album Score</p>
+              <p className="kpi-value">{formatScore(summary.avg_album_score)} / 5</p>
+            </article>
+            <article className="results-kpi">
+              <p className="kpi-label">Total Voters</p>
+              <p className="kpi-value">{summary.voter_count || 0}</p>
+            </article>
+          </div>
         </div>
       </section>
 

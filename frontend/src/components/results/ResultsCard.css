@@ -1,20 +1,73 @@
 .results-album-card {
   display: grid;
   grid-template-columns: minmax(120px, 180px) 1fr;
-  gap: 1rem;
+  gap: 1.2rem;
+  align-items: start;
+  background:
+    radial-gradient(circle at 100% -10%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 44%),
+    var(--card-bg);
 }
 
 .results-album-cover {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--accent) 20%, var(--border-color));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
-.results-meta p {
-  margin: 0.35rem 0;
+.results-meta {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.results-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: color-mix(in oklab, var(--accent) 70%, white 10%);
+}
+
+.results-meta h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.5vw, 2.3rem);
+  line-height: 1.08;
+}
+
+.results-artist {
+  margin: 0;
+  font-size: 1.02rem;
   color: var(--muted);
+}
+
+.results-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.results-kpi {
+  border: 1px solid color-mix(in oklab, var(--accent) 14%, var(--border-color));
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--bg) 76%, var(--card-bg));
+  padding: 0.55rem 0.62rem;
+}
+
+.results-kpi .kpi-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.results-kpi .kpi-value {
+  margin: 0.24rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .results-table-card {
@@ -127,6 +180,10 @@
 
   .results-album-cover {
     max-width: 220px;
+  }
+
+  .results-kpi-grid {
+    grid-template-columns: 1fr;
   }
 }
 
