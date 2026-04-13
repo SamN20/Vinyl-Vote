@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from datetime import timedelta, timezone
 import pytz
+import secrets
 
 from .. import db
 from ..models import User, BattleVote
@@ -311,26 +312,38 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('user.index'))
 
-    # Force KeyN login if configured (for phasing out legacy login)
+    # KeyN is the default auth path during V2 migration.
     if current_app.config.get('FORCE_KEYN_LOGIN'):
         return redirect(url_for('oauth.oauth_login'))
 
+    return _legacy_login_flow()
+
+
+@bp.route('/legacy/login', methods=['GET', 'POST'])
+def legacy_login():
+    if current_user.is_authenticated:
+        return redirect(url_for('user.index'))
+
+    return _legacy_login_flow()
+
+
+def _legacy_login_flow():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and check_password_hash(user.password_hash, form.password.data):
             if user.is_banned:
                 flash("Your account has been banned. Contact an admin.", "error")
-                return redirect(url_for('user.login'))
-            
+                return redirect(url_for('user.legacy_login'))
+
             # Use remember_me for persistent login on mobile
             remember_me = form.remember_me.data
             login_user(user, remember=remember_me)
-            
+
             # Make session permanent if remember me is checked
             if remember_me:
                 session.permanent = True
-                
+
             # record last_login
             user.last_login = datetime.utcnow()
             db.session.commit()
@@ -338,17 +351,79 @@ def login():
 
         flash('Invalid username or password.', 'error')
 
-    return render_template('login.html', form=form, 
-                         force_keyn_login=current_app.config.get('FORCE_KEYN_LOGIN', False))
+    return render_template(
+        'login.html',
+        form=form,
+        legacy_mode=True,
+        force_keyn_login=current_app.config.get('FORCE_KEYN_LOGIN', False),
+    )
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('user.index'))
-    # Optional hard redirect to KeyN if feature flag enabled in config
+
+    # KeyN is the default auth path during V2 migration.
     if current_app.config.get('FORCE_KEYN_REGISTRATION'):
         return redirect(url_for('oauth.oauth_login'))
 
+    return _legacy_register_flow()
+
+
+@bp.route('/legacy/register', methods=['GET', 'POST'])
+def legacy_register():
+    if current_user.is_authenticated:
+        return redirect(url_for('user.index'))
+
+    return _legacy_register_flow()
+
+
+@bp.route('/dev/login', methods=['GET'])
+def dev_login():
+    if not current_app.config.get('DEV_AUTH_BYPASS', False):
+        return "Not Found", 404
+
+    if current_user.is_authenticated:
+        target = request.args.get('next', url_for('user.index'))
+        if isinstance(target, str) and target.startswith('/'):
+            return redirect(target)
+        return redirect(url_for('user.index'))
+
+    configured_default = current_app.config.get('DEV_AUTH_BYPASS_DEFAULT_USERNAME', 'dev-user')
+    username = (request.args.get('username') or configured_default or 'dev-user').strip()
+    username = username[:64] or 'dev-user'
+
+    user = User.query.filter_by(username=username).first()
+    created = False
+
+    if not user:
+        user = User(
+            username=username,
+            password_hash=generate_password_hash(secrets.token_hex(32)),
+            keyn_migrated=False,
+            is_banned=False,
+        )
+        db.session.add(user)
+        created = True
+
+    user.last_login = datetime.utcnow()
+    db.session.commit()
+
+    login_user(user, remember=True)
+    session.permanent = True
+
+    if created:
+        flash(f"Dev login created local user '{username}'.", 'info')
+    else:
+        flash(f"Logged in as local dev user '{username}'.", 'info')
+
+    target = request.args.get('next', '/')
+    if isinstance(target, str) and target.startswith('/'):
+        return redirect(target)
+    return redirect(url_for('user.index'))
+
+
+def _legacy_register_flow():
     form = RegisterForm()
     if form.validate_on_submit():
         existing = User.query.filter_by(username=form.username.data).first()
@@ -362,9 +437,13 @@ def register():
             login_user(user, remember=True)  # Auto-remember for new users
             session.permanent = True
             return redirect(url_for('user.index'))
-    return render_template('register.html', form=form, 
-                         force_keyn=current_app.config.get('FORCE_KEYN_REGISTRATION', False),
-                         force_keyn_login=current_app.config.get('FORCE_KEYN_LOGIN', False))
+    return render_template(
+        'register.html',
+        form=form,
+        legacy_mode=True,
+        force_keyn=current_app.config.get('FORCE_KEYN_REGISTRATION', False),
+        force_keyn_login=current_app.config.get('FORCE_KEYN_LOGIN', False),
+    )
 
 @bp.route('/logout')
 @login_required
@@ -432,9 +511,12 @@ def reset_password_request():
         if not user:
             user = User.query.filter_by(email=form.username.data).first()
         if user:
+            if user.keyn_migrated or user.keyn_id:
+                flash('This account uses KeyN sign-in. Please reset your password through KeyN.', 'info')
+                return redirect(url_for('oauth.oauth_login'))
             if user.email == "NULL":
                 flash("You do not have an email address set. Please contact an admin.", "error")
-                return redirect(url_for('user.login'))
+                return redirect(url_for('user.legacy_login'))
             token = generate_reset_token(user)
             reset_url = url_for('user.reset_password', token=token, _external=True)
             
@@ -486,6 +568,9 @@ def reset_password(token):
     if not user:
         flash('The password reset link is invalid or has expired.', 'error')
         return redirect(url_for('user.reset_password_request'))
+    if user.keyn_migrated or user.keyn_id:
+        flash('This account uses KeyN sign-in. Please reset your password through KeyN.', 'info')
+        return redirect(url_for('oauth.oauth_login'))
     form = ResetPasswordForm()
     if form.validate_on_submit():
         user.password_hash = generate_password_hash(form.password.data)

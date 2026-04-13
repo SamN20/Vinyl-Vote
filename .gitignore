@@ -1,5 +1,6 @@
 *.db
 *.lock
+!poetry.lock
 /temp
 temp/
 

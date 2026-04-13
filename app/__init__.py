@@ -5,12 +5,14 @@ from config import Config
 from flask import render_template
 from datetime import datetime
 from flask_mail import Mail
+from flask_migrate import Migrate
 import fcntl
 import os
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 mail = Mail() 
+migrate = Migrate()
 
 from . import models
 
@@ -27,6 +29,7 @@ def create_app():
         app.config['ASSET_VERSION'] = '1'
 
     db.init_app(app)
+    migrate.init_app(app, db)
     login_manager.init_app(app)
     mail.init_app(app)
 
@@ -77,72 +80,76 @@ def create_app():
     app.register_blueprint(user.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(api.bp)
+    app.register_blueprint(api.bp_v1)
     app.register_blueprint(comments.bp)
     app.register_blueprint(battle.bp)
     # OAuth blueprint for KeyN integration
     from .oauth import bp_oauth
     app.register_blueprint(bp_oauth)
 
-    from .scheduler import scheduler, set_app, weekly_rollover_job, remind_unvoted_users, cleanup_vote_cards_job
-    set_app(app)
+    if app.config.get('ENABLE_SCHEDULER', True):
+        from .scheduler import scheduler, set_app, weekly_rollover_job, remind_unvoted_users, cleanup_vote_cards_job
+        set_app(app)
 
-    # Start APScheduler with DB jobstore, timezone and a single-process lock to prevent duplicates
-    lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scheduler.lock')
-    lock_file_path = os.path.abspath(lock_file_path)
-    # Keep a reference on the app object to avoid GC releasing the lock
-    app._SCHEDULER_LOCK_HANDLE = None  # type: ignore[attr-defined]
-    try:
-        # Create/open the lock file and try to acquire an exclusive non-blocking lock
-        app._SCHEDULER_LOCK_HANDLE = open(lock_file_path, 'w')  # type: ignore[attr-defined]
-        fcntl.flock(app._SCHEDULER_LOCK_HANDLE, fcntl.LOCK_EX | fcntl.LOCK_NB)  # type: ignore[arg-type]
-
+        # Start APScheduler with DB jobstore, timezone and a single-process lock to prevent duplicates
+        lock_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scheduler.lock')
+        lock_file_path = os.path.abspath(lock_file_path)
+        # Keep a reference on the app object to avoid GC releasing the lock
+        app._SCHEDULER_LOCK_HANDLE = None  # type: ignore[attr-defined]
         try:
-            # Ensure jobstore exists before adding jobs
-            scheduler.add_jobstore('sqlalchemy', url=app.config['SQLALCHEMY_DATABASE_URI'], alias='default')
+            # Create/open the lock file and try to acquire an exclusive non-blocking lock
+            app._SCHEDULER_LOCK_HANDLE = open(lock_file_path, 'w')  # type: ignore[attr-defined]
+            fcntl.flock(app._SCHEDULER_LOCK_HANDLE, fcntl.LOCK_EX | fcntl.LOCK_NB)  # type: ignore[arg-type]
 
-            # Single weekly rollover job: Monday 00:01 Toronto time
-            scheduler.add_job(
-                weekly_rollover_job,
-                trigger='cron',
-                day_of_week='mon', hour=0, minute=1,
-                id='weekly-rollover',
-                replace_existing=True,
-                max_instances=1,
-                coalesce=True,
-            )
+            try:
+                # Ensure jobstore exists before adding jobs
+                scheduler.add_jobstore('sqlalchemy', url=app.config['SQLALCHEMY_DATABASE_URI'], alias='default')
 
-            # Daily vote reminders check (logic inside function handles Thu/Sat/Sun check)
-            # Run at 8:00 AM Toronto time so Nolofication can queue it for user's preferred time (default 18:00)
-            scheduler.add_job(
-                remind_unvoted_users,
-                trigger='cron',
-                hour=8, minute=0,
-                id='vote-reminders',
-                replace_existing=True,
-                max_instances=1,
-                coalesce=True,
-            )
+                # Single weekly rollover job: Monday 00:01 Toronto time
+                scheduler.add_job(
+                    weekly_rollover_job,
+                    trigger='cron',
+                    day_of_week='mon', hour=0, minute=1,
+                    id='weekly-rollover',
+                    replace_existing=True,
+                    max_instances=1,
+                    coalesce=True,
+                )
 
-            # Vote card cleanup: run every 6 hours to delete cards older than 24 hours
-            scheduler.add_job(
-                cleanup_vote_cards_job,
-                trigger='cron',
-                hour='*/6',  # Every 6 hours
-                id='vote-card-cleanup',
-                replace_existing=True,
-                max_instances=1,
-                coalesce=True,
-            )
+                # Daily vote reminders check (logic inside function handles Thu/Sat/Sun check)
+                # Run at 8:00 AM Toronto time so Nolofication can queue it for user's preferred time (default 18:00)
+                scheduler.add_job(
+                    remind_unvoted_users,
+                    trigger='cron',
+                    hour=8, minute=0,
+                    id='vote-reminders',
+                    replace_existing=True,
+                    max_instances=1,
+                    coalesce=True,
+                )
 
-            scheduler.start()
-            app.logger.info("✅ Scheduler started (with lock and DB jobstore).")
+                # Vote card cleanup: run every 6 hours to delete cards older than 24 hours
+                scheduler.add_job(
+                    cleanup_vote_cards_job,
+                    trigger='cron',
+                    hour='*/6',  # Every 6 hours
+                    id='vote-card-cleanup',
+                    replace_existing=True,
+                    max_instances=1,
+                    coalesce=True,
+                )
+
+                scheduler.start()
+                app.logger.info("✅ Scheduler started (with lock and DB jobstore).")
+            except Exception as e:
+                app.logger.error(f"Failed to start scheduler: {e}")
+        except BlockingIOError:
+            # Another process holds the lock; do not start another scheduler instance
+            app.logger.info("⏭️ Scheduler not started in this process (lock held by another instance).")
         except Exception as e:
-            app.logger.error(f"Failed to start scheduler: {e}")
-    except BlockingIOError:
-        # Another process holds the lock; do not start another scheduler instance
-        app.logger.info("⏭️ Scheduler not started in this process (lock held by another instance).")
-    except Exception as e:
-        app.logger.error(f"Scheduler lock/setup error: {e}")
+            app.logger.error(f"Scheduler lock/setup error: {e}")
+    else:
+        app.logger.info("Scheduler disabled by ENABLE_SCHEDULER configuration.")
 
     from .models import Notification
 

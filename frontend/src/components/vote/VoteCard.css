@@ -1,0 +1,385 @@
+.vote-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.vote-card {
+  overflow-x: hidden;
+}
+.vpf-bar {
+  height: 6px;
+  background: var(--input-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.vpf-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0;
+  border-radius: inherit;
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1), filter 220ms ease;
+}
+
+.vpf-bar.complete .vpf-fill {
+  filter: saturate(1.2) brightness(1.06);
+}
+
+.vpf-complete-text {
+  color: color-mix(in oklab, var(--accent) 78%, var(--muted));
+  font-weight: 700;
+}
+
+.vote-end {
+  margin: 0;
+  color: var(--muted);
+}
+
+.album-panel {
+  display: grid;
+  grid-template-columns: minmax(120px, 170px) 1fr;
+  gap: 1rem;
+  padding: 0.9rem;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.artist,
+.meta {
+  margin: 0.2rem 0;
+  color: var(--muted);
+}
+
+.pip-action-row {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  background: rgba(29, 185, 84, 0.16);
+  color: var(--accent);
+  border: 1px solid rgba(29, 185, 84, 0.35);
+  border-radius: 999px;
+  padding: 0.24rem 0.55rem;
+  font-size: 0.82rem;
+}
+
+.vote-form {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding-bottom: 14px;
+}
+
+.lazy-toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 10px 12px;
+}
+
+.lazy-toggle-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lazy-checkbox {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  background: var(--input-bg);
+  flex: 0 0 auto;
+}
+
+.lazy-toggle-row.active {
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--border-color));
+}
+
+.lazy-toggle-row.active .lazy-checkbox {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tracks-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.track-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.track-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.track-row .score-input {
+  width: 96px;
+  justify-self: end;
+}
+
+.track-row.lazy {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.lazy-stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: end;
+  max-width: none;
+  overflow: visible;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+
+.star-btn,
+.half-btn {
+  border: 1px solid var(--border-color);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 6px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0.2rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.star-btn.active,
+.half-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.half-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.score-input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.48rem 0.5rem;
+  font-size: 0.95rem;
+}
+
+.score-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.album-score-row {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.album-score-row.lazy {
+  grid-template-columns: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.album-score-row.lazy .lazy-stars {
+  justify-self: end;
+}
+
+.vote-status {
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  background: var(--bg);
+}
+
+.vote-status.voted {
+  color: var(--success-color);
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.vote-status.unsaved {
+  color: #d69a00;
+  border-color: rgba(214, 154, 0, 0.45);
+}
+
+.vote-status.not-voted {
+  color: var(--muted);
+}
+
+.post-vote-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.vote-progress-footer {
+  background: color-mix(in oklab, var(--card-bg) 94%, transparent);
+  border-top: 1px solid var(--border-color);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 1000;
+  backdrop-filter: blur(6px);
+  box-sizing: border-box;
+  transition: opacity 180ms ease, transform 220ms ease, box-shadow 220ms ease;
+}
+
+.vote-progress-footer.fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.vote-progress-footer.fixed.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.vote-progress-footer.fixed.is-hidden {
+  opacity: 0;
+  transform: translateY(24px);
+  pointer-events: none;
+}
+
+.vote-progress-footer.in-flow {
+  position: relative;
+  margin-top: 10px;
+  margin-bottom: 2px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--card-bg) 90%, transparent);
+}
+
+.vote-progress-footer.in-flow.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.vote-progress-footer.in-flow.is-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  max-height: 0;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-width: 0;
+  pointer-events: none;
+}
+
+.vpf-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.vote-form.with-fixed-footer {
+  margin-bottom: 58px;
+}
+
+.vote-form.with-inline-footer {
+  margin-bottom: 6px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vpf-fill,
+  .vote-progress-footer {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .album-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .track-row,
+  .album-score-row {
+    grid-template-columns: 1fr;
+  }
+
+  .album-score-row.lazy {
+    grid-template-columns: 1fr;
+  }
+
+  .lazy-stars {
+    margin-top: 2px;
+    justify-self: start;
+  }
+
+  .track-row .score-input {
+    width: 100%;
+  }
+
+  .vote-progress-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

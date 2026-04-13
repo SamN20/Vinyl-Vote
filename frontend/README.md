@@ -2,6 +2,13 @@
 
 React + Vite frontend for Vinyl Vote V2.
 
+## Current Migration Scope
+
+- KeyN-aware session bootstrap using `/api/v1/session-check`
+- Current album fetch via `/api/v1/current-album`
+- Vote submit flow via `/api/v1/votes`
+- Legacy login fallback link for transition users
+
 ## Commands
 
 ```bash
@@ -13,7 +20,18 @@ npm run preview
 
 ## Dev Integration
 
-By default, frontend requests `/api/*` from the same host.
+By default, Vite proxies backend routes to `http://127.0.0.1:5000` for local dev:
 
-If running frontend and backend separately, use a Vite proxy or environment
-variables in a future step.
+- `/api/*`
+- `/oauth/*`
+- `/login`
+- `/register`
+- `/legacy/*`
+
+You can also set `VITE_API_BASE_URL` to point to a separate backend host.
+
+Example:
+
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:5000 npm run dev
+```

@@ -22,7 +22,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 cp .env.example .env
-python db_create.py
+flask --app run.py db upgrade
+```
+
+Poetry setup (optional):
+
+```bash
+poetry install
+cp .env.example .env
+poetry run flask --app run.py db upgrade
 ```
 
 Run locally:
@@ -71,6 +79,14 @@ React SPA work is being added incrementally.
 - Keep backend API changes backward-compatible where possible.
 - Add tests for new API contracts.
 - Document endpoint changes in PR descriptions.
+
+## Auth Migration Notes
+
+- V2 now defaults to KeyN-first auth (`/login` and `/register` redirect to KeyN by default).
+- Legacy form routes are still available for transition/testing:
+  - `/legacy/login`
+  - `/legacy/register`
+- Keep auth changes backward-compatible and include route-level tests in PRs.
 
 ## Security
 

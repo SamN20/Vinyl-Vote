@@ -20,6 +20,7 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = 'Lax'  # Better for mobile web apps
     SESSION_COOKIE_SAMESITE = 'Lax'   # Better for mobile web apps
+    ENABLE_SCHEDULER = os.getenv('ENABLE_SCHEDULER', 'True').lower() == 'true'
 
     SPOTIPY_CLIENT_ID = os.getenv('SPOTIPY_CLIENT_ID')
     SPOTIPY_CLIENT_SECRET = os.getenv('SPOTIPY_CLIENT_SECRET')
@@ -57,9 +58,12 @@ class Config:
     # Comma separated default scopes to request
     KEYN_DEFAULT_SCOPES = os.getenv('KEYN_DEFAULT_SCOPES', 'id,username,email,display_name,is_verified')
     # If True, /register will redirect immediately to KeyN OAuth
-    FORCE_KEYN_REGISTRATION = os.environ.get('FORCE_KEYN_REGISTRATION', 'false').lower() in ('1','true','yes')
+    FORCE_KEYN_REGISTRATION = os.environ.get('FORCE_KEYN_REGISTRATION', 'true').lower() in ('1','true','yes')
     # If True, /login will redirect immediately to KeyN OAuth (phase out legacy login)
-    FORCE_KEYN_LOGIN = os.environ.get('FORCE_KEYN_LOGIN', 'false').lower() in ('1','true','yes')
+    FORCE_KEYN_LOGIN = os.environ.get('FORCE_KEYN_LOGIN', 'true').lower() in ('1','true','yes')
+    # Dev-only local auth bypass (never enable in production)
+    DEV_AUTH_BYPASS = os.environ.get('DEV_AUTH_BYPASS', 'false').lower() in ('1', 'true', 'yes')
+    DEV_AUTH_BYPASS_DEFAULT_USERNAME = os.environ.get('DEV_AUTH_BYPASS_DEFAULT_USERNAME', 'dev-user')
 
     # --- Nolofication settings ---
     NOLOFICATION_URL = os.getenv('NOLOFICATION_URL', 'https://nolofication.bynolo.ca')

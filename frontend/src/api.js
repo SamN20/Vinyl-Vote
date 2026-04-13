@@ -1,0 +1,142 @@
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const LEGACY_BASE_URL = (
+  import.meta.env.VITE_LEGACY_BASE_URL || (import.meta.env.DEV ? "http://127.0.0.1:5000" : "")
+).replace(/\/$/, "");
+
+function buildUrl(path) {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  return `${API_BASE_URL}${path}`;
+}
+
+function formatErrorMessage(path, status, payload) {
+  if (payload && typeof payload === "object" && payload.error) {
+    return payload.error;
+  }
+
+  if (typeof payload === "string" && payload.trim()) {
+    return payload;
+  }
+
+  return `Request to ${path} failed (${status})`;
+}
+
+async function request(path, options = {}) {
+  const response = await fetch(buildUrl(path), {
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  let payload;
+
+  if (contentType.includes("application/json")) {
+    payload = await response.json();
+  } else {
+    payload = await response.text();
+  }
+
+  if (!response.ok) {
+    const error = new Error(formatErrorMessage(path, response.status, payload));
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+
+  if (!contentType.includes("application/json")) {
+    const error = new Error(`Expected JSON response from ${path}`);
+    error.status = 500;
+    error.payload = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
+export function sessionCheck() {
+  return request("/api/v1/session-check");
+}
+
+export function getCurrentAlbum() {
+  return request("/api/v1/current-album");
+}
+
+export function submitVotes(payload) {
+  return request("/api/v1/votes", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getRetroAlbums() {
+  return request("/api/v1/retro-albums");
+}
+
+export function getRetroRecommendations() {
+  return request("/api/v1/retro-recommendations");
+}
+
+export function getRetroAlbum(albumId) {
+  return request(`/api/v1/retro-album/${albumId}`);
+}
+
+export function submitRetroVotes(albumId, payload) {
+  return request(`/api/v1/retro-votes/${albumId}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAlbumComments(albumId) {
+  return request(`/api/comments/${albumId}`);
+}
+
+export function postAlbumComment(albumId, text, parentId = null) {
+  return request(`/api/comments/${albumId}`, {
+    method: "POST",
+    body: JSON.stringify({ text, parent_id: parentId }),
+  });
+}
+
+export function deleteAlbumComment(commentId) {
+  return request(`/api/comments/${commentId}`, {
+    method: "DELETE",
+  });
+}
+
+export function flagAlbumComment(commentId) {
+  return request(`/api/comments/${commentId}/flag`, {
+    method: "POST",
+  });
+}
+
+export function oauthLoginHref() {
+  return buildUrl("/oauth/login");
+}
+
+export function legacyLoginHref() {
+  return buildUrl("/legacy/login");
+}
+
+export function devLoginHref(username = "") {
+  const query = new URLSearchParams();
+  query.set("next", "/");
+  if (username) {
+    query.set("username", username);
+  }
+  return `${buildUrl("/dev/login")}?${query.toString()}`;
+}
+
+export function legacyPageHref(path) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (!LEGACY_BASE_URL) {
+    return normalizedPath;
+  }
+  return `${LEGACY_BASE_URL}${normalizedPath}`;
+}

@@ -35,8 +35,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 python generate_vapid_keys.py
-python db_create.py
+flask --app run.py db upgrade
 python run.py
+```
+
+For first-time local bootstrap on existing databases, `python db_create.py` is still available.
+
+### Poetry Setup (Optional, recommended for V2)
+
+```bash
+poetry install
+cp .env.example .env
+poetry run flask --app run.py db upgrade
+poetry run python run.py
 ```
 
 The app runs at `http://127.0.0.1:5000`.
@@ -59,6 +70,15 @@ With virtualenv active:
 make dev
 make test
 make lint
+```
+
+Using Poetry:
+
+```bash
+make poetry-install
+make poetry-dev
+make poetry-test
+make poetry-lint
 ```
 
 ## Project Layout
@@ -95,6 +115,17 @@ KEYN_CLIENT_SECRET=your_client_secret
 KEYN_CLIENT_REDIRECT=http://127.0.0.1:5000/oauth/callback
 KEYN_DEFAULT_SCOPES=id,username,email,display_name,is_verified
 ```
+
+Auth defaults in V2 migration:
+
+- `FORCE_KEYN_LOGIN=true` (default)
+- `FORCE_KEYN_REGISTRATION=true` (default)
+
+This makes `/login` and `/register` KeyN-first by default.
+Legacy fallback routes remain available during migration:
+
+- `/legacy/login`
+- `/legacy/register`
 
 Migration helper:
 

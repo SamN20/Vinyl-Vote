@@ -1,0 +1,105 @@
+.comments-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.comments-header h2 {
+  margin: 0;
+}
+
+.comment-form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.reply-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0.5rem 0.6rem;
+  color: var(--muted);
+}
+
+.comment-input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.65rem;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.comment-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.comment-thread {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.comment-thread.depth-1,
+.comment-thread.depth-2,
+.comment-thread.depth-3 {
+  margin-left: 1rem;
+}
+
+.comment-item {
+  border: 1px solid var(--border-color);
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 0.7rem;
+}
+
+.comment-item.reply {
+  border-left: 3px solid color-mix(in oklab, var(--accent) 55%, var(--border-color));
+}
+
+.comment-item p {
+  margin: 0.45rem 0;
+}
+
+.comment-replying-to {
+  margin: 0.2rem 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.comment-actions .btn {
+  padding: 0.35rem 0.55rem;
+}
+
+@media (max-width: 900px) {
+  .comment-thread.depth-1,
+  .comment-thread.depth-2,
+  .comment-thread.depth-3 {
+    margin-left: 0.6rem;
+  }
+
+  .reply-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
