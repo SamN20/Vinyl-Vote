@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Flask
 
 from app import db, login_manager
-from app.models import Album, Song, User, VotePeriod
+from app.models import Album, AlbumScore, Song, User, Vote, VotePeriod
 from app.routes import api
 
 
@@ -189,6 +189,67 @@ def test_v1_session_check_allows_configured_cors_origin():
 
     assert preflight.status_code == 204
     assert preflight.headers.get("Access-Control-Allow-Methods") == "GET"
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_results_contract_matches_v1_for_latest_and_album_routes():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+        current_album.is_current = False
+
+        previous = Album(
+            title="Previous Album",
+            artist="Previous Artist",
+            is_current=False,
+            queue_order=9,
+        )
+        db.session.add(previous)
+        db.session.flush()
+
+        song_a = Song(album_id=previous.id, title="Old Track A", track_number=1)
+        song_b = Song(album_id=previous.id, title="Old Track B", track_number=2)
+        db.session.add_all([song_a, song_b])
+        db.session.flush()
+
+        current_album.queue_order = 10
+        current_album.is_current = True
+
+        db.session.add_all(
+            [
+                Vote(user_id=user_id, song_id=song_a.id, score=4),
+                Vote(user_id=user_id, song_id=song_b.id, score=5),
+                AlbumScore(user_id=user_id, album_id=previous.id, personal_score=4.5),
+            ]
+        )
+        db.session.commit()
+
+        previous_id = previous.id
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy_latest = client.get("/api/results/latest")
+    v1_latest = client.get("/api/v1/results/latest")
+
+    assert legacy_latest.status_code == 200
+    assert v1_latest.status_code == 200
+    assert v1_latest.get_json() == legacy_latest.get_json()
+    assert set(v1_latest.get_json().keys()) == {"album", "summary", "songs"}
+
+    legacy_album = client.get(f"/api/results/album/{previous_id}")
+    v1_album = client.get(f"/api/v1/results/album/{previous_id}")
+
+    assert legacy_album.status_code == 200
+    assert v1_album.status_code == 200
+    assert v1_album.get_json() == legacy_album.get_json()
 
     with app.app_context():
         db.drop_all()

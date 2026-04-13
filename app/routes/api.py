@@ -9,6 +9,116 @@ from ..models import Album, Vote, AlbumScore, VotePeriod, Song
 bp = Blueprint('api', __name__, url_prefix='/api')
 bp_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 
+
+def _results_summary_for_album(album: Album):
+    song_ids = [song.id for song in album.songs]
+    user_votes = {}
+    if current_user.is_authenticated and song_ids:
+        user_votes = {
+            vote.song_id: vote.score
+            for vote in Vote.query.filter_by(user_id=current_user.id)
+            .filter(Vote.song_id.in_(song_ids))
+            .all()
+        }
+
+    song_stats = []
+    for song in sorted(album.songs, key=lambda s: s.track_number or 0):
+        avg = db.session.query(func.avg(Vote.score)).filter_by(song_id=song.id, ignored=False).scalar()
+        count = db.session.query(func.count(Vote.id)).filter_by(song_id=song.id, ignored=False).scalar()
+
+        distribution = [0, 0, 0, 0, 0]
+        rows = (
+            db.session.query(Vote.score, func.count(Vote.id))
+            .filter_by(song_id=song.id, ignored=False)
+            .group_by(Vote.score)
+            .all()
+        )
+        for score, bucket_count in rows:
+            if 1 <= score <= 5:
+                distribution[int(score) - 1] += bucket_count
+
+        song_stats.append(
+            {
+                'id': song.id,
+                'track_number': song.track_number,
+                'title': song.title,
+                'avg_score': round(float(avg), 2) if avg is not None else None,
+                'vote_count': int(count or 0),
+                'user_score': user_votes.get(song.id),
+                'distribution': distribution,
+                'ignored': bool(song.ignored),
+            }
+        )
+
+    avg_song_score = None
+    if song_ids:
+        raw_song_avg = db.session.query(func.avg(Vote.score)).filter(
+            Vote.song_id.in_(song_ids),
+            Vote.ignored.is_(False),
+        ).scalar()
+        avg_song_score = round(float(raw_song_avg), 2) if raw_song_avg is not None else None
+
+    raw_album_avg = db.session.query(func.avg(AlbumScore.personal_score)).filter_by(
+        album_id=album.id,
+        ignored=False,
+    ).scalar()
+    avg_album_score = round(float(raw_album_avg), 2) if raw_album_avg is not None else None
+
+    voter_count = (
+        db.session.query(func.count(func.distinct(AlbumScore.user_id)))
+        .filter_by(album_id=album.id, ignored=False)
+        .scalar()
+    )
+
+    vote_distribution = [0, 0, 0, 0, 0]
+    if song_ids:
+        distribution_rows = (
+            db.session.query(Vote.score, func.count(Vote.id))
+            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(False))
+            .group_by(Vote.score)
+            .all()
+        )
+        for score, bucket_count in distribution_rows:
+            if 1 <= score <= 5:
+                vote_distribution[int(score) - 1] += bucket_count
+
+    return {
+        'album': {
+            'id': album.id,
+            'title': album.title,
+            'artist': album.artist,
+            'release_date': album.release_date,
+            'cover_url': album.cover_url,
+            'spotify_url': album.spotify_url,
+            'apple_url': album.apple_url,
+            'youtube_url': album.youtube_url,
+        },
+        'summary': {
+            'avg_song_score': avg_song_score,
+            'avg_album_score': avg_album_score,
+            'voter_count': int(voter_count or 0),
+            'vote_distribution': vote_distribution,
+        },
+        'songs': song_stats,
+    }
+
+
+def _latest_results_album():
+    current = Album.query.filter_by(is_current=True).first()
+    if not current:
+        return None, 'No current album is set.'
+
+    previous = (
+        Album.query.options(joinedload(Album.songs))
+        .filter(Album.queue_order < current.queue_order, Album.queue_order > 0)
+        .order_by(Album.queue_order.desc())
+        .first()
+    )
+    if not previous:
+        return None, 'No previous album is available yet.'
+
+    return previous, None
+
 def _allowed_origin(origin: str) -> bool:
     """Return True if the request origin is allowed to receive CORS headers."""
     if not origin:
@@ -219,6 +329,26 @@ def submit_votes():
     payload['user']['has_voted'] = bool(personal_score) and len(votes) == len(album.songs)
 
     return jsonify(payload)
+
+
+@bp.route('/results/latest', methods=['GET'])
+@bp_v1.route('/results/latest', methods=['GET'])
+def get_latest_results():
+    album, error = _latest_results_album()
+    if not album:
+        return jsonify({'error': error}), 404
+
+    return jsonify(_results_summary_for_album(album))
+
+
+@bp.route('/results/album/<int:album_id>', methods=['GET'])
+@bp_v1.route('/results/album/<int:album_id>', methods=['GET'])
+def get_results_for_album(album_id):
+    album = Album.query.options(joinedload(Album.songs)).get(album_id)
+    if not album:
+        return jsonify({'error': 'Album not found.'}), 404
+
+    return jsonify(_results_summary_for_album(album))
 
 
 # -------- Retro voting endpoints --------

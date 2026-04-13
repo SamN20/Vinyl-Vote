@@ -130,7 +130,7 @@ export default function Header({
                 Data <ChevronDownIcon className="icon-right" />
               </button>
               <div className="dropdown-content">
-                <a href={legacyPageHref("/results")} onClick={closeMobileOverlays}>Weekly Results</a>
+                <a href="#/results" className={route === "/results" ? "active" : ""} onClick={closeMobileOverlays}>Weekly Results</a>
                 <div className="dropdown-divider" />
                 <a href={legacyPageHref("/top_albums")} onClick={closeMobileOverlays}>Top Albums</a>
                 <a href={legacyPageHref("/top_artists")} onClick={closeMobileOverlays}>Top Artists</a>

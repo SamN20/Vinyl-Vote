@@ -93,6 +93,14 @@ export function submitRetroVotes(albumId, payload) {
   });
 }
 
+export function getLatestResults() {
+  return request("/api/v1/results/latest");
+}
+
+export function getResultsForAlbum(albumId) {
+  return request(`/api/v1/results/album/${albumId}`);
+}
+
 export function getAlbumComments(albumId) {
   return request(`/api/comments/${albumId}`);
 }

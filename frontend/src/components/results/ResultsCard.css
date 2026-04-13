@@ -1,0 +1,137 @@
+.results-album-card {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  gap: 1rem;
+}
+
+.results-album-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.results-meta p {
+  margin: 0.35rem 0;
+  color: var(--muted);
+}
+
+.results-table-card {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.results-table-wrapper {
+  overflow-x: auto;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.results-table th,
+.results-table td {
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.results-song-title {
+  min-width: 180px;
+}
+
+.song-rating-badge,
+.user-rating-badge {
+  display: inline-block;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--accent) 50%, var(--border-color));
+  padding: 0.1rem 0.5rem;
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  color: var(--text);
+  font-weight: 700;
+  min-width: 3.3rem;
+  text-align: center;
+}
+
+.muted-label {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.spark-col {
+  width: 116px;
+}
+
+.sparkline {
+  height: 26px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: end;
+  gap: 3px;
+}
+
+.spark-bar {
+  border-radius: 4px 4px 0 0;
+  border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--border-color));
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.ignored-song-row {
+  opacity: 0.6;
+  background: rgba(231, 76, 60, 0.07);
+}
+
+.ignored-badge {
+  display: inline-block;
+  margin-left: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(231, 76, 60, 0.28);
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ff9c93;
+  background: rgba(231, 76, 60, 0.12);
+}
+
+.delta-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-color);
+}
+
+.delta-badge.pos {
+  color: #9ee9a4;
+  background: rgba(100, 200, 120, 0.12);
+}
+
+.delta-badge.neg {
+  color: #ff8b7e;
+  background: rgba(231, 76, 60, 0.12);
+}
+
+.delta-badge.neutral {
+  color: var(--muted);
+  background: var(--input-bg);
+}
+
+@media (max-width: 900px) {
+  .results-album-card {
+    grid-template-columns: 1fr;
+  }
+
+  .results-album-cover {
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 760px) {
+  .spark-col {
+    display: none;
+  }
+}
