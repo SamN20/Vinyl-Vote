@@ -247,10 +247,14 @@ def _retro_recommendations_for_user(user_id: int):
     if not current:
         return []
 
-    candidates = Album.query.filter(
-        Album.queue_order < current.queue_order,
-        Album.queue_order > 0,
-    ).all()
+    candidates = (
+        Album.query.options(joinedload(Album.songs))
+        .filter(
+            Album.queue_order < current.queue_order,
+            Album.queue_order > 0,
+        )
+        .all()
+    )
 
     scored_album_ids = set(
         s.album_id for s in AlbumScore.query.filter_by(user_id=user_id).all()
