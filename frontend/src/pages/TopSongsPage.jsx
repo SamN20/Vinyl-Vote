@@ -168,7 +168,7 @@ export default function TopSongsPage() {
         </label>
 
         <label className="toolbar-filter-field">
-          <span className="toolbar-filter-label">Sort By</span>
+          {/* <span className="toolbar-filter-label">Sort By</span> */}
           <select
             className="toolbar-filter-select"
             value={sortDraft}

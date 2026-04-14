@@ -287,14 +287,21 @@
   min-width: 0;
 }
 
+.faceoff-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .faceoff-links-wrap .streaming-links {
   margin-top: 0.3rem;
   gap: 6px;
 }
 
-.faceoff-links-wrap .stream-btn {
-  padding: 0.34rem 0.52rem;
-  font-size: 0.82rem;
+.faceoff-links-wrap .streaming-links.compact .stream-btn {
+  width: 31px;
+  height: 31px;
 }
 
 .song-title {
@@ -305,8 +312,11 @@
 
 .user-vote-chip {
   display: inline-block;
-  margin-top: 0.2rem;
-  margin-bottom: 0.25rem;
+  justify-self: start;
+  width: fit-content;
+  max-width: max-content;
+  white-space: nowrap;
+  margin: 0;
   border-radius: 999px;
   border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-color));
   background: color-mix(in oklab, var(--accent) 13%, transparent);

@@ -98,15 +98,18 @@ export default function FaceoffLeaderboardPage() {
               />
             ) : null}
             <div className="faceoff-song-meta">
-              <p className="song-title">{row.title}</p>
-              {row.user_winner_count > 0 ? (
-                <span className="user-vote-chip">Voted {row.user_winner_count}x</span>
-              ) : null}
+              <div className="faceoff-title-row">
+                <p className="song-title">{row.title}</p>
+                {row.user_winner_count > 0 ? (
+                  <span className="user-vote-chip">Voted {row.user_winner_count}x</span>
+                ) : null}
+              </div>
               <div className="faceoff-links-wrap">
                 <StreamingLinks
                   spotifyUrl={row.spotify_url}
                   appleUrl={row.apple_url}
                   youtubeUrl={row.youtube_url}
+                  mode="icons"
                 />
               </div>
             </div>
@@ -167,7 +170,7 @@ export default function FaceoffLeaderboardPage() {
         searchPlaceholder="Search song, artist, or album"
       >
         <label className="toolbar-filter-field">
-          <span className="toolbar-filter-label">Sort By</span>
+          {/* <span className="toolbar-filter-label">Sort By</span> */}
           <select
             className="toolbar-filter-select"
             value={sortDraft}

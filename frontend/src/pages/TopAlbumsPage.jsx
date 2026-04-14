@@ -144,7 +144,7 @@ export default function TopAlbumsPage() {
         searchPlaceholder="Search albums or artists"
       >
         <label className="toolbar-filter-field">
-          <span className="toolbar-filter-label">Sort By</span>
+          {/* <span className="toolbar-filter-label">Sort By</span> */}
           <select
             className="toolbar-filter-select"
             value={sortDraft}
