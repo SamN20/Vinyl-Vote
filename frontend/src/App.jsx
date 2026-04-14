@@ -5,6 +5,7 @@ import StatusCard from "./components/common/StatusCard";
 import Header from "./components/layout/Header";
 import RetroVoteCard from "./components/retro/RetroVoteCard";
 import VoteCard from "./components/vote/VoteCard";
+import ResultsPage from "./pages/ResultsPage";
 import RetroHubPage from "./pages/RetroHubPage";
 import RetroVotePage from "./pages/RetroVotePage";
 import { useRetroVotingFlow } from "./hooks/useRetroVotingFlow";
@@ -22,6 +23,11 @@ function parseHashRoute(hash) {
   const retroVoteMatch = normalized.match(/^\/retro-vote\/(\d+)$/);
   if (retroVoteMatch) {
     return { page: "/retro-vote", albumId: retroVoteMatch[1] };
+  }
+
+  const resultsMatch = normalized.match(/^\/results(?:\/(\d+))?$/);
+  if (resultsMatch) {
+    return { page: "/results", albumId: resultsMatch[1] || null };
   }
 
   if (normalized === "/retro-hub") {
@@ -92,7 +98,7 @@ function App() {
       />
 
       <main className="page">
-        {route.page !== "/retro-hub" && route.page !== "/retro-vote" ? (
+        {route.page === "/vote" ? (
           <section className="hero">
             <p className="eyebrow">Vinyl Vote V2</p>
             <h1>Vote Flow Migration</h1>
@@ -116,12 +122,18 @@ function App() {
         ) : null}
 
         {sessionState === "anonymous" ? (
-          <AuthCard
-            devLoginUsername={devLoginUsername}
-            legacyLoginHref={legacyLoginHref()}
-            loginHref={oauthLoginHref()}
-            showDevLogin={showDevLogin}
-          />
+          route.page === "/results" ? null : (
+            <AuthCard
+              devLoginUsername={devLoginUsername}
+              legacyLoginHref={legacyLoginHref()}
+              loginHref={oauthLoginHref()}
+              showDevLogin={showDevLogin}
+            />
+          )
+        ) : null}
+
+        {route.page === "/results" && sessionState !== "loading" && sessionState !== "error" ? (
+          <ResultsPage routeAlbumId={route.albumId} />
         ) : null}
 
         {sessionState === "authenticated" && route.page === "/vote" ? (
