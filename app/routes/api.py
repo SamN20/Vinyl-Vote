@@ -714,96 +714,119 @@ def get_leaderboard_albums():
     sort_by = request.args.get('sort_by', 'avg_song_score', type=str)
     sort_dir = request.args.get('sort_dir', 'desc', type=str).lower()
 
-    albums = (
-        Album.query.options(joinedload(Album.songs))
+    vote_agg = (
+        db.session.query(
+            Song.album_id.label('album_id'),
+            func.avg(Vote.score).label('avg_song_score'),
+            func.count(Vote.id).label('vote_count'),
+        )
+        .join(Vote, Vote.song_id == Song.id)
+        .filter(Vote.ignored.is_(False))
+        .group_by(Song.album_id)
+        .subquery()
+    )
+
+    album_score_agg = (
+        db.session.query(
+            AlbumScore.album_id.label('album_id'),
+            func.avg(AlbumScore.personal_score).label('avg_album_score'),
+            func.count(AlbumScore.id).label('album_score_count'),
+        )
+        .filter(AlbumScore.ignored.is_(False))
+        .group_by(AlbumScore.album_id)
+        .subquery()
+    )
+
+    song_count_agg = (
+        db.session.query(
+            Song.album_id.label('album_id'),
+            func.count(Song.id).label('song_count'),
+        )
+        .group_by(Song.album_id)
+        .subquery()
+    )
+
+    base = (
+        db.session.query(
+            Album.id.label('album_id'),
+            Album.title.label('album_title'),
+            Album.artist.label('album_artist'),
+            Album.release_date.label('release_date'),
+            Album.cover_url.label('cover_url'),
+            vote_agg.c.avg_song_score,
+            vote_agg.c.vote_count,
+            album_score_agg.c.avg_album_score,
+            album_score_agg.c.album_score_count,
+            song_count_agg.c.song_count,
+        )
+        .outerjoin(vote_agg, vote_agg.c.album_id == Album.id)
+        .outerjoin(album_score_agg, album_score_agg.c.album_id == Album.id)
+        .outerjoin(song_count_agg, song_count_agg.c.album_id == Album.id)
         .filter(
             Album.is_current.is_(False),
             Album.queue_order > 0,
             Album.queue_order < current_album.queue_order,
+            func.coalesce(song_count_agg.c.song_count, 0) > 0,
+            db.or_(
+                func.coalesce(vote_agg.c.vote_count, 0) > 0,
+                func.coalesce(album_score_agg.c.album_score_count, 0) > 0,
+            ),
         )
+    )
+
+    if q:
+        search = f'%{q}%'
+        base = base.filter(
+            db.or_(
+                Album.title.ilike(search),
+                Album.artist.ilike(search),
+            )
+        )
+
+    sort_map = {
+        'avg_song_score': func.coalesce(vote_agg.c.avg_song_score, -1),
+        'avg_album_score': func.coalesce(album_score_agg.c.avg_album_score, -1),
+        'title': func.lower(Album.title),
+        'artist': func.lower(Album.artist),
+        'vote_count': func.coalesce(vote_agg.c.vote_count, 0),
+    }
+    sort_column = sort_map.get(sort_by, sort_map['avg_song_score'])
+    order_clause = sort_column.asc() if sort_dir == 'asc' else sort_column.desc()
+
+    total = base.count()
+    rows = (
+        base.order_by(order_clause)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
 
-    items = []
-    for album in albums:
-        song_ids = [song.id for song in album.songs]
-        if not song_ids:
-            continue
-
-        vote_count = int(
-            db.session.query(func.count(Vote.id))
-            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(False))
-            .scalar()
-            or 0
+    rank_offset = (page - 1) * per_page
+    page_items = []
+    for index, row in enumerate(rows):
+        page_items.append(
+            {
+                'id': row.album_id,
+                'rank': rank_offset + index + 1,
+                'title': row.album_title,
+                'artist': row.album_artist,
+                'release_date': row.release_date,
+                'cover_url': row.cover_url,
+                'avg_song_score': round(float(row.avg_song_score), 2) if row.avg_song_score is not None else None,
+                'avg_album_score': round(float(row.avg_album_score), 2) if row.avg_album_score is not None else None,
+                'song_count': int(row.song_count or 0),
+                'vote_count': int(row.vote_count or 0),
+                'album_score_count': int(row.album_score_count or 0),
+            }
         )
-        album_score_count = int(
-            db.session.query(func.count(AlbumScore.id))
-            .filter_by(album_id=album.id, ignored=False)
-            .scalar()
-            or 0
-        )
-
-        if vote_count == 0 and album_score_count == 0:
-            continue
-
-        avg_song = (
-            db.session.query(func.avg(Vote.score))
-            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(False))
-            .scalar()
-        )
-        avg_album = (
-            db.session.query(func.avg(AlbumScore.personal_score))
-            .filter_by(album_id=album.id, ignored=False)
-            .scalar()
-        )
-
-        item = {
-            'id': album.id,
-            'title': album.title,
-            'artist': album.artist,
-            'release_date': album.release_date,
-            'cover_url': album.cover_url,
-            'avg_song_score': round(float(avg_song), 2) if avg_song is not None else None,
-            'avg_album_score': round(float(avg_album), 2) if avg_album is not None else None,
-            'song_count': len(song_ids),
-            'vote_count': vote_count,
-            'album_score_count': album_score_count,
-        }
-        items.append(item)
-
-    if q:
-        items = [
-            item
-            for item in items
-            if q in (item['title'] or '').lower() or q in (item['artist'] or '').lower()
-        ]
-
-    sort_keys = {
-        'avg_song_score': lambda row: row.get('avg_song_score') if row.get('avg_song_score') is not None else -1,
-        'avg_album_score': lambda row: row.get('avg_album_score') if row.get('avg_album_score') is not None else -1,
-        'title': lambda row: (row.get('title') or '').lower(),
-        'artist': lambda row: (row.get('artist') or '').lower(),
-        'vote_count': lambda row: row.get('vote_count') or 0,
-    }
-    sort_key = sort_keys.get(sort_by, sort_keys['avg_song_score'])
-    reverse = sort_dir != 'asc'
-    items.sort(key=sort_key, reverse=reverse)
-
-    total = len(items)
-    start = (page - 1) * per_page
-    end = start + per_page
-    page_items = items[start:end]
-
-    for idx, item in enumerate(page_items, start=start + 1):
-        item['rank'] = idx
 
     return jsonify(
         {
             'items': page_items,
-            'pagination': _pagination_payload(total, page, per_page),
+            'pagination': _pagination_payload(int(total), page, per_page),
             'filters': {
                 'q': q,
-                'sort_by': sort_by if sort_by in sort_keys else 'avg_song_score',
+                'sort_by': sort_by if sort_by in sort_map else 'avg_song_score',
                 'sort_dir': 'asc' if sort_dir == 'asc' else 'desc',
             },
         }
