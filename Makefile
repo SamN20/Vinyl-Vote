@@ -1,13 +1,16 @@
 PYTHON ?= python3
 POETRY ?= poetry
 
-.PHONY: dev test lint format ci poetry-install poetry-dev poetry-test poetry-lint dev-stack dev-stack-detached
+.PHONY: dev test frontend-test lint format ci poetry-install poetry-dev poetry-test poetry-lint dev-stack dev-stack-detached
 
 dev:
 	$(PYTHON) run.py
 
 test:
 	$(PYTHON) -m pytest
+
+frontend-test:
+	cd frontend && npm run test
 
 lint:
 	$(PYTHON) -m ruff check . --select E9,F63,F7,F82
@@ -18,7 +21,7 @@ format:
 	$(PYTHON) -m black .
 	$(PYTHON) -m isort .
 
-ci: lint test
+ci: lint test frontend-test
 
 poetry-install:
 	$(POETRY) install
