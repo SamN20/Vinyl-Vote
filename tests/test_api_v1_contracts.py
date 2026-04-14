@@ -520,3 +520,103 @@ def test_leaderboard_songs_contract_matches_v1():
 
     with app.app_context():
         db.drop_all()
+
+
+def test_leaderboard_songs_respects_min_ratings_threshold():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        user_two = User(username="tester-two", password_hash="hash")
+        db.session.add(user_two)
+        db.session.flush()
+        user_two_id = user_two.id
+
+        current_album = Album.query.filter_by(is_current=True).first()
+        past_album = Album(title="Threshold Album", artist="Threshold Artist", is_current=False, queue_order=7)
+        db.session.add(past_album)
+        db.session.flush()
+
+        popular_song = Song(album_id=past_album.id, title="Popular Track", track_number=1)
+        niche_song = Song(album_id=past_album.id, title="Niche Track", track_number=2)
+        db.session.add_all([popular_song, niche_song])
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                Vote(user_id=user_id, song_id=popular_song.id, score=4.2, ignored=False),
+                Vote(user_id=user_two_id, song_id=popular_song.id, score=4.0, ignored=False),
+                Vote(user_id=user_id, song_id=niche_song.id, score=5.0, ignored=False),
+            ]
+        )
+
+        current_album.queue_order = 10
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    response = client.get("/api/v1/leaderboard/songs?page=1&per_page=25&min_ratings=2&sort_by=avg_score")
+    assert response.status_code == 200
+    payload = response.get_json()
+    titles = [item["title"] for item in payload["items"]]
+    assert titles == ["Popular Track"]
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_leaderboard_albums_search_matches_title_and_artist():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+
+        first_album = Album(title="Electric Feelings", artist="Neon Waves", is_current=False, queue_order=7)
+        second_album = Album(title="Concrete Nights", artist="Metro Pulse", is_current=False, queue_order=8)
+        db.session.add_all([first_album, second_album])
+        db.session.flush()
+
+        first_song = Song(album_id=first_album.id, title="Spark", track_number=1)
+        second_song = Song(album_id=second_album.id, title="Subway Echo", track_number=1)
+        db.session.add_all([first_song, second_song])
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                Vote(user_id=user_id, song_id=first_song.id, score=4.0, ignored=False),
+                Vote(user_id=user_id, song_id=second_song.id, score=4.0, ignored=False),
+                AlbumScore(user_id=user_id, album_id=first_album.id, personal_score=4.1, ignored=False),
+                AlbumScore(user_id=user_id, album_id=second_album.id, personal_score=4.1, ignored=False),
+            ]
+        )
+
+        current_album.queue_order = 10
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    by_title = client.get("/api/v1/leaderboard/albums?page=1&per_page=25&q=Electric")
+    by_artist = client.get("/api/v1/leaderboard/albums?page=1&per_page=25&q=Metro")
+
+    assert by_title.status_code == 200
+    assert by_artist.status_code == 200
+
+    title_items = by_title.get_json()["items"]
+    artist_items = by_artist.get_json()["items"]
+
+    assert len(title_items) == 1
+    assert title_items[0]["title"] == "Electric Feelings"
+    assert len(artist_items) == 1
+    assert artist_items[0]["artist"] == "Metro Pulse"
+
+    with app.app_context():
+        db.drop_all()

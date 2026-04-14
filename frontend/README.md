@@ -16,6 +16,7 @@ npm install
 npm run dev
 npm run build
 npm run preview
+npm run test
 ```
 
 ## Dev Integration
