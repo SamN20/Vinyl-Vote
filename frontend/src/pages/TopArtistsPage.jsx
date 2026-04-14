@@ -14,10 +14,13 @@ import { getSpotifyTrackId } from "../utils/spotify";
 import "./LeaderboardPages.css";
 
 function ArtistDetails({ details, isExpanded }) {
-  if (!details && !isExpanded) {
+  if (!isExpanded) {
     return null;
   }
 
+  if (!details) {
+    return null;
+  }
   if (details?.state === "loading") {
     return (
       <div className="artist-details-skeleton" aria-hidden="true">
