@@ -22,6 +22,22 @@ function formatErrorMessage(path, status, payload) {
   return `Request to ${path} failed (${status})`;
 }
 
+function buildQueryString(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    query.set(key, String(value));
+  });
+  return query.toString();
+}
+
+function leaderboardRequest(path, params = {}) {
+  const query = buildQueryString(params);
+  return request(query ? `${path}?${query}` : path);
+}
+
 async function request(path, options = {}) {
   const response = await fetch(buildUrl(path), {
     credentials: "include",
@@ -102,15 +118,7 @@ export function getResultsForAlbum(albumId) {
 }
 
 export function getLeaderboardArtists(params = {}) {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") {
-      return;
-    }
-    query.set(key, String(value));
-  });
-
-  return request(`/api/v1/leaderboard/artists?${query.toString()}`);
+  return leaderboardRequest("/api/v1/leaderboard/artists", params);
 }
 
 export function getLeaderboardArtistBio(artistName) {
@@ -122,39 +130,15 @@ export function getLeaderboardArtistTopSongs(artistName) {
 }
 
 export function getLeaderboardBattle(params = {}) {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") {
-      return;
-    }
-    query.set(key, String(value));
-  });
-
-  return request(`/api/v1/leaderboard/battle?${query.toString()}`);
+  return leaderboardRequest("/api/v1/leaderboard/battle", params);
 }
 
 export function getLeaderboardAlbums(params = {}) {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") {
-      return;
-    }
-    query.set(key, String(value));
-  });
-
-  return request(`/api/v1/leaderboard/albums?${query.toString()}`);
+  return leaderboardRequest("/api/v1/leaderboard/albums", params);
 }
 
 export function getLeaderboardSongs(params = {}) {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") {
-      return;
-    }
-    query.set(key, String(value));
-  });
-
-  return request(`/api/v1/leaderboard/songs?${query.toString()}`);
+  return leaderboardRequest("/api/v1/leaderboard/songs", params);
 }
 
 export function getAlbumComments(albumId) {

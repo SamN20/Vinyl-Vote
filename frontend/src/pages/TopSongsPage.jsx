@@ -163,12 +163,18 @@ export default function TopSongsPage() {
             type="number"
             min="1"
             value={minRatingsDraft}
-            onChange={(event) => setMinRatingsDraft(event.target.value ? Number(event.target.value) : "")}
+            onChange={(event) => {
+              const rawValue = Number(event.target.value);
+              if (Number.isNaN(rawValue)) {
+                return;
+              }
+              setMinRatingsDraft(Math.max(1, rawValue));
+            }}
           />
         </label>
 
         <label className="toolbar-filter-field">
-          {/* <span className="toolbar-filter-label">Sort By</span> */}
+          <span className="toolbar-filter-label">Sort By</span>
           <select
             className="toolbar-filter-select"
             value={sortDraft}

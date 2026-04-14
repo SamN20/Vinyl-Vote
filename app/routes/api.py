@@ -194,6 +194,11 @@ def _fetch_artist_bio_text(artist_name: str):
         except Exception:
             db.session.rollback()
 
+    def _truncate(text: str):
+        if len(text) > 250:
+            return text[:247] + '...'
+        return text
+
     try:
         import urllib.parse as urlparse
 
@@ -207,8 +212,7 @@ def _fetch_artist_bio_text(artist_name: str):
             data = response.json()
             extract = data.get('extract') or data.get('description')
             if extract:
-                if len(extract) > 250:
-                    extract = extract[:247] + '...'
+                extract = _truncate(extract)
                 _cache(extract)
                 return extract
     except Exception:
@@ -229,8 +233,7 @@ def _fetch_artist_bio_text(artist_name: str):
             page = next(iter(data.get('query', {}).get('pages', {}).values()), {})
             extract = page.get('extract')
             if extract:
-                if len(extract) > 250:
-                    extract = extract[:247] + '...'
+                extract = _truncate(extract)
                 _cache(extract)
                 return extract
     except Exception:

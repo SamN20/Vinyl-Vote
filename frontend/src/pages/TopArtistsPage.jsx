@@ -10,16 +10,8 @@ import LeaderboardToolbar from "../components/common/LeaderboardToolbar";
 import StatusCard from "../components/common/StatusCard";
 import StreamingLinks from "../components/common/StreamingLinks";
 import { useLeaderboardCollection } from "../hooks/useLeaderboardCollection";
+import { getSpotifyTrackId } from "../utils/spotify";
 import "./LeaderboardPages.css";
-
-function spotifyTrackId(url) {
-  if (!url) {
-    return "";
-  }
-  const parts = url.split("/");
-  const last = parts[parts.length - 1] || "";
-  return last.split("?")[0] || "";
-}
 
 function ArtistDetails({ details, isExpanded }) {
   if (!details && !isExpanded) {
@@ -71,10 +63,10 @@ function ArtistDetails({ details, isExpanded }) {
                   youtubeUrl={song.youtube_url}
                 />
               </div>
-              {spotifyTrackId(song.spotify_url) ? (
+              {getSpotifyTrackId(song.spotify_url) ? (
                 <iframe
                   className="track-embed"
-                  src={`https://open.spotify.com/embed/track/${spotifyTrackId(song.spotify_url)}`}
+                  src={`https://open.spotify.com/embed/track/${getSpotifyTrackId(song.spotify_url)}`}
                   loading="lazy"
                   title={`${song.title} Spotify preview`}
                   allow="encrypted-media"

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-function parseInitialQuery(routePath, defaults) {
+export function parseInitialQuery(routePath, defaults) {
   const hash = (window.location.hash || "").replace(/^#/, "").trim();
   if (!hash) {
     return { ...defaults };
