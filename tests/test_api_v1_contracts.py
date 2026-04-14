@@ -434,3 +434,89 @@ def test_leaderboard_artists_handles_image_fetch_failure_without_500():
 
     with app.app_context():
         db.drop_all()
+
+
+def test_leaderboard_albums_contract_matches_v1():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+        past_album = Album(title="Past Album", artist="Past Artist", is_current=False, queue_order=7)
+        db.session.add(past_album)
+        db.session.flush()
+
+        past_song = Song(album_id=past_album.id, title="Past Track", track_number=1)
+        db.session.add(past_song)
+        db.session.flush()
+
+        db.session.add(Vote(user_id=user_id, song_id=past_song.id, score=4.25, ignored=False))
+        db.session.add(AlbumScore(user_id=user_id, album_id=past_album.id, personal_score=4.5, ignored=False))
+        current_album.queue_order = 10
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/leaderboard/albums?page=1&per_page=25&sort_by=avg_song_score&sort_dir=desc")
+    v1 = client.get("/api/v1/leaderboard/albums?page=1&per_page=25&sort_by=avg_song_score&sort_dir=desc")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"items", "pagination", "filters"}
+    assert payload["items"]
+    assert payload["items"][0]["title"] == "Past Album"
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_leaderboard_songs_contract_matches_v1():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+        past_album = Album(title="Legacy Album", artist="Legacy Artist", is_current=False, queue_order=7)
+        db.session.add(past_album)
+        db.session.flush()
+
+        past_song = Song(
+            album_id=past_album.id,
+            title="Legacy Track",
+            track_number=1,
+            spotify_url="https://open.spotify.com/track/abc",
+        )
+        db.session.add(past_song)
+        db.session.flush()
+
+        db.session.add(Vote(user_id=user_id, song_id=past_song.id, score=4.1, ignored=False))
+        current_album.queue_order = 10
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/leaderboard/songs?page=1&per_page=25&min_ratings=1&sort_by=avg_score")
+    v1 = client.get("/api/v1/leaderboard/songs?page=1&per_page=25&min_ratings=1&sort_by=avg_score")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"items", "pagination", "filters"}
+    assert payload["items"]
+    assert payload["items"][0]["title"] == "Legacy Track"
+
+    with app.app_context():
+        db.drop_all()

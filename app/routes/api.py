@@ -698,6 +698,222 @@ def get_leaderboard_battle():
     )
 
 
+@bp.route('/leaderboard/albums', methods=['GET'])
+@bp_v1.route('/leaderboard/albums', methods=['GET'])
+def get_leaderboard_albums():
+    current_album = Album.query.filter_by(is_current=True).first()
+    if not current_album:
+        return jsonify({'error': 'No current album is set. Cannot determine top albums.'}), 404
+
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = min(max(request.args.get('per_page', 25, type=int), 5), 100)
+    q = request.args.get('q', '', type=str).strip().lower()
+    sort_by = request.args.get('sort_by', 'avg_song_score', type=str)
+    sort_dir = request.args.get('sort_dir', 'desc', type=str).lower()
+
+    albums = (
+        Album.query.options(joinedload(Album.songs))
+        .filter(
+            Album.is_current.is_(False),
+            Album.queue_order > 0,
+            Album.queue_order < current_album.queue_order,
+        )
+        .all()
+    )
+
+    items = []
+    for album in albums:
+        song_ids = [song.id for song in album.songs]
+        if not song_ids:
+            continue
+
+        vote_count = int(
+            db.session.query(func.count(Vote.id))
+            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(False))
+            .scalar()
+            or 0
+        )
+        album_score_count = int(
+            db.session.query(func.count(AlbumScore.id))
+            .filter_by(album_id=album.id, ignored=False)
+            .scalar()
+            or 0
+        )
+
+        if vote_count == 0 and album_score_count == 0:
+            continue
+
+        avg_song = (
+            db.session.query(func.avg(Vote.score))
+            .filter(Vote.song_id.in_(song_ids), Vote.ignored.is_(False))
+            .scalar()
+        )
+        avg_album = (
+            db.session.query(func.avg(AlbumScore.personal_score))
+            .filter_by(album_id=album.id, ignored=False)
+            .scalar()
+        )
+
+        item = {
+            'id': album.id,
+            'title': album.title,
+            'artist': album.artist,
+            'release_date': album.release_date,
+            'cover_url': album.cover_url,
+            'avg_song_score': round(float(avg_song), 2) if avg_song is not None else None,
+            'avg_album_score': round(float(avg_album), 2) if avg_album is not None else None,
+            'song_count': len(song_ids),
+            'vote_count': vote_count,
+            'album_score_count': album_score_count,
+        }
+        items.append(item)
+
+    if q:
+        items = [
+            item
+            for item in items
+            if q in (item['title'] or '').lower() or q in (item['artist'] or '').lower()
+        ]
+
+    sort_keys = {
+        'avg_song_score': lambda row: row.get('avg_song_score') if row.get('avg_song_score') is not None else -1,
+        'avg_album_score': lambda row: row.get('avg_album_score') if row.get('avg_album_score') is not None else -1,
+        'title': lambda row: (row.get('title') or '').lower(),
+        'artist': lambda row: (row.get('artist') or '').lower(),
+        'vote_count': lambda row: row.get('vote_count') or 0,
+    }
+    sort_key = sort_keys.get(sort_by, sort_keys['avg_song_score'])
+    reverse = sort_dir != 'asc'
+    items.sort(key=sort_key, reverse=reverse)
+
+    total = len(items)
+    start = (page - 1) * per_page
+    end = start + per_page
+    page_items = items[start:end]
+
+    for idx, item in enumerate(page_items, start=start + 1):
+        item['rank'] = idx
+
+    return jsonify(
+        {
+            'items': page_items,
+            'pagination': _pagination_payload(total, page, per_page),
+            'filters': {
+                'q': q,
+                'sort_by': sort_by if sort_by in sort_keys else 'avg_song_score',
+                'sort_dir': 'asc' if sort_dir == 'asc' else 'desc',
+            },
+        }
+    )
+
+
+@bp.route('/leaderboard/songs', methods=['GET'])
+@bp_v1.route('/leaderboard/songs', methods=['GET'])
+def get_leaderboard_songs():
+    current_album = Album.query.filter_by(is_current=True).first()
+    if not current_album:
+        return jsonify({'error': 'No current album is set. Cannot determine top songs.'}), 404
+
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = min(max(request.args.get('per_page', 25, type=int), 5), 100)
+    q = request.args.get('q', '', type=str).strip()
+    min_ratings = max(request.args.get('min_ratings', 3, type=int), 1)
+    sort_by = request.args.get('sort_by', 'avg_score', type=str)
+    sort_dir = request.args.get('sort_dir', 'desc', type=str).lower()
+
+    base = (
+        db.session.query(
+            Song.id.label('song_id'),
+            Song.title.label('song_title'),
+            Song.spotify_url,
+            Song.apple_url,
+            Song.youtube_url,
+            Song.track_number,
+            Album.id.label('album_id'),
+            Album.title.label('album_title'),
+            Album.artist.label('album_artist'),
+            Album.cover_url.label('album_cover_url'),
+            func.avg(Vote.score).label('avg_score'),
+            func.count(Vote.id).label('rating_count'),
+        )
+        .join(Album, Album.id == Song.album_id)
+        .join(Vote, Vote.song_id == Song.id)
+        .filter(
+            Album.queue_order > 0,
+            Album.queue_order < current_album.queue_order,
+            Vote.ignored.is_(False),
+        )
+        .group_by(Song.id)
+        .having(func.count(Vote.id) >= min_ratings)
+    )
+
+    if q:
+        base = base.filter(
+            db.or_(
+                Song.title.ilike(f'%{q}%'),
+                Album.artist.ilike(f'%{q}%'),
+                Album.title.ilike(f'%{q}%'),
+            )
+        )
+
+    subq = base.subquery()
+    total = db.session.query(func.count()).select_from(subq).scalar() or 0
+
+    sort_map = {
+        'avg_score': subq.c.avg_score,
+        'rating_count': subq.c.rating_count,
+        'title': subq.c.song_title,
+        'artist': subq.c.album_artist,
+        'album': subq.c.album_title,
+    }
+    sort_column = sort_map.get(sort_by, sort_map['avg_score'])
+    order_clause = sort_column.asc() if sort_dir == 'asc' else sort_column.desc()
+
+    rows = (
+        db.session.query(subq)
+        .order_by(order_clause)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    items = []
+    rank_offset = (page - 1) * per_page
+    for index, row in enumerate(rows):
+        items.append(
+            {
+                'id': row.song_id,
+                'rank': rank_offset + index + 1,
+                'title': row.song_title,
+                'avg_score': round(float(row.avg_score), 2) if row.avg_score is not None else None,
+                'rating_count': int(row.rating_count or 0),
+                'track_number': row.track_number,
+                'spotify_url': row.spotify_url,
+                'apple_url': row.apple_url,
+                'youtube_url': row.youtube_url,
+                'album': {
+                    'id': row.album_id,
+                    'title': row.album_title,
+                    'artist': row.album_artist,
+                    'cover_url': row.album_cover_url,
+                },
+            }
+        )
+
+    return jsonify(
+        {
+            'items': items,
+            'pagination': _pagination_payload(int(total), page, per_page),
+            'filters': {
+                'q': q,
+                'min_ratings': min_ratings,
+                'sort_by': sort_by if sort_by in sort_map else 'avg_score',
+                'sort_dir': 'asc' if sort_dir == 'asc' else 'desc',
+            },
+        }
+    )
+
+
 # -------- Retro voting endpoints --------
 
 def _is_retro_eligible(album: Album) -> bool:

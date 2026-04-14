@@ -133,6 +133,30 @@ export function getLeaderboardBattle(params = {}) {
   return request(`/api/v1/leaderboard/battle?${query.toString()}`);
 }
 
+export function getLeaderboardAlbums(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    query.set(key, String(value));
+  });
+
+  return request(`/api/v1/leaderboard/albums?${query.toString()}`);
+}
+
+export function getLeaderboardSongs(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    query.set(key, String(value));
+  });
+
+  return request(`/api/v1/leaderboard/songs?${query.toString()}`);
+}
+
 export function getAlbumComments(albumId) {
   return request(`/api/comments/${albumId}`);
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getLeaderboardBattle, legacyPageHref } from "../api";
 import LeaderboardPagination from "../components/common/LeaderboardPagination";
+import LeaderboardTableSkeleton from "../components/common/LeaderboardTableSkeleton";
 import LeaderboardTable from "../components/common/LeaderboardTable";
 import LeaderboardToolbar from "../components/common/LeaderboardToolbar";
 import StatusCard from "../components/common/StatusCard";
@@ -180,7 +181,7 @@ export default function FaceoffLeaderboardPage() {
         </label>
       </LeaderboardToolbar>
 
-      {state === "loading" ? <StatusCard message="Loading face-off leaderboard..." /> : null}
+      {state === "loading" ? <LeaderboardTableSkeleton /> : null}
       {state === "error" ? (
         <StatusCard title="Could not load leaderboard" message={error} variant="error" />
       ) : null}
