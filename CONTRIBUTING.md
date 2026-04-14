@@ -44,6 +44,7 @@ Run checks:
 ```bash
 make lint
 make test
+make frontend-test
 ```
 
 ## Branching and PRs
@@ -61,7 +62,7 @@ Recommended flow:
 1. Open an issue using a template.
 2. Create a focused branch for that issue.
 3. Implement a minimal scoped change.
-4. Run checks (`make lint` and `make test`).
+4. Run checks (`make lint`, `make test`, and `make frontend-test`).
 5. Open a PR using the PR template and link the issue.
 
 ## Commit Style

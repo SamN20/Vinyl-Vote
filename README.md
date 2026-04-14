@@ -70,6 +70,8 @@ With virtualenv active:
 make dev
 make test
 make lint
+make frontend-test
+make ci
 ```
 
 Using Poetry:
