@@ -6,6 +6,7 @@ import { useResultsFlow } from "../hooks/useResultsFlow";
 
 export default function ResultsPage({ routeAlbumId }) {
   const { error, loadResults, resultsPayload, resultsState } = useResultsFlow(routeAlbumId);
+  const currentUserId = resultsPayload?.currentUserId ?? null;
 
   return (
     <>
@@ -42,7 +43,7 @@ export default function ResultsPage({ routeAlbumId }) {
         <>
           <ResultsCard payload={resultsPayload} />
           <AdditionalInsights payload={resultsPayload} />
-          <CommentsCard albumId={resultsPayload?.album?.id} />
+          <CommentsCard albumId={resultsPayload?.album?.id} currentUserId={currentUserId} />
         </>
       ) : null}
     </>

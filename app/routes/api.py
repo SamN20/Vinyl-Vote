@@ -361,7 +361,7 @@ def get_latest_results():
 @bp.route('/results/album/<int:album_id>', methods=['GET'])
 @bp_v1.route('/results/album/<int:album_id>', methods=['GET'])
 def get_results_for_album(album_id):
-    album = Album.query.options(joinedload(Album.songs)).get(album_id)
+    album = db.session.get(Album, album_id, options=[joinedload(Album.songs)])
     if not album:
         return jsonify({'error': 'Album not found.'}), 404
 
