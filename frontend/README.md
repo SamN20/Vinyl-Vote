@@ -7,6 +7,8 @@ React + Vite frontend for Vinyl Vote V2.
 - KeyN-aware session bootstrap using `/api/v1/session-check`
 - Current album fetch via `/api/v1/current-album`
 - Vote submit flow via `/api/v1/votes`
+- Results page flow via `/api/v1/results/*`
+- Data leaderboard pages via `/api/v1/leaderboard/*`
 - Legacy login fallback link for transition users
 
 ## Commands
@@ -16,6 +18,7 @@ npm install
 npm run dev
 npm run build
 npm run preview
+npm run test
 ```
 
 ## Dev Integration

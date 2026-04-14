@@ -67,6 +67,10 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
+      - name: Frontend unit tests
+        working-directory: .
+        run: make frontend-test
+
       - name: Build frontend
         run: npm run build
 

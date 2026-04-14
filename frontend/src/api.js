@@ -22,6 +22,22 @@ function formatErrorMessage(path, status, payload) {
   return `Request to ${path} failed (${status})`;
 }
 
+function buildQueryString(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    query.set(key, String(value));
+  });
+  return query.toString();
+}
+
+function leaderboardRequest(path, params = {}) {
+  const query = buildQueryString(params);
+  return request(query ? `${path}?${query}` : path);
+}
+
 async function request(path, options = {}) {
   const response = await fetch(buildUrl(path), {
     credentials: "include",
@@ -99,6 +115,30 @@ export function getLatestResults() {
 
 export function getResultsForAlbum(albumId) {
   return request(`/api/v1/results/album/${albumId}`);
+}
+
+export function getLeaderboardArtists(params = {}) {
+  return leaderboardRequest("/api/v1/leaderboard/artists", params);
+}
+
+export function getLeaderboardArtistBio(artistName) {
+  return request(`/api/v1/leaderboard/artists/${encodeURIComponent(artistName)}/bio`);
+}
+
+export function getLeaderboardArtistTopSongs(artistName) {
+  return request(`/api/v1/leaderboard/artists/${encodeURIComponent(artistName)}/top-songs`);
+}
+
+export function getLeaderboardBattle(params = {}) {
+  return leaderboardRequest("/api/v1/leaderboard/battle", params);
+}
+
+export function getLeaderboardAlbums(params = {}) {
+  return leaderboardRequest("/api/v1/leaderboard/albums", params);
+}
+
+export function getLeaderboardSongs(params = {}) {
+  return leaderboardRequest("/api/v1/leaderboard/songs", params);
 }
 
 export function getAlbumComments(albumId) {
