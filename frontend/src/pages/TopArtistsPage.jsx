@@ -217,7 +217,7 @@ export default function TopArtistsPage() {
         sortable: true,
         sortKey: "artist",
         render: (row) => (
-          <div className="artist-row-btn" role="presentation">
+          <div className="artist-row-btn">
             <span>{row.artist}</span>
             <span className="muted-copy">{expanded.has(row.artist) ? "Hide" : "View"} details</span>
           </div>

@@ -170,7 +170,7 @@ export default function FaceoffLeaderboardPage() {
         searchPlaceholder="Search song, artist, or album"
       >
         <label className="toolbar-filter-field">
-          {/* <span className="toolbar-filter-label">Sort By</span> */}
+          <span className="toolbar-filter-label">Sort By</span>
           <select
             className="toolbar-filter-select"
             value={sortDraft}
