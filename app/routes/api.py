@@ -2,9 +2,11 @@ from flask import Blueprint, jsonify, request, current_app, make_response
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+import requests
 
 from .. import db
-from ..models import Album, Vote, AlbumScore, VotePeriod, Song
+from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote
+from ..utils import fetch_artist_image
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 bp_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -135,6 +137,106 @@ def _latest_results_album():
         return None, 'No previous album is available yet.'
 
     return previous, None
+
+
+def _pagination_payload(total: int, page: int, per_page: int):
+    pages = max((total + per_page - 1) // per_page, 1) if per_page > 0 else 1
+    return {
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': pages,
+    }
+
+
+def _resolve_artist_image(artist: str):
+    fallback = current_app.config.get('DEFAULT_ARTIST_IMAGE') or '/static/favicon_64x64.png'
+    cache_key = f"artist_image:{artist}"
+    try:
+        setting = Setting.query.filter_by(key=cache_key).first()
+        if setting and setting.value:
+            return setting.value
+    except Exception:
+        db.session.rollback()
+        return fallback
+
+    try:
+        image_url = fetch_artist_image(artist) or fallback
+    except Exception:
+        image_url = fallback
+
+    try:
+        if image_url and image_url != fallback:
+            if setting:
+                setting.value = image_url
+            else:
+                db.session.add(Setting(key=cache_key, value=image_url))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    return image_url
+
+
+def _fetch_artist_bio_text(artist_name: str):
+    cache_key = f"artist_bio:{artist_name}"
+    setting = Setting.query.filter_by(key=cache_key).first()
+    if setting and setting.value:
+        return setting.value
+
+    def _cache(text: str):
+        try:
+            if setting:
+                setting.value = text
+            else:
+                db.session.add(Setting(key=cache_key, value=text))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    try:
+        import urllib.parse as urlparse
+
+        rest_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urlparse.quote(artist_name)}"
+        response = requests.get(
+            rest_url,
+            timeout=6,
+            headers={'accept': 'application/json', 'user-agent': 'vinyl-vote/1.0'},
+        )
+        if response.ok:
+            data = response.json()
+            extract = data.get('extract') or data.get('description')
+            if extract:
+                if len(extract) > 250:
+                    extract = extract[:247] + '...'
+                _cache(extract)
+                return extract
+    except Exception:
+        pass
+
+    try:
+        params = {
+            'action': 'query',
+            'format': 'json',
+            'prop': 'extracts',
+            'exintro': True,
+            'explaintext': True,
+            'titles': artist_name,
+        }
+        response = requests.get('https://en.wikipedia.org/w/api.php', params=params, timeout=6)
+        if response.ok:
+            data = response.json()
+            page = next(iter(data.get('query', {}).get('pages', {}).values()), {})
+            extract = page.get('extract')
+            if extract:
+                if len(extract) > 250:
+                    extract = extract[:247] + '...'
+                _cache(extract)
+                return extract
+    except Exception:
+        pass
+
+    return 'No bio found.'
 
 def _allowed_origin(origin: str) -> bool:
     """Return True if the request origin is allowed to receive CORS headers."""
@@ -366,6 +468,234 @@ def get_results_for_album(album_id):
         return jsonify({'error': 'Album not found.'}), 404
 
     return jsonify(_results_summary_for_album(album))
+
+
+@bp.route('/leaderboard/artists', methods=['GET'])
+@bp_v1.route('/leaderboard/artists', methods=['GET'])
+def get_leaderboard_artists():
+    current_album = Album.query.filter_by(is_current=True).first()
+    if not current_album:
+        return jsonify({'error': 'No current album is set. Cannot determine top artists.'}), 404
+
+    q = request.args.get('q', '', type=str).strip()
+    min_ratings = request.args.get('min_ratings', type=int)
+    min_avg = request.args.get('min_avg', type=float)
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = min(max(request.args.get('per_page', 25, type=int), 5), 100)
+    sort_by = request.args.get('sort_by', 'avg_score', type=str)
+    sort_dir = request.args.get('sort_dir', 'desc', type=str).lower()
+
+    base = (
+        db.session.query(
+            Album.artist.label('artist'),
+            func.avg(Vote.score).label('avg_score'),
+            func.count(Vote.id).label('rating_count'),
+        )
+        .join(Song, Song.album_id == Album.id)
+        .join(Vote, Vote.song_id == Song.id)
+        .filter(
+            Album.queue_order > 0,
+            Album.queue_order < current_album.queue_order,
+            Vote.ignored.is_(False),
+        )
+        .group_by(Album.artist)
+    )
+
+    if q:
+        base = base.filter(Album.artist.ilike(f"%{q}%"))
+
+    if min_ratings is not None:
+        base = base.having(func.count(Vote.id) >= min_ratings)
+    else:
+        base = base.having(func.count(Vote.id) > 0)
+
+    if min_avg is not None:
+        base = base.having(func.avg(Vote.score) >= min_avg)
+
+    subq = base.subquery()
+    total = db.session.query(func.count()).select_from(subq).scalar() or 0
+
+    sortable = {
+        'avg_score': subq.c.avg_score,
+        'rating_count': subq.c.rating_count,
+        'artist': subq.c.artist,
+    }
+    sort_column = sortable.get(sort_by, subq.c.avg_score)
+    order_clause = sort_column.asc() if sort_dir == 'asc' else sort_column.desc()
+
+    rows = (
+        db.session.query(subq.c.artist, subq.c.avg_score, subq.c.rating_count)
+        .order_by(order_clause)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    items = []
+    rank_offset = (page - 1) * per_page
+    for index, row in enumerate(rows):
+        image_url = _resolve_artist_image(row.artist)
+        items.append(
+            {
+                'rank': rank_offset + index + 1,
+                'artist': row.artist,
+                'avg_score': round(float(row.avg_score), 2) if row.avg_score is not None else None,
+                'rating_count': int(row.rating_count or 0),
+                'image_url': image_url,
+            }
+        )
+
+    return jsonify(
+        {
+            'items': items,
+            'pagination': _pagination_payload(int(total), page, per_page),
+            'filters': {
+                'q': q,
+                'min_ratings': min_ratings,
+                'min_avg': min_avg,
+                'sort_by': sort_by if sort_by in sortable else 'avg_score',
+                'sort_dir': 'asc' if sort_dir == 'asc' else 'desc',
+            },
+        }
+    )
+
+
+@bp.route('/leaderboard/artists/<path:artist_name>/bio', methods=['GET'])
+@bp_v1.route('/leaderboard/artists/<path:artist_name>/bio', methods=['GET'])
+def get_leaderboard_artist_bio(artist_name):
+    return jsonify({'bio': _fetch_artist_bio_text(artist_name)})
+
+
+@bp.route('/leaderboard/artists/<path:artist_name>/top-songs', methods=['GET'])
+@bp_v1.route('/leaderboard/artists/<path:artist_name>/top-songs', methods=['GET'])
+def get_leaderboard_artist_top_songs(artist_name):
+    rows = (
+        db.session.query(
+            Song.id,
+            Song.title,
+            Song.spotify_url,
+            Song.apple_url,
+            Song.youtube_url,
+            func.avg(Vote.score).label('avg_score'),
+            func.count(Vote.id).label('rating_count'),
+        )
+        .join(Album, Album.id == Song.album_id)
+        .join(Vote, Vote.song_id == Song.id)
+        .filter(Album.artist == artist_name, Vote.ignored.is_(False))
+        .group_by(Song.id)
+        .order_by(func.avg(Vote.score).desc())
+        .limit(3)
+        .all()
+    )
+
+    payload = []
+    for row in rows:
+        avg_score = float(row.avg_score) if row.avg_score is not None else None
+        payload.append(
+            {
+                'id': row.id,
+                'title': row.title,
+                'avg_score': round(avg_score, 2) if avg_score is not None else None,
+                'rating_count': int(row.rating_count or 0),
+                'spotify_url': row.spotify_url,
+                'apple_url': row.apple_url,
+                'youtube_url': row.youtube_url,
+            }
+        )
+
+    return jsonify({'items': payload})
+
+
+@bp.route('/leaderboard/battle', methods=['GET'])
+@bp_v1.route('/leaderboard/battle', methods=['GET'])
+def get_leaderboard_battle():
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = min(max(request.args.get('per_page', 50, type=int), 10), 100)
+    q = request.args.get('q', '', type=str).strip()
+    sort_by = request.args.get('sort_by', 'elo_rating', type=str)
+    sort_dir = request.args.get('sort_dir', 'desc', type=str).lower()
+
+    current_album = Album.query.filter_by(is_current=True).first()
+    max_queue_order = current_album.queue_order if current_album else 0
+
+    base = Song.query.join(Album).filter(
+        Song.match_count > 0,
+        Album.queue_order > 0,
+        Album.queue_order <= max_queue_order,
+    )
+
+    if q:
+        base = base.filter(
+            db.or_(
+                Song.title.ilike(f"%{q}%"),
+                Album.artist.ilike(f"%{q}%"),
+                Album.title.ilike(f"%{q}%"),
+            )
+        )
+
+    sort_map = {
+        'elo_rating': Song.elo_rating,
+        'match_count': Song.match_count,
+        'title': Song.title,
+        'artist': Album.artist,
+    }
+    sort_column = sort_map.get(sort_by, Song.elo_rating)
+    order_clause = sort_column.asc() if sort_dir == 'asc' else sort_column.desc()
+
+    total = base.count()
+    rows = (
+        base.options(joinedload(Song.album))
+        .order_by(order_clause)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    user_votes = {}
+    if current_user.is_authenticated:
+        vote_rows = (
+            db.session.query(BattleVote.winner_id, func.count(BattleVote.id))
+            .filter(BattleVote.user_id == current_user.id)
+            .group_by(BattleVote.winner_id)
+            .all()
+        )
+        user_votes = {winner_id: int(count) for winner_id, count in vote_rows}
+
+    rank_offset = (page - 1) * per_page
+    items = []
+    for index, song in enumerate(rows):
+        items.append(
+            {
+                'id': song.id,
+                'rank': rank_offset + index + 1,
+                'title': song.title,
+                'track_number': song.track_number,
+                'spotify_url': song.spotify_url,
+                'apple_url': song.apple_url,
+                'youtube_url': song.youtube_url,
+                'elo_rating': round(float(song.elo_rating), 1) if song.elo_rating is not None else None,
+                'match_count': int(song.match_count or 0),
+                'user_winner_count': user_votes.get(song.id, 0),
+                'album': {
+                    'id': song.album.id if song.album else None,
+                    'title': song.album.title if song.album else None,
+                    'artist': song.album.artist if song.album else None,
+                    'cover_url': song.album.cover_url if song.album else None,
+                },
+            }
+        )
+
+    return jsonify(
+        {
+            'items': items,
+            'pagination': _pagination_payload(int(total), page, per_page),
+            'filters': {
+                'q': q,
+                'sort_by': sort_by if sort_by in sort_map else 'elo_rating',
+                'sort_dir': 'asc' if sort_dir == 'asc' else 'desc',
+            },
+        }
+    )
 
 
 # -------- Retro voting endpoints --------

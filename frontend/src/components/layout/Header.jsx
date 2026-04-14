@@ -132,10 +132,10 @@ export default function Header({
               <div className="dropdown-content">
                 <a href="#/results" className={route === "/results" ? "active" : ""} onClick={closeMobileOverlays}>Weekly Results</a>
                 <div className="dropdown-divider" />
-                <a href={legacyPageHref("/top_albums")} onClick={closeMobileOverlays}>Top Albums</a>
-                <a href={legacyPageHref("/top_artists")} onClick={closeMobileOverlays}>Top Artists</a>
-                <a href={legacyPageHref("/top_songs")} onClick={closeMobileOverlays}>Top Songs</a>
-                <a href={legacyPageHref("/leaderboard/battle")} onClick={closeMobileOverlays}>Face-Off Leaderboard</a>
+                <a href="#/top-albums" className={route === "/top-albums" ? "active" : ""} onClick={closeMobileOverlays}>Top Albums</a>
+                <a href="#/top-artists" className={route === "/top-artists" ? "active" : ""} onClick={closeMobileOverlays}>Top Artists</a>
+                <a href="#/top-songs" className={route === "/top-songs" ? "active" : ""} onClick={closeMobileOverlays}>Top Songs</a>
+                <a href="#/faceoff-leaderboard" className={route === "/faceoff-leaderboard" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off Leaderboard</a>
               </div>
             </div>
           </div>

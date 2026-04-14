@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 from flask import Flask
 
 from app import db, login_manager
-from app.models import Album, AlbumScore, Song, User, Vote, VotePeriod
+from app.models import Album, AlbumScore, BattleVote, Setting, Song, User, Vote, VotePeriod
 from app.routes import api
 
 
@@ -295,6 +296,141 @@ def test_results_exclude_ignored_votes_and_scores_from_summary():
     song_b_row = next(row for row in payload["songs"] if row["id"] == song_b_id)
     assert song_b_row["user_score"] is None
     assert song_b_row["vote_count"] == 0
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_leaderboard_artists_contract_matches_v1():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+        past_album = Album(title="Past", artist="Legacy Artist", is_current=False, queue_order=7)
+        db.session.add(past_album)
+        db.session.flush()
+
+        past_song = Song(album_id=past_album.id, title="Past Song", track_number=1)
+        db.session.add(past_song)
+        db.session.flush()
+
+        db.session.add(Vote(user_id=user_id, song_id=past_song.id, score=4.0, ignored=False))
+        db.session.add(Setting(key="artist_image:Legacy Artist", value="https://example.com/image.png"))
+        current_album.queue_order = 10
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/leaderboard/artists?page=1&per_page=25&q=Legacy")
+    v1 = client.get("/api/v1/leaderboard/artists?page=1&per_page=25&q=Legacy")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"items", "pagination", "filters"}
+    assert payload["items"][0]["artist"] == "Legacy Artist"
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_leaderboard_battle_contract_matches_v1_and_user_counts():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        songs = Song.query.order_by(Song.track_number.asc()).all()
+        song_a, song_b = songs[0], songs[1]
+        song_a.match_count = 5
+        song_b.match_count = 3
+        song_a.elo_rating = 1225.0
+        song_b.elo_rating = 1100.0
+
+        db.session.add_all(
+            [
+                BattleVote(user_id=user_id, winner_id=song_a.id, loser_id=song_b.id),
+                BattleVote(user_id=user_id, winner_id=song_a.id, loser_id=song_b.id),
+            ]
+        )
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/leaderboard/battle?page=1&per_page=50")
+    v1 = client.get("/api/v1/leaderboard/battle?page=1&per_page=50")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"items", "pagination", "filters"}
+    assert payload["items"][0]["user_winner_count"] >= 0
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_leaderboard_artist_bio_contract_matches_v1_with_cache():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+        db.session.add(Setting(key="artist_bio:Legacy Artist", value="Cached bio text"))
+        db.session.commit()
+
+    client = app.test_client()
+    legacy = client.get("/api/leaderboard/artists/Legacy%20Artist/bio")
+    v1 = client.get("/api/v1/leaderboard/artists/Legacy%20Artist/bio")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+    assert v1.get_json()["bio"] == "Cached bio text"
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_leaderboard_artists_handles_image_fetch_failure_without_500():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+        past_album = Album(title="Past", artist="Uncached Artist", is_current=False, queue_order=7)
+        db.session.add(past_album)
+        db.session.flush()
+
+        past_song = Song(album_id=past_album.id, title="Past Song", track_number=1)
+        db.session.add(past_song)
+        db.session.flush()
+
+        db.session.add(Vote(user_id=user_id, song_id=past_song.id, score=4.0, ignored=False))
+        current_album.queue_order = 10
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    with patch("app.routes.api.fetch_artist_image", side_effect=RuntimeError("spotify lookup failed")):
+        response = client.get("/api/v1/leaderboard/artists?page=1&per_page=25&sort_by=avg_score&sort_dir=asc")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["items"]
+    assert payload["items"][0]["image_url"]
 
     with app.app_context():
         db.drop_all()

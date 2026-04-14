@@ -1,0 +1,110 @@
+.leaderboard-table-wrap {
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 0.62rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.leaderboard-table thead th {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.sort-button {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+}
+
+.sort-button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 70%, white 15%);
+  outline-offset: 2px;
+}
+
+.sort-indicator {
+  opacity: 0.45;
+  font-size: 0.78rem;
+}
+
+.sort-indicator.active {
+  opacity: 1;
+  color: var(--accent);
+  background: transparent;
+}
+
+.table-empty {
+  text-align: center !important;
+  color: var(--muted);
+  padding: 1rem;
+}
+
+.expanded-row td {
+  background: color-mix(in oklab, var(--bg) 82%, var(--card-bg));
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.expanded-row.collapsed td {
+  border-bottom: none;
+}
+
+.expanded-row.open td {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.expanded-row-content {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: max-height 0.34s ease, opacity 0.24s ease, transform 0.24s ease, padding 0.24s ease;
+  padding: 0;
+}
+
+.expanded-row-content.open {
+  max-height: 680px;
+  opacity: 1;
+  transform: translateY(0);
+  padding: 0.7rem 0;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 64%, white 18%);
+  outline-offset: -2px;
+}
+
+.clickable-row:hover td {
+  background: color-mix(in oklab, var(--card-bg) 85%, var(--accent) 5%);
+}
+
+.align-right {
+  text-align: right !important;
+}
+
+.align-center {
+  text-align: center !important;
+}

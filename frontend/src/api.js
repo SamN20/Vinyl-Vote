@@ -101,6 +101,38 @@ export function getResultsForAlbum(albumId) {
   return request(`/api/v1/results/album/${albumId}`);
 }
 
+export function getLeaderboardArtists(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    query.set(key, String(value));
+  });
+
+  return request(`/api/v1/leaderboard/artists?${query.toString()}`);
+}
+
+export function getLeaderboardArtistBio(artistName) {
+  return request(`/api/v1/leaderboard/artists/${encodeURIComponent(artistName)}/bio`);
+}
+
+export function getLeaderboardArtistTopSongs(artistName) {
+  return request(`/api/v1/leaderboard/artists/${encodeURIComponent(artistName)}/top-songs`);
+}
+
+export function getLeaderboardBattle(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    query.set(key, String(value));
+  });
+
+  return request(`/api/v1/leaderboard/battle?${query.toString()}`);
+}
+
 export function getAlbumComments(albumId) {
   return request(`/api/comments/${albumId}`);
 }
