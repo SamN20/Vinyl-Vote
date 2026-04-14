@@ -74,13 +74,14 @@ export default function FaceoffLeaderboardPage() {
       {
         key: "rank",
         label: "#",
-        width: "70px",
+        width: "76px",
         sortable: false,
         render: (row) => rankBadge(row.rank),
       },
       {
         key: "title",
         label: "Song",
+        width: "52%",
         sortable: true,
         sortKey: "title",
         render: (row) => (
@@ -116,7 +117,7 @@ export default function FaceoffLeaderboardPage() {
         label: "Artist",
         sortable: true,
         sortKey: "artist",
-        width: "260px",
+        width: "220px",
         render: (row) => (
           <a className="bare-link" href={`#/top-artists?q=${encodeURIComponent(row.album?.artist || "")}`}>
             {row.album?.artist || "Unknown"}
@@ -128,7 +129,7 @@ export default function FaceoffLeaderboardPage() {
         label: "Rating",
         sortable: true,
         sortKey: "elo_rating",
-        width: "140px",
+        width: "126px",
         align: "right",
         render: (row) => <span className="elo-value">{Math.round(row.elo_rating || 0)}</span>,
       },
@@ -137,7 +138,7 @@ export default function FaceoffLeaderboardPage() {
         label: "Matches",
         sortable: true,
         sortKey: "match_count",
-        width: "120px",
+        width: "108px",
         align: "right",
       },
     ],
@@ -185,7 +186,7 @@ export default function FaceoffLeaderboardPage() {
       ) : null}
 
       {state === "ready" || state === "empty" ? (
-        <section className="card leaderboard-card">
+        <section className="card leaderboard-card faceoff-board">
           <LeaderboardTable
             columns={columns}
             rows={items}

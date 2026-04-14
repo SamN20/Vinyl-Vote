@@ -82,7 +82,7 @@
 }
 
 .expanded-row-content.open {
-  max-height: 680px;
+  max-height: 2200px;
   opacity: 1;
   transform: translateY(0);
   padding: 0.7rem 0;

@@ -47,21 +47,30 @@ function ArtistDetails({ details, isExpanded }) {
 
   return (
     <div className="artist-details">
-      <p className="muted-copy"><strong>Bio:</strong> {details?.bio || "No bio found."}</p>
-      <h4>Top Tracks</h4>
+      <article className="artist-bio-card">
+        <p className="artist-bio-label">Bio</p>
+        <p className="artist-bio-text">{details?.bio || "No bio found."}</p>
+      </article>
+
+      <h4 className="artist-top-title">Top Tracks</h4>
       {songs.length ? (
         <ul className="artist-top-tracks">
-          {songs.map((song) => (
-            <li key={song.id}>
+          {songs.map((song, index) => (
+            <li key={song.id} className="artist-track-item">
               <div className="artist-track-head">
-                <span>{song.title}</span>
-                <span className="muted-copy">{song.avg_score ?? "N/A"}★ · {song.rating_count || 0} ratings</span>
+                <div className="track-title-wrap">
+                  <span className="track-index">#{index + 1}</span>
+                  <span className="track-name">{song.title}</span>
+                </div>
+                <span className="track-stat-chip">{song.avg_score ?? "N/A"}★ · {song.rating_count || 0} ratings</span>
               </div>
-              <StreamingLinks
-                spotifyUrl={song.spotify_url}
-                appleUrl={song.apple_url}
-                youtubeUrl={song.youtube_url}
-              />
+              <div className="artist-track-links">
+                <StreamingLinks
+                  spotifyUrl={song.spotify_url}
+                  appleUrl={song.apple_url}
+                  youtubeUrl={song.youtube_url}
+                />
+              </div>
               {spotifyTrackId(song.spotify_url) ? (
                 <iframe
                   className="track-embed"

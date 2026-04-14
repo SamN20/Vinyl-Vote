@@ -63,7 +63,13 @@
 
 .artist-details {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--accent) 20%, var(--border-color));
+  border-radius: 12px;
+  padding: 0.8rem;
+  background:
+    radial-gradient(circle at 100% -15%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 44%),
+    color-mix(in oklab, var(--bg) 84%, var(--card-bg));
   animation: details-enter 240ms ease;
 }
 
@@ -72,11 +78,46 @@
   font-size: 0.95rem;
 }
 
+.artist-bio-card {
+  border: 1px solid color-mix(in oklab, var(--accent) 12%, var(--border-color));
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: color-mix(in oklab, var(--card-bg) 94%, var(--bg));
+}
+
+.artist-bio-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: color-mix(in oklab, var(--accent) 70%, white 12%);
+  font-weight: 700;
+}
+
+.artist-bio-text {
+  margin: 0.28rem 0 0;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.artist-top-title {
+  margin: 0;
+  font-size: 1.12rem;
+}
+
 .artist-top-tracks {
   margin: 0;
-  padding-left: 1rem;
+  padding: 0;
+  list-style: none;
   display: grid;
   gap: 0.8rem;
+}
+
+.artist-track-item {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+  background: color-mix(in oklab, var(--bg) 78%, var(--card-bg));
 }
 
 .artist-track-head {
@@ -84,6 +125,46 @@
   justify-content: space-between;
   gap: 0.4rem;
   flex-wrap: wrap;
+}
+
+.track-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.track-index {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid color-mix(in oklab, var(--accent) 42%, var(--border-color));
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.track-name {
+  font-weight: 700;
+}
+
+.track-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--border-color));
+  background: color-mix(in oklab, var(--accent) 11%, transparent);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.58rem;
+}
+
+.artist-track-links .streaming-links {
+  margin-top: 0.42rem;
 }
 
 .track-embed {
@@ -153,13 +234,24 @@
 }
 
 .faceoff-row td {
-  padding-top: 0.9rem;
-  padding-bottom: 0.9rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.faceoff-board .leaderboard-table th,
+.faceoff-board .leaderboard-table td {
+  padding-left: 0.9rem;
+  padding-right: 0.9rem;
+}
+
+.faceoff-board .leaderboard-table th:nth-child(2),
+.faceoff-board .leaderboard-table td:nth-child(2) {
+  min-width: 470px;
 }
 
 .faceoff-song-cell {
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.95rem;
 }
 
 .faceoff-cover {
@@ -170,12 +262,18 @@
 
 .faceoff-song-meta {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.24rem;
+  min-width: 0;
 }
 
 .faceoff-links-wrap .streaming-links {
-  margin-top: 0.25rem;
-  gap: 7px;
+  margin-top: 0.3rem;
+  gap: 6px;
+}
+
+.faceoff-links-wrap .stream-btn {
+  padding: 0.34rem 0.52rem;
+  font-size: 0.82rem;
 }
 
 .song-title {
@@ -234,5 +332,22 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (max-width: 1100px) {
+  .faceoff-board .leaderboard-table th:nth-child(2),
+  .faceoff-board .leaderboard-table td:nth-child(2) {
+    min-width: 420px;
+  }
+}
+
+@media (max-width: 900px) {
+  .artist-track-head {
+    gap: 0.55rem;
+  }
+
+  .track-stat-chip {
+    font-size: 0.74rem;
   }
 }
