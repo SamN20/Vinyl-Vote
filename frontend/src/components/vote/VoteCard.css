@@ -7,6 +7,7 @@
 }
 
 .vote-card {
+  --vote-footer-offset: 58px;
   overflow-x: hidden;
   background:
     radial-gradient(circle at 100% -10%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 44%),
@@ -31,6 +32,112 @@
   margin: 0;
   font-size: clamp(1.8rem, 3.4vw, 2.5rem);
   line-height: 1.04;
+}
+
+.vote-loading-skeleton {
+  display: grid;
+  gap: 1rem;
+}
+
+.vote-skeleton-panel {
+  margin-bottom: 0;
+}
+
+.vote-skeleton-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--accent) 12%, var(--border-color));
+}
+
+.vote-skeleton-meta {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.vote-skeleton-line {
+  border-radius: 8px;
+}
+
+.vote-skeleton-title {
+  height: 30px;
+  width: min(92%, 520px);
+}
+
+.vote-skeleton-artist {
+  height: 16px;
+  width: 44%;
+}
+
+.vote-skeleton-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.vote-skeleton-stat {
+  height: 50px;
+  border-radius: 10px;
+}
+
+.vote-skeleton-links {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.vote-skeleton-chip {
+  width: 74px;
+  height: 26px;
+  border-radius: 999px;
+}
+
+.vote-skeleton-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.vote-skeleton-toggle {
+  width: min(100%, 260px);
+  height: 44px;
+  border-radius: 12px;
+}
+
+.vote-skeleton-track,
+.vote-skeleton-album-score {
+  height: 50px;
+  border-radius: 8px;
+}
+
+.vote-skeleton-button {
+  margin-top: 0.2rem;
+  width: 100%;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.vote-skeleton-loading-text {
+  margin: 0;
+}
+
+.vote-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--bg) 82%, var(--card-bg)),
+    color-mix(in oklab, var(--card-bg) 72%, white 10%),
+    color-mix(in oklab, var(--bg) 82%, var(--card-bg))
+  );
+  background-size: 220% 100%;
+  animation: vote-shimmer 1.2s linear infinite;
+}
+
+@keyframes vote-shimmer {
+  from {
+    background-position: 220% 0;
+  }
+  to {
+    background-position: -220% 0;
+  }
 }
 
 .vpf-bar {
@@ -516,6 +623,9 @@
   left: 0;
   right: 0;
   bottom: 0;
+  padding-left: max(12px, calc((100vw - 1000px) / 2 + 12px));
+  padding-right: max(12px, calc((100vw - 1000px) / 2 + 12px));
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .vote-progress-footer.fixed.is-visible {
@@ -566,7 +676,7 @@
 }
 
 .vote-form.with-fixed-footer {
-  margin-bottom: 58px;
+  margin-bottom: calc(var(--vote-footer-offset) + env(safe-area-inset-bottom, 0px));
 }
 
 .vote-form.with-inline-footer {
@@ -577,17 +687,35 @@
   color: var(--muted);
 }
 
+.vpf-secondary {
+  margin-left: 8px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vpf-fill,
-  .vote-progress-footer {
+  .vote-progress-footer,
+  .vote-skeleton-shimmer {
     transition: none;
+    animation: none;
   }
 }
 
 @media (max-width: 900px) {
+  .vote-card {
+    --vote-footer-offset: 112px;
+  }
+
   .vote-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .vote-header .btn {
+    width: 100%;
+  }
+
+  .lazy-toggle-row {
+    width: 100%;
   }
 
   .album-panel {
@@ -600,6 +728,17 @@
     row-gap: 0.35rem;
   }
 
+  .album-status-item {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    gap: 0.65rem;
+  }
+
+  .album-status-value {
+    white-space: normal;
+    text-align: right;
+  }
+
   .album-status-divider {
     display: none;
   }
@@ -608,8 +747,16 @@
     grid-template-columns: 1fr;
   }
 
+  .vote-skeleton-stats {
+    grid-template-columns: 1fr;
+  }
+
   .track-row,
   .album-score-row {
+    grid-template-columns: 1fr;
+  }
+
+  .track-row.lazy {
     grid-template-columns: 1fr;
   }
 
@@ -625,6 +772,25 @@
     margin-top: 2px;
   }
 
+  .track-row.lazy .score-control-stack,
+  .album-score-row.lazy .score-control-stack {
+    min-height: 38px;
+  }
+
+  .track-row.lazy .score-control-stack .score-input-stars,
+  .album-score-row.lazy .score-control-stack .score-input-stars {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: 100%;
+  }
+
+  .track-row.lazy .score-control-stack .score-input-numeric,
+  .album-score-row.lazy .score-control-stack .score-input-numeric {
+    display: none;
+  }
+
   .lazy-stars {
     width: 100%;
     justify-content: flex-start;
@@ -633,5 +799,82 @@
   .vote-progress-footer {
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
+  }
+
+  .vpf-left {
+    width: 100%;
+  }
+
+  .vpf-left strong,
+  .vpf-secondary {
+    display: block;
+  }
+
+  .vpf-secondary {
+    margin-left: 0;
+    margin-top: 2px;
+  }
+
+  .vote-progress-footer .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .vote-card {
+    --vote-footer-offset: 118px;
+    padding: 0.85rem;
+  }
+
+  .album-panel {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  .track-row,
+  .album-score-row {
+    padding: 0.55rem 0.6rem;
+  }
+
+  .star-btn,
+  .half-btn {
+    min-width: 28px;
+    height: 28px;
+    font-size: 0.92rem;
+  }
+
+  .lazy-stars {
+    gap: 3px;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .vote-card {
+    --vote-footer-offset: 74px;
+  }
+
+  .vote-form {
+    gap: 0.75rem;
+  }
+
+  .vote-progress-footer {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .vpf-left strong,
+  .vpf-secondary {
+    display: inline;
+  }
+
+  .vpf-secondary {
+    margin-left: 8px;
+    margin-top: 0;
+  }
+
+  .vote-progress-footer .btn {
+    width: auto;
   }
 }

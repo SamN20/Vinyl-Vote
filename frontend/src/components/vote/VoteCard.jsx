@@ -2,143 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { legacyPageHref } from "../../api";
 import StreamingLinks from "../common/StreamingLinks";
 import { formatVoteEnd } from "../../hooks/useVotingFlow";
+import StarRatingInput from "./StarRatingInput";
+import VoteCardLoadingSkeleton from "./VoteCardLoadingSkeleton";
+import { formatAlbumLength, formatCountdown, parseDurationToSeconds } from "./voteCardUtils";
 import "./VoteCard.css";
-
-function StarRatingInput({ value, onChange, disabled = false, className = "", ariaHidden = false }) {
-  const numeric = Number(value || 0);
-  const normalized = Number.isNaN(numeric) ? 0 : numeric;
-  const base = Math.max(0, Math.min(5, Math.floor(normalized)));
-  const hasHalf = Math.abs(normalized - base - 0.5) < 0.01;
-
-  function setScore(next) {
-    const clamped = Math.max(0, Math.min(5, next));
-    onChange(clamped.toFixed(1).replace(/\.0$/, ""));
-  }
-
-  return (
-    <div
-      className={`lazy-stars ${disabled ? "disabled" : ""} ${className}`.trim()}
-      aria-hidden={ariaHidden ? "true" : undefined}
-    >
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          className={`star-btn ${star <= base ? "active" : ""}`}
-          disabled={disabled}
-          onClick={() => {
-            if (disabled) {
-              return;
-            }
-            if (star === base && !hasHalf) {
-              setScore(0);
-            } else {
-              setScore(star + (hasHalf ? 0.5 : 0));
-            }
-          }}
-          aria-label={`Rate ${star} ${star === 1 ? "star" : "stars"}`}
-        >
-          ★
-        </button>
-      ))}
-      <button
-        type="button"
-        className={`half-btn ${hasHalf ? "active" : ""}`}
-        disabled={disabled || base >= 5}
-        onClick={() => setScore(base + (hasHalf ? 0 : 0.5))}
-        aria-label="Toggle half-star increment"
-      >
-        1/2
-      </button>
-    </div>
-  );
-}
-
-/**
- * Parse song duration into whole seconds.
- *
- * Supported inputs:
- * - number: treated as seconds (e.g. 245)
- * - numeric string seconds: "245"
- * - "MM:SS" string (e.g. "4:05")
- * - "HH:MM:SS" string (e.g. "1:04:32")
- *
- * Returns 0 for empty/invalid values.
- */
-function parseDurationToSeconds(duration) {
-  if (duration === null || duration === undefined || duration === "") {
-    return 0;
-  }
-
-  if (typeof duration === "number" && Number.isFinite(duration)) {
-    return Math.max(0, Math.floor(duration));
-  }
-
-  const text = String(duration).trim();
-  if (!text) {
-    return 0;
-  }
-
-  if (/^\d+$/.test(text)) {
-    return Math.max(0, Number(text));
-  }
-
-  const parts = text.split(":").map((part) => Number(part));
-  if (parts.some((part) => Number.isNaN(part))) {
-    return 0;
-  }
-
-  if (parts.length === 2) {
-    return Math.max(0, parts[0] * 60 + parts[1]);
-  }
-
-  if (parts.length === 3) {
-    return Math.max(0, parts[0] * 3600 + parts[1] * 60 + parts[2]);
-  }
-
-  return 0;
-}
-
-function formatAlbumLength(totalSeconds) {
-  if (!totalSeconds || totalSeconds <= 0) {
-    return "Unknown";
-  }
-
-  const totalMinutes = Math.max(1, Math.round(totalSeconds / 60));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${totalMinutes}m`;
-}
-
-function formatCountdown(value) {
-  if (!value) {
-    return "No deadline";
-  }
-
-  const end = new Date(value);
-  if (Number.isNaN(end.getTime())) {
-    return "Unknown deadline";
-  }
-
-  const diff = end.getTime() - Date.now();
-  if (diff <= 0) {
-    return "Voting closed";
-  }
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  const mins = Math.floor((diff / (1000 * 60)) % 60);
-  const secs = Math.floor((diff / 1000) % 60);
-
-  if (days > 0) {
-    return `${days}d ${hours}h ${mins}m ${secs}s`;
-  }
-  return `${hours}h ${mins}m ${secs}s`;
-}
 
 export default function VoteCard({
   albumPayload,
@@ -265,7 +132,7 @@ export default function VoteCard({
       <>
         <div className="vpf-left">
           <strong>Tracks rated: {ratedTracks}/{songs.length}</strong>
-          <span className={`muted ${isComplete ? "vpf-complete-text" : ""}`} style={{ marginLeft: 8 }}>
+          <span className={`muted vpf-secondary ${isComplete ? "vpf-complete-text" : ""}`}>
             {remainingTracks > 0 ? `${remainingTracks} remaining` : "Ready to submit"}
           </span>
           <div
@@ -303,7 +170,7 @@ export default function VoteCard({
         ) : null}
       </header>
 
-      {albumState === "loading" && <p>Loading current album and your saved votes...</p>}
+      {albumState === "loading" && <VoteCardLoadingSkeleton />}
       {albumState === "error" && <p className="error-text">{error || "Could not load voting data right now."}</p>}
       {albumState === "empty" && <p className="empty-text">{error || "No album is currently open for voting."}</p>}
 
