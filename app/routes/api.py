@@ -986,8 +986,11 @@ def api_battle_vote():
     if not winner_id or not loser_id:
         return jsonify({'error': 'Missing IDs'}), 400
 
-    winner = Song.query.get(winner_id)
-    loser = Song.query.get(loser_id)
+    if winner_id == loser_id:
+        return jsonify({'error': 'winner_id and loser_id must be different'}), 400
+
+    winner = db.session.get(Song, winner_id)
+    loser = db.session.get(Song, loser_id)
 
     if not winner or not loser:
         return jsonify({'error': 'Song not found'}), 404

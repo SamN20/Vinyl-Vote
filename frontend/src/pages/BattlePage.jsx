@@ -13,6 +13,7 @@ export default function BattlePage({ sessionState, theme }) {
   const [result, setResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const requestSeq = useRef(0);
+  const canVote = state === "ready" && !!song1 && !!song2 && !submitting;
 
   useEffect(() => {
     loadPair();
@@ -60,6 +61,16 @@ export default function BattlePage({ sessionState, theme }) {
 
   async function handleVote(winnerId, loserId) {
     if (submitting) return;
+    if (!winnerId || !loserId) {
+      setError("Battle pair is still loading. Please wait a moment and try again.");
+      return;
+    }
+    if (winnerId === loserId) {
+      setError("Invalid vote: winner and loser cannot be the same song.");
+      return;
+    }
+
+    setError(null);
     setSubmitting(true);
     try {
       const data = await submitBattleVote({ winner_id: winnerId, loser_id: loserId });
@@ -90,7 +101,7 @@ export default function BattlePage({ sessionState, theme }) {
                 <BattleCard
                   song={song1}
                   id="card-1"
-                  disabled={submitting}
+                  disabled={!canVote}
                   onVote={(id) => handleVote(id, song2?.id)}
                   theme={theme}
                 />
@@ -102,7 +113,7 @@ export default function BattlePage({ sessionState, theme }) {
                 <BattleCard
                   song={song2}
                   id="card-2"
-                  disabled={submitting}
+                  disabled={!canVote}
                   onVote={(id) => handleVote(id, song1?.id)}
                   theme={theme}
                 />
@@ -110,6 +121,10 @@ export default function BattlePage({ sessionState, theme }) {
             </>
           )}
         </div>
+
+        {state === "ready" && error ? (
+          <p className="battle-inline-error" role="alert">{error}</p>
+        ) : null}
 
         {sessionState !== "authenticated" ? (
           <div className="login-suggestion fade-in">

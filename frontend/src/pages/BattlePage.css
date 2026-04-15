@@ -219,6 +219,12 @@
 .diff-negative { color: #ff5555; }
 
 .login-suggestion { text-align:center; margin-top:32px; }
+.battle-inline-error {
+  margin: 14px 0 0;
+  text-align: center;
+  color: var(--error-color);
+  font-weight: 600;
+}
 .skip-container { text-align:center; margin-top:24px; display:flex; flex-direction:column; gap:12px; align-items:center; }
 
 @media (min-width: 700px) {
