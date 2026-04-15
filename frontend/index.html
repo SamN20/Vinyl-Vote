@@ -3,7 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
     <title>Vinyl Vote V2</title>
+    <script>
+      (function () {
+        var theme = "dark";
+        try {
+          var saved = window.localStorage.getItem("theme");
+          if (saved === "light" || saved === "dark") {
+            theme = saved;
+          }
+        } catch (error) {
+          theme = "dark";
+        }
+
+        var root = document.documentElement;
+        root.setAttribute("data-theme", theme);
+        root.style.colorScheme = theme;
+      })();
+    </script>
+    <style>
+      html,
+      body {
+        background: #121212;
+        color: #ffffff;
+      }
+
+      html[data-theme="light"],
+      html[data-theme="light"] body {
+        background: #ffffff;
+        color: #111111;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
