@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { legacyPageHref } from "../../api";
 import StreamingLinks from "../common/StreamingLinks";
 import { formatVoteEnd } from "../../hooks/useVotingFlow";
 import "./VoteCard.css";
 
-function StarRatingInput({ value, onChange, disabled = false }) {
+function StarRatingInput({ value, onChange, disabled = false, className = "", ariaHidden = false }) {
   const numeric = Number(value || 0);
   const normalized = Number.isNaN(numeric) ? 0 : numeric;
   const base = Math.max(0, Math.min(5, Math.floor(normalized)));
@@ -16,12 +16,16 @@ function StarRatingInput({ value, onChange, disabled = false }) {
   }
 
   return (
-    <div className={`lazy-stars ${disabled ? "disabled" : ""}`}>
+    <div
+      className={`lazy-stars ${disabled ? "disabled" : ""} ${className}`.trim()}
+      aria-hidden={ariaHidden ? "true" : undefined}
+    >
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           type="button"
           className={`star-btn ${star <= base ? "active" : ""}`}
+          disabled={disabled}
           onClick={() => {
             if (disabled) {
               return;
@@ -32,7 +36,7 @@ function StarRatingInput({ value, onChange, disabled = false }) {
               setScore(star + (hasHalf ? 0.5 : 0));
             }
           }}
-          aria-label={`Set score ${star}`}
+          aria-label={`Rate ${star} ${star === 1 ? "star" : "stars"}`}
         >
           ★
         </button>
@@ -42,11 +46,98 @@ function StarRatingInput({ value, onChange, disabled = false }) {
         className={`half-btn ${hasHalf ? "active" : ""}`}
         disabled={disabled || base >= 5}
         onClick={() => setScore(base + (hasHalf ? 0 : 0.5))}
+        aria-label="Toggle half-star increment"
       >
         1/2
       </button>
     </div>
   );
+}
+
+/**
+ * Parse song duration into whole seconds.
+ *
+ * Supported inputs:
+ * - number: treated as seconds (e.g. 245)
+ * - numeric string seconds: "245"
+ * - "MM:SS" string (e.g. "4:05")
+ * - "HH:MM:SS" string (e.g. "1:04:32")
+ *
+ * Returns 0 for empty/invalid values.
+ */
+function parseDurationToSeconds(duration) {
+  if (duration === null || duration === undefined || duration === "") {
+    return 0;
+  }
+
+  if (typeof duration === "number" && Number.isFinite(duration)) {
+    return Math.max(0, Math.floor(duration));
+  }
+
+  const text = String(duration).trim();
+  if (!text) {
+    return 0;
+  }
+
+  if (/^\d+$/.test(text)) {
+    return Math.max(0, Number(text));
+  }
+
+  const parts = text.split(":").map((part) => Number(part));
+  if (parts.some((part) => Number.isNaN(part))) {
+    return 0;
+  }
+
+  if (parts.length === 2) {
+    return Math.max(0, parts[0] * 60 + parts[1]);
+  }
+
+  if (parts.length === 3) {
+    return Math.max(0, parts[0] * 3600 + parts[1] * 60 + parts[2]);
+  }
+
+  return 0;
+}
+
+function formatAlbumLength(totalSeconds) {
+  if (!totalSeconds || totalSeconds <= 0) {
+    return "Unknown";
+  }
+
+  const totalMinutes = Math.max(1, Math.round(totalSeconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${totalMinutes}m`;
+}
+
+function formatCountdown(value) {
+  if (!value) {
+    return "No deadline";
+  }
+
+  const end = new Date(value);
+  if (Number.isNaN(end.getTime())) {
+    return "Unknown deadline";
+  }
+
+  const diff = end.getTime() - Date.now();
+  if (diff <= 0) {
+    return "Voting closed";
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const mins = Math.floor((diff / (1000 * 60)) % 60);
+  const secs = Math.floor((diff / 1000) % 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${mins}m ${secs}s`;
+  }
+  return `${hours}h ${mins}m ${secs}s`;
 }
 
 export default function VoteCard({
@@ -72,12 +163,19 @@ export default function VoteCard({
   submitLabel = "Save Votes",
   showPostVoteActions = true,
   showRefreshButton = true,
+  showDeadlineStatusBar = true,
 }) {
   const [lazyMode, setLazyMode] = useState(false);
   const submitRef = useRef(null);
   const [isDocked, setIsDocked] = useState(true);
   const [pipSupported, setPipSupported] = useState(false);
   const [popoutHint, setPopoutHint] = useState("");
+  const [countdownText, setCountdownText] = useState("No deadline");
+
+  const albumLength = useMemo(() => {
+    const total = songs.reduce((sum, song) => sum + parseDurationToSeconds(song.duration), 0);
+    return formatAlbumLength(total);
+  }, [songs]);
 
   useEffect(() => {
     try {
@@ -105,8 +203,6 @@ export default function VoteCard({
       (entries) => {
         const entry = entries[0];
         if (!entry) return;
-        // Keep footer fixed while voting through tracks, then release it
-        // when the submit area is visible to match V1 behavior.
         if (entry.isIntersecting) {
           setIsDocked(false);
           return;
@@ -125,6 +221,22 @@ export default function VoteCard({
       observer.disconnect();
     };
   }, [albumState, songs.length]);
+
+  useEffect(() => {
+    setCountdownText(formatCountdown(albumPayload?.vote_end));
+
+    if (!albumPayload?.vote_end) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setCountdownText(formatCountdown(albumPayload?.vote_end));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [albumPayload?.vote_end]);
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -182,9 +294,9 @@ export default function VoteCard({
   return (
     <section className="card vote-card">
       <header className="vote-header">
-        <div>
+        <div className="vote-header-copy">
+          <p className="vote-kicker">Now Voting</p>
           <h2>{title}</h2>
-          <p className="vote-end">Voting closes: {formatVoteEnd(albumPayload?.vote_end)}</p>
         </div>
         {showRefreshButton ? (
           <button className="btn btn-ghost" type="button" onClick={loadAlbum}>Refresh</button>
@@ -195,9 +307,23 @@ export default function VoteCard({
       {albumState === "error" && <p className="error-text">{error || "Could not load voting data right now."}</p>}
       {albumState === "empty" && <p className="empty-text">{error || "No album is currently open for voting."}</p>}
 
-      {albumState === "ready" && albumPayload?.album && (
+      {albumState === "ready" && albumPayload?.album ? (
         <>
           <article className="album-panel">
+            {showDeadlineStatusBar && albumPayload?.vote_end ? (
+              <div className="album-status-bar" role="list" aria-label="Voting window status">
+                <p className="album-status-item" role="listitem">
+                  <span className="album-status-label">Voting Closes</span>
+                  <span className="album-status-value">{formatVoteEnd(albumPayload?.vote_end)}</span>
+                </p>
+                <span className="album-status-divider" aria-hidden="true" />
+                <p className="album-status-item" role="listitem">
+                  <span className="album-status-label">Time Remaining</span>
+                  <span className="album-status-value remaining" aria-live="polite">{countdownText}</span>
+                </p>
+              </div>
+            ) : null}
+
             {albumPayload.album.cover_url && (
               <img
                 src={albumPayload.album.cover_url}
@@ -205,13 +331,23 @@ export default function VoteCard({
                 className="cover"
               />
             )}
-            <div>
+            <div className="album-panel-content">
               <h3>{albumPayload.album.title}</h3>
               <p className="artist">{albumPayload.album.artist}</p>
-              {albumPayload.album.release_date ? (
-                <p className="meta">Release date: {albumPayload.album.release_date}</p>
-              ) : null}
-              <p className="meta">{songs.length} tracks</p>
+              <ul className="album-stats-grid" aria-label="Album details">
+                <li className="album-stat">
+                  <span className="meta-label">Release</span>
+                  <span className="meta-value">{albumPayload.album.release_date || "Unknown"}</span>
+                </li>
+                <li className="album-stat">
+                  <span className="meta-label">Tracks</span>
+                  <span className="meta-value">{songs.length}</span>
+                </li>
+                <li className="album-stat">
+                  <span className="meta-label">Length</span>
+                  <span className="meta-value">{albumLength}</span>
+                </li>
+              </ul>
               <StreamingLinks
                 spotifyUrl={albumPayload.album.spotify_url}
                 appleUrl={albumPayload.album.apple_url}
@@ -232,8 +368,13 @@ export default function VoteCard({
           <form className={`vote-form ${isDocked ? "with-fixed-footer" : "with-inline-footer"}`} onSubmit={onSubmit}>
             <label className={`lazy-toggle-row ${lazyMode ? "active" : ""}`}>
               <input type="checkbox" checked={lazyMode} onChange={toggleLazyMode} />
-              <span className="lazy-checkbox" aria-hidden="true">✓</span>
-              <span>Lazy vote mode</span>
+              <span className="lazy-toggle-switch" aria-hidden="true">
+                <span className="lazy-toggle-knob" />
+              </span>
+              <span className="lazy-toggle-copy">
+                <strong>Lazy vote mode</strong>
+                <small>{lazyMode ? "Star controls" : "Numeric controls"}</small>
+              </span>
             </label>
 
             <div className="tracks-grid">
@@ -243,44 +384,54 @@ export default function VoteCard({
                     <strong>{song.track_number ? `${song.track_number}. ` : ""}</strong>
                     {song.title}
                   </span>
-                  <input
-                    className={`score-input ${lazyMode ? "visually-hidden" : ""}`}
-                    type="number"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    value={songScores[song.id] ?? ""}
-                    onChange={(event) => setSongScore(song.id, event.target.value)}
-                    placeholder="0-5"
-                  />
-                  {lazyMode ? (
+                  <div className="score-control-stack">
+                    <input
+                      className="score-input score-input-numeric"
+                      type="number"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={songScores[song.id] ?? ""}
+                      onChange={(event) => setSongScore(song.id, event.target.value)}
+                      placeholder="0-5"
+                      tabIndex={lazyMode ? -1 : 0}
+                      aria-hidden={lazyMode ? "true" : undefined}
+                    />
                     <StarRatingInput
+                      className="score-input-stars"
                       value={songScores[song.id] ?? ""}
                       onChange={(next) => setSongScore(song.id, next)}
+                      disabled={!lazyMode}
+                      ariaHidden={!lazyMode}
                     />
-                  ) : null}
+                  </div>
                 </label>
               ))}
             </div>
 
             <label className={`album-score-row ${lazyMode ? "lazy" : ""}`}>
-              <span>Album score</span>
-              <input
-                className={`score-input ${lazyMode ? "visually-hidden" : ""}`}
-                type="number"
-                min="0"
-                max="5"
-                step="0.1"
-                value={albumScore}
-                onChange={(event) => setAlbumScore(event.target.value)}
-                placeholder="0-5"
-              />
-              {lazyMode ? (
+              <span><strong>Album score</strong></span>
+              <div className="score-control-stack">
+                <input
+                  className="score-input score-input-numeric"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={albumScore}
+                  onChange={(event) => setAlbumScore(event.target.value)}
+                  placeholder="0-5"
+                  tabIndex={lazyMode ? -1 : 0}
+                  aria-hidden={lazyMode ? "true" : undefined}
+                />
                 <StarRatingInput
+                  className="score-input-stars"
                   value={albumScore}
                   onChange={(next) => setAlbumScore(next)}
+                  disabled={!lazyMode}
+                  ariaHidden={!lazyMode}
                 />
-              ) : null}
+              </div>
             </label>
 
             <div className={`vote-status ${hasUnsavedChanges ? "unsaved" : hasSavedVotes ? "voted" : "not-voted"}`}>
@@ -327,7 +478,7 @@ export default function VoteCard({
             {renderProgressFooter(isDocked ? -1 : 0)}
           </div>
         </>
-      )}
+      ) : null}
     </section>
   );
 }

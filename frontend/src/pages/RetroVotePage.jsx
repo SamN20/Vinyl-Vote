@@ -34,6 +34,7 @@ export default function RetroVotePage({ retro }) {
         submitLabel="Save Retro Votes"
         showRefreshButton={false}
         showPostVoteActions={false}
+        showDeadlineStatusBar={false}
       />
     </>
   );

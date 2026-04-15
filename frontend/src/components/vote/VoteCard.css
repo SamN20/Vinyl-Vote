@@ -1,14 +1,38 @@
 .vote-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
 .vote-card {
   overflow-x: hidden;
+  background:
+    radial-gradient(circle at 100% -10%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 44%),
+    var(--card-bg);
 }
+
+.vote-header-copy {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.vote-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: color-mix(in oklab, var(--accent) 72%, white 10%);
+}
+
+.vote-header-copy h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.4vw, 2.5rem);
+  line-height: 1.04;
+}
+
 .vpf-bar {
   height: 6px;
   background: var(--input-bg);
@@ -34,33 +58,121 @@
   font-weight: 700;
 }
 
-.vote-end {
-  margin: 0;
-  color: var(--muted);
-}
-
 .album-panel {
   display: grid;
   grid-template-columns: minmax(120px, 170px) 1fr;
   gap: 1rem;
-  padding: 0.9rem;
-  border-radius: 10px;
-  background: var(--bg);
-  border: 1px solid var(--border-color);
+  padding: 1rem;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 100% -12%, color-mix(in oklab, var(--accent) 8%, transparent), transparent 42%),
+    color-mix(in oklab, var(--bg) 86%, var(--card-bg));
+  border: 1px solid color-mix(in oklab, var(--accent) 14%, var(--border-color));
   margin-bottom: 1rem;
+}
+
+.album-status-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--border-color));
+  background:
+    linear-gradient(90deg, color-mix(in oklab, var(--accent) 13%, transparent), transparent 36%),
+    color-mix(in oklab, var(--bg) 84%, var(--card-bg));
+  border-radius: 999px;
+  padding: 0.4rem 0.7rem;
+}
+
+.album-status-item {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.album-status-divider {
+  width: 1px;
+  height: 1.1rem;
+  background: color-mix(in oklab, var(--accent) 30%, var(--border-color));
+  flex: 0 0 auto;
+}
+
+.album-status-label {
+  color: var(--muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.album-status-value {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.album-status-value.remaining {
+  color: color-mix(in oklab, var(--accent) 78%, white 12%);
 }
 
 .cover {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 8px;
+  border-radius: 10px;
   object-fit: cover;
+  border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--border-color));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .artist,
 .meta {
   margin: 0.2rem 0;
   color: var(--muted);
+}
+
+.album-panel-content {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.album-panel-content h3 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  line-height: 1.08;
+}
+
+.album-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.album-stat {
+  margin: 0;
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid color-mix(in oklab, var(--accent) 12%, var(--border-color));
+  background: color-mix(in oklab, var(--card-bg) 94%, var(--bg));
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+}
+
+.meta-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.meta-value {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.08rem;
 }
 
 .pip-action-row {
@@ -90,16 +202,22 @@
 }
 
 .lazy-toggle-row {
-  display: inline-flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 10px;
-  font-weight: 600;
+  gap: 0.7rem;
   width: fit-content;
   max-width: 100%;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: var(--bg);
-  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--accent) 12%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--bg) 90%, var(--card-bg));
+  padding: 0.58rem 0.7rem;
+  transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+}
+
+.lazy-toggle-row:hover {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--border-color));
 }
 
 .lazy-toggle-row input {
@@ -108,27 +226,88 @@
   pointer-events: none;
 }
 
-.lazy-checkbox {
-  width: 24px;
+.lazy-toggle-switch {
+  width: 44px;
   height: 24px;
+  border-radius: 999px;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  background: color-mix(in oklab, var(--bg) 84%, var(--card-bg));
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: transparent;
-  background: var(--input-bg);
+  padding: 2px;
   flex: 0 0 auto;
+  transition: border-color 220ms ease, background 220ms ease;
+}
+
+.lazy-toggle-knob {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted) 45%, white 8%);
+  transform: translateX(0);
+  transition: transform 220ms ease, background 220ms ease;
+}
+
+.lazy-toggle-copy {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.lazy-toggle-copy strong {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.lazy-toggle-copy small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.lazy-toggle-mode {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in oklab, var(--bg) 92%, var(--card-bg));
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.16rem 0.5rem;
+  transition: border-color 220ms ease, color 220ms ease, background 220ms ease;
 }
 
 .lazy-toggle-row.active {
-  border-color: color-mix(in oklab, var(--accent) 60%, var(--border-color));
+  border-color: color-mix(in oklab, var(--accent) 52%, var(--border-color));
+  background: color-mix(in oklab, var(--bg) 84%, var(--accent) 8%);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
-.lazy-toggle-row.active .lazy-checkbox {
-  color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
+.lazy-toggle-row.active .lazy-toggle-switch {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border-color));
+  background: color-mix(in oklab, var(--accent) 24%, transparent);
+}
+
+.lazy-toggle-row.active .lazy-toggle-knob {
+  transform: translateX(20px);
+  background: color-mix(in oklab, var(--accent) 85%, white 10%);
+}
+
+.lazy-toggle-row.active .lazy-toggle-copy small {
+  color: color-mix(in oklab, var(--accent) 70%, white 12%);
+}
+
+.lazy-toggle-row.active .lazy-toggle-mode {
+  border-color: color-mix(in oklab, var(--accent) 52%, var(--border-color));
+  color: color-mix(in oklab, var(--accent) 80%, white 10%);
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+.lazy-toggle-row:focus-within {
+  outline: 2px solid color-mix(in oklab, var(--accent) 70%, white 15%);
+  outline-offset: 2px;
 }
 
 .tracks-grid {
@@ -146,6 +325,7 @@
   padding: 0.6rem 0.7rem;
   border-radius: 8px;
   overflow: hidden;
+  transition: border-color 220ms ease, background 220ms ease;
 }
 
 .track-name {
@@ -153,39 +333,80 @@
   overflow-wrap: anywhere;
 }
 
-.track-row .score-input {
-  width: 96px;
-  justify-self: end;
-}
-
 .track-row.lazy {
   grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--border-color));
+  background: color-mix(in oklab, var(--bg) 86%, var(--accent) 8%);
 }
 
-.visually-hidden {
+.score-control-stack {
+  position: relative;
+  width: 102px;
+  min-height: 34px;
+  justify-self: end;
+  transition: width 220ms ease;
+}
+
+.track-row.lazy .score-control-stack,
+.album-score-row.lazy .score-control-stack {
+  width: 202px;
+}
+
+.score-control-stack .score-input-numeric,
+.score-control-stack .score-input-stars {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  clip-path: inset(50%);
+  left: 0;
+  top: 50%;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.score-control-stack .score-input-numeric {
+  width: 100%;
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.score-control-stack .score-input-stars {
+  opacity: 0;
+  transform: translateY(calc(-50% + 3px)) scale(0.98);
+  pointer-events: none;
+}
+
+.track-row.lazy .score-control-stack .score-input-numeric,
+.album-score-row.lazy .score-control-stack .score-input-numeric {
+  opacity: 0;
+  transform: translateY(calc(-50% - 3px)) scale(0.98);
+  pointer-events: none;
+}
+
+.track-row.lazy .score-control-stack .score-input-stars,
+.album-score-row.lazy .score-control-stack .score-input-stars {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  pointer-events: auto;
 }
 
 .lazy-stars {
   display: flex;
   align-items: center;
   gap: 4px;
-  justify-self: end;
-  max-width: none;
-  overflow: visible;
-  padding-bottom: 2px;
+  width: 202px;
+  max-width: 100%;
+  overflow: hidden;
   min-width: 0;
+  padding-bottom: 0;
+}
+
+.lazy-stars.disabled {
+  pointer-events: none;
 }
 
 .star-btn,
 .half-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--border-color);
   background: var(--bg);
   color: var(--muted);
@@ -193,6 +414,7 @@
   min-width: 30px;
   height: 30px;
   padding: 0.2rem;
+  line-height: 1;
   cursor: pointer;
   flex: 0 0 auto;
 }
@@ -225,19 +447,26 @@
 
 .album-score-row {
   display: grid;
-  grid-template-columns: 1fr 110px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
   align-items: center;
   min-width: 0;
+  border: 1px solid var(--border-color);
+  background: var(--bg);
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  transition: border-color 220ms ease, background 220ms ease;
 }
 
 .album-score-row.lazy {
   grid-template-columns: minmax(0, 1fr) auto;
   overflow: hidden;
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--border-color));
+  background: color-mix(in oklab, var(--bg) 86%, var(--accent) 8%);
 }
 
-.album-score-row.lazy .lazy-stars {
-  justify-self: end;
+.album-score-row > span {
+  min-width: 0;
 }
 
 .vote-status {
@@ -356,7 +585,26 @@
 }
 
 @media (max-width: 900px) {
+  .vote-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .album-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .album-status-bar {
+    border-radius: 12px;
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+  }
+
+  .album-status-divider {
+    display: none;
+  }
+
+  .album-stats-grid {
     grid-template-columns: 1fr;
   }
 
@@ -369,13 +617,17 @@
     grid-template-columns: 1fr;
   }
 
-  .lazy-stars {
+  .score-control-stack,
+  .track-row.lazy .score-control-stack,
+  .album-score-row.lazy .score-control-stack {
+    width: 100%;
+    justify-self: stretch;
     margin-top: 2px;
-    justify-self: start;
   }
 
-  .track-row .score-input {
+  .lazy-stars {
     width: 100%;
+    justify-content: flex-start;
   }
 
   .vote-progress-footer {
