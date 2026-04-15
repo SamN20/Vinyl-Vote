@@ -6,6 +6,7 @@ import Header from "./components/layout/Header";
 import RetroVoteCard from "./components/retro/RetroVoteCard";
 import VoteCard from "./components/vote/VoteCard";
 import FaceoffLeaderboardPage from "./pages/FaceoffLeaderboardPage";
+import BattlePage from "./pages/BattlePage";
 import ResultsPage from "./pages/ResultsPage";
 import RetroHubPage from "./pages/RetroHubPage";
 import RetroVotePage from "./pages/RetroVotePage";
@@ -42,6 +43,10 @@ function parseHashRoute(hash) {
 
   if (pathOnly === "/faceoff-leaderboard") {
     return { page: "/faceoff-leaderboard", albumId: null };
+  }
+
+  if (pathOnly === "/battle") {
+    return { page: "/battle", albumId: null };
   }
 
   if (pathOnly === "/top-albums") {
@@ -89,7 +94,7 @@ function App() {
   } = useVotingFlow();
   const retro = useRetroVotingFlow(sessionState === "authenticated");
   const { setSelectedAlbumId } = retro;
-  const isPublicDataPage = ["/results", "/top-artists", "/faceoff-leaderboard", "/top-albums", "/top-songs"].includes(route.page);
+  const isPublicDataPage = ["/results", "/top-artists", "/faceoff-leaderboard", "/top-albums", "/top-songs", "/battle"].includes(route.page);
 
   useEffect(() => {
     function onHashChange() {
@@ -165,6 +170,10 @@ function App() {
 
         {route.page === "/faceoff-leaderboard" && sessionState !== "loading" && sessionState !== "error" ? (
           <FaceoffLeaderboardPage />
+        ) : null}
+
+        {route.page === "/battle" && sessionState !== "loading" && sessionState !== "error" ? (
+          <BattlePage sessionState={sessionState} theme={theme} />
         ) : null}
 
         {route.page === "/top-albums" && sessionState !== "loading" && sessionState !== "error" ? (

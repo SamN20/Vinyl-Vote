@@ -380,6 +380,106 @@ def test_leaderboard_battle_contract_matches_v1_and_user_counts():
         db.drop_all()
 
 
+def test_battle_pair_contract_returns_expected_shape_and_distinct_songs():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    _seed_authenticated_user_and_album(app)
+    client = app.test_client()
+
+    response = client.get("/api/v1/battle")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert set(payload.keys()) == {"song1", "song2"}
+
+    for key in ("song1", "song2"):
+        song = payload[key]
+        assert set(song.keys()) == {"id", "title", "spotify_url", "apple_url", "youtube_url", "album"}
+        assert set(song["album"].keys()) == {"id", "title", "artist", "cover_url"}
+
+    assert payload["song1"]["id"] != payload["song2"]["id"]
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_battle_vote_happy_path_updates_elo_and_returns_payload():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+    client = app.test_client()
+    _login(client, user_id)
+
+    with app.app_context():
+        songs = Song.query.order_by(Song.track_number.asc()).all()
+        winner_song = songs[0]
+        loser_song = songs[1]
+        winner_id = winner_song.id
+        loser_id = loser_song.id
+        winner_before = float(winner_song.elo_rating)
+        loser_before = float(loser_song.elo_rating)
+        winner_match_before = int(winner_song.match_count or 0)
+        loser_match_before = int(loser_song.match_count or 0)
+
+    response = client.post("/api/v1/battle/vote", json={"winner_id": winner_id, "loser_id": loser_id})
+    assert response.status_code == 200
+
+    payload = response.get_json()
+    assert set(payload.keys()) == {"winner", "loser"}
+    assert set(payload["winner"].keys()) == {"id", "new_rating", "gain"}
+    assert set(payload["loser"].keys()) == {"id", "new_rating", "loss"}
+    assert payload["winner"]["id"] == winner_id
+    assert payload["loser"]["id"] == loser_id
+
+    with app.app_context():
+        winner_after = db.session.get(Song, winner_id)
+        loser_after = db.session.get(Song, loser_id)
+        vote_rows = BattleVote.query.all()
+
+        assert len(vote_rows) == 1
+        assert winner_after.elo_rating > winner_before
+        assert loser_after.elo_rating < loser_before
+        assert winner_after.match_count == winner_match_before + 1
+        assert loser_after.match_count == loser_match_before + 1
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_battle_vote_rejects_same_winner_and_loser_ids():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+    client = app.test_client()
+    _login(client, user_id)
+
+    with app.app_context():
+        song = Song.query.order_by(Song.track_number.asc()).first()
+        song_id = song.id
+        elo_before = float(song.elo_rating)
+        match_before = int(song.match_count or 0)
+
+    response = client.post("/api/v1/battle/vote", json={"winner_id": song_id, "loser_id": song_id})
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "winner_id and loser_id must be different"}
+
+    with app.app_context():
+        song_after = db.session.get(Song, song_id)
+        vote_count = BattleVote.query.count()
+        assert song_after.elo_rating == elo_before
+        assert song_after.match_count == match_before
+        assert vote_count == 0
+
+    with app.app_context():
+        db.drop_all()
+
+
 def test_leaderboard_artist_bio_contract_matches_v1_with_cache():
     app = _build_app()
     with app.app_context():

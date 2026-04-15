@@ -168,6 +168,31 @@ export function oauthLoginHref() {
   return buildUrl("/oauth/login");
 }
 
+let battleInFlightRequest = null;
+
+export function getBattle(options = {}) {
+  const { force = false } = options;
+
+  // Deduplicate concurrent battle fetches so initial render doesn't swap pairs
+  // when React dev mode invokes effects more than once.
+  if (!force && battleInFlightRequest) {
+    return battleInFlightRequest;
+  }
+
+  battleInFlightRequest = request("/api/v1/battle").finally(() => {
+    battleInFlightRequest = null;
+  });
+
+  return battleInFlightRequest;
+}
+
+export function submitBattleVote(payload) {
+  return request(`/api/v1/battle/vote`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function legacyLoginHref() {
   return buildUrl("/legacy/login");
 }
