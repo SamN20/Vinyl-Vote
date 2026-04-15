@@ -1,0 +1,74 @@
+.battle-skeleton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  width: 100%;
+  flex-wrap: wrap;
+  padding: 12px 0;
+}
+
+.battle-skel-card {
+  width: 360px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.battle-skel-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.battle-skel-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.battle-skel-title { height: 20px; width: 78%; border-radius: 8px; }
+.battle-skel-artist { height: 14px; width: 42%; border-radius: 8px; }
+
+.battle-skel-links { display:flex; gap:8px; }
+.battle-skel-chip { width:44px; height:28px; border-radius:999px; }
+
+.battle-skel-embed { width:100%; height:80px; border-radius:12px; border:1px solid var(--border-color); background: var(--card-bg); overflow: hidden; }
+
+.vs-skel-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border-color);
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .battle-skeleton { gap: 20px; }
+  .battle-skel-card { width: 84vw; max-width: 420px; }
+  .vs-skel-badge { display: none; }
+}
+
+/* Shimmer animation for skeleton elements (self-contained) */
+.battle-skel-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--bg) 82%, var(--card-bg)),
+    color-mix(in oklab, var(--card-bg) 72%, white 10%),
+    color-mix(in oklab, var(--bg) 82%, var(--card-bg))
+  );
+  background-size: 220% 100%;
+  animation: battle-shimmer 1.2s linear infinite;
+}
+
+@keyframes battle-shimmer {
+  from { background-position: 220% 0; }
+  to { background-position: -220% 0; }
+}
+

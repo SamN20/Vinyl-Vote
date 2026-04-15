@@ -168,6 +168,17 @@ export function oauthLoginHref() {
   return buildUrl("/oauth/login");
 }
 
+export function getBattle() {
+  return request("/api/v1/battle");
+}
+
+export function submitBattleVote(payload) {
+  return request(`/api/v1/battle/vote`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function legacyLoginHref() {
   return buildUrl("/legacy/login");
 }

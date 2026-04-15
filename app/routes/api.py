@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request, current_app, make_response
+from datetime import datetime, timezone
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -938,6 +939,95 @@ def get_leaderboard_songs():
             },
         }
     )
+
+
+@bp.route('/battle', methods=['GET'])
+@bp_v1.route('/battle', methods=['GET'])
+def api_get_battle():
+    """Return two random songs for a face-off as JSON."""
+    current_album = Album.query.filter_by(is_current=True).first()
+    max_queue_order = current_album.queue_order if current_album else 0
+
+    songs = Song.query.join(Album).filter(
+        Album.queue_order > 0,
+        Album.queue_order <= max_queue_order,
+        Song.ignored == False
+    ).order_by(func.random()).limit(2).all()
+
+    if len(songs) < 2:
+        return jsonify({'error': 'Not enough songs to battle!'}), 404
+
+    def _song_payload(song):
+        return {
+            'id': song.id,
+            'title': song.title,
+            'spotify_url': song.spotify_url,
+            'apple_url': song.apple_url,
+            'youtube_url': song.youtube_url,
+            'album': {
+                'id': song.album.id if song.album else None,
+                'title': song.album.title if song.album else None,
+                'artist': song.album.artist if song.album else None,
+                'cover_url': song.album.cover_url if song.album else None,
+            },
+        }
+
+    return jsonify({'song1': _song_payload(songs[0]), 'song2': _song_payload(songs[1])})
+
+
+@bp.route('/battle/vote', methods=['POST'])
+@bp_v1.route('/battle/vote', methods=['POST'])
+def api_battle_vote():
+    """Handle a battle vote via JSON and return rating changes."""
+    data = request.get_json(silent=True) or {}
+    winner_id = data.get('winner_id')
+    loser_id = data.get('loser_id')
+
+    if not winner_id or not loser_id:
+        return jsonify({'error': 'Missing IDs'}), 400
+
+    winner = Song.query.get(winner_id)
+    loser = Song.query.get(loser_id)
+
+    if not winner or not loser:
+        return jsonify({'error': 'Song not found'}), 404
+
+    user_id = current_user.id if current_user.is_authenticated else None
+    battle_vote = BattleVote(
+        user_id=user_id,
+        winner_id=winner_id,
+        loser_id=loser_id,
+        timestamp=datetime.now(timezone.utc)
+    )
+    db.session.add(battle_vote)
+
+    # Elo calculation (K = 32)
+    K = 32
+    Rw = winner.elo_rating
+    Rl = loser.elo_rating
+    Ew = 1 / (1 + 10 ** ((Rl - Rw) / 400))
+    El = 1 / (1 + 10 ** ((Rw - Rl) / 400))
+
+    winner.elo_rating = Rw + K * (1 - Ew)
+    loser.elo_rating = Rl + K * (0 - El)
+
+    winner.match_count += 1
+    loser.match_count += 1
+
+    db.session.commit()
+
+    return jsonify({
+        'winner': {
+            'id': winner.id,
+            'new_rating': round(winner.elo_rating, 1),
+            'gain': round(winner.elo_rating - Rw, 1),
+        },
+        'loser': {
+            'id': loser.id,
+            'new_rating': round(loser.elo_rating, 1),
+            'loss': round(loser.elo_rating - Rl, 1),
+        },
+    })
 
 
 # -------- Retro voting endpoints --------

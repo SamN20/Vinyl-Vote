@@ -157,7 +157,7 @@ export default function FaceoffLeaderboardPage() {
           <h1>Face-Off Leaderboard</h1>
           <p className="subtitle">Elo-based fan favorites ranked by battle outcomes.</p>
         </div>
-        <a className="btn btn-primary" href={legacyPageHref("/battle")}>Play Face-Off</a>
+        <a className="btn btn-primary" href="#/battle">Play Face-Off</a>
       </section>
 
       <LeaderboardToolbar

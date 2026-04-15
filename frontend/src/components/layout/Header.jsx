@@ -114,7 +114,7 @@ export default function Header({
             {sessionState === "authenticated" && (
               <>
                 <a href="#/vote" className={route === "/vote" ? "active" : ""} onClick={closeMobileOverlays}>Vote</a>
-                <a href={legacyPageHref("/battle")} onClick={closeMobileOverlays}>Face-Off</a>
+                <a href="#/battle" className={route === "/battle" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off</a>
                 <a href="#/retro-hub" className={route === "/retro-hub" || route === "/retro-vote" ? "active" : ""} onClick={closeMobileOverlays}>Retro Hub</a>
               </>
             )}
