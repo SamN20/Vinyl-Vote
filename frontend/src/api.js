@@ -168,8 +168,22 @@ export function oauthLoginHref() {
   return buildUrl("/oauth/login");
 }
 
-export function getBattle() {
-  return request("/api/v1/battle");
+let battleInFlightRequest = null;
+
+export function getBattle(options = {}) {
+  const { force = false } = options;
+
+  // Deduplicate concurrent battle fetches so initial render doesn't swap pairs
+  // when React dev mode invokes effects more than once.
+  if (!force && battleInFlightRequest) {
+    return battleInFlightRequest;
+  }
+
+  battleInFlightRequest = request("/api/v1/battle").finally(() => {
+    battleInFlightRequest = null;
+  });
+
+  return battleInFlightRequest;
 }
 
 export function submitBattleVote(payload) {

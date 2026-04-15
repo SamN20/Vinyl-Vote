@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { getBattle, submitBattleVote } from "../api";
+import { useEffect, useRef, useState } from "react";
+import { getBattle, legacyPageHref, submitBattleVote } from "../api";
 import StatusCard from "../components/common/StatusCard";
 import BattleCard from "../components/battle/BattleCard";
 import BattleSkeleton from "../components/battle/BattleSkeleton";
@@ -12,6 +12,7 @@ export default function BattlePage({ sessionState, theme }) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const requestSeq = useRef(0);
 
   useEffect(() => {
     loadPair();
@@ -33,15 +34,25 @@ export default function BattlePage({ sessionState, theme }) {
     addPreconnect("https://i.scdn.co");
   }, []);
 
-  async function loadPair() {
+  async function loadPair(options = {}) {
+    const { force = false } = options;
+    const seq = requestSeq.current + 1;
+    requestSeq.current = seq;
+
     setState("loading");
     setError(null);
     try {
-      const payload = await getBattle();
+      const payload = await getBattle({ force });
+      if (seq !== requestSeq.current) {
+        return;
+      }
       setSong1(payload.song1);
       setSong2(payload.song2);
       setState("ready");
     } catch (err) {
+      if (seq !== requestSeq.current) {
+        return;
+      }
       setError(err.message || String(err));
       setState("error");
     }
@@ -62,7 +73,7 @@ export default function BattlePage({ sessionState, theme }) {
 
   function closeResult() {
     setResult(null);
-    loadPair();
+    loadPair({ force: true });
   }
 
   if (state === "error") return <StatusCard title="Could not load battle" message={error} variant="error" />;
@@ -108,7 +119,7 @@ export default function BattlePage({ sessionState, theme }) {
         ) : null}
 
         <div className="skip-container">
-          <button className="btn btn-secondary" type="button" onClick={loadPair}>Skip this match</button>
+          <button className="btn btn-secondary" type="button" onClick={() => loadPair({ force: true })}>Skip this match</button>
           <a className="muted-link" href="#/faceoff-leaderboard">View Face-Off Leaderboard</a>
         </div>
 

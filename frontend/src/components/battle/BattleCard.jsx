@@ -22,6 +22,10 @@ export default function BattleCard({ song, onVote, disabled, id, theme }) {
     }
   };
 
+  const stopVoteBubble = (e) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
       className="battle-card"
@@ -43,7 +47,7 @@ export default function BattleCard({ song, onVote, disabled, id, theme }) {
       <div className="battle-info">
         <h3>{song.title}</h3>
         <p>{song.album?.artist}</p>
-        <div className="song-links">
+        <div className="song-links" onClick={stopVoteBubble} onKeyDown={stopVoteBubble}>
           <StreamingLinks
             spotifyUrl={song.spotify_url}
             appleUrl={song.apple_url}
@@ -53,7 +57,7 @@ export default function BattleCard({ song, onVote, disabled, id, theme }) {
         </div>
 
         {song.spotify_url ? (
-          <div className="spotify-embed-container">
+          <div className="spotify-embed-container" onClick={stopVoteBubble} onKeyDown={stopVoteBubble}>
             <div className={`spotify-embed-wrapper ${iframeLoaded ? "loaded" : "loading"}`}>
               <div className="spotify-skeleton" role="img" aria-label="Loading player" aria-hidden={iframeLoaded}>
                 <div className="sk-thumb" />
