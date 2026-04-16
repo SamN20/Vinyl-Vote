@@ -193,6 +193,24 @@ export function submitBattleVote(payload) {
   });
 }
 
+export function getSongRequests() {
+  return request("/api/v1/song-requests");
+}
+
+export function searchSongRequestAlbums(albumQuery) {
+  return request("/api/v1/song-requests/search", {
+    method: "POST",
+    body: JSON.stringify({ album_query: albumQuery }),
+  });
+}
+
+export function submitSongRequest(payload) {
+  return request("/api/v1/song-requests", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function legacyLoginHref() {
   return buildUrl("/legacy/login");
 }

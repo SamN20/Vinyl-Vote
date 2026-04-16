@@ -4,7 +4,7 @@ from unittest.mock import patch
 from flask import Flask
 
 from app import db, login_manager
-from app.models import Album, AlbumScore, BattleVote, Setting, Song, User, Vote, VotePeriod
+from app.models import Album, AlbumScore, BattleVote, Setting, Song, SongRequest, User, Vote, VotePeriod
 from app.routes import api
 
 
@@ -475,6 +475,97 @@ def test_battle_vote_rejects_same_winner_and_loser_ids():
         assert song_after.elo_rating == elo_before
         assert song_after.match_count == match_before
         assert vote_count == 0
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_song_requests_list_and_create_contract():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+    client = app.test_client()
+    _login(client, user_id)
+
+    initial = client.get("/api/v1/song-requests")
+    assert initial.status_code == 200
+    assert initial.get_json() == {
+        "requests": [],
+        "stats": {"total": 0, "fulfilled": 0, "pending": 0},
+    }
+
+    invalid = client.post("/api/v1/song-requests", json={"title": "", "artist": ""})
+    assert invalid.status_code == 400
+    assert invalid.get_json() == {"error": "Both album title and artist are required."}
+
+    create_payload = {
+        "title": "Discovery",
+        "artist": "Daft Punk",
+        "spotify_id": "abc123",
+        "cover_url": "https://example.com/discovery.jpg",
+        "release_date": "2001-03-07",
+        "spotify_url": "https://open.spotify.com/album/abc123",
+    }
+    created = client.post("/api/v1/song-requests", json=create_payload)
+    assert created.status_code == 201
+    created_json = created.get_json()
+    assert created_json["message"] == "Your request has been submitted!"
+    assert created_json["request"]["title"] == "Discovery"
+    assert created_json["request"]["artist"] == "Daft Punk"
+    assert created_json["request"]["fulfilled"] is False
+
+    after = client.get("/api/v1/song-requests")
+    assert after.status_code == 200
+    after_payload = after.get_json()
+    assert after_payload["stats"] == {"total": 1, "fulfilled": 0, "pending": 1}
+    assert len(after_payload["requests"]) == 1
+    assert after_payload["requests"][0]["title"] == "Discovery"
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_song_requests_search_contract_and_validation():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+    client = app.test_client()
+    _login(client, user_id)
+
+    invalid = client.post("/api/v1/song-requests/search", json={"album_query": ""})
+    assert invalid.status_code == 400
+    assert invalid.get_json() == {"error": "album_query is required"}
+
+    mocked_albums = [
+        {
+            "id": "spotify-album-1",
+            "name": "Random Access Memories",
+            "artists": [{"name": "Daft Punk"}],
+            "release_date": "2013-05-17",
+            "images": [{"url": "https://example.com/ram.jpg"}],
+            "external_urls": {"spotify": "https://open.spotify.com/album/spotify-album-1"},
+        }
+    ]
+
+    with patch("app.routes.api.search_album", return_value=mocked_albums):
+        response = client.post("/api/v1/song-requests/search", json={"album_query": "daft punk ram"})
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["query"] == "daft punk ram"
+    assert len(payload["albums"]) == 1
+    assert payload["albums"][0] == {
+        "id": "spotify-album-1",
+        "title": "Random Access Memories",
+        "artist": "Daft Punk",
+        "release_date": "2013-05-17",
+        "cover_url": "https://example.com/ram.jpg",
+        "spotify_url": "https://open.spotify.com/album/spotify-album-1",
+    }
 
     with app.app_context():
         db.drop_all()
