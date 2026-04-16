@@ -1,13 +1,14 @@
-from flask import Blueprint, jsonify, request, current_app, make_response
+from flask import Blueprint, jsonify, request, current_app, make_response, url_for
 from datetime import datetime, timezone
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+import json
 import requests
 
 from .. import db
-from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote
-from ..utils import fetch_artist_image
+from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote, SongRequest, User
+from ..utils import fetch_artist_image, search_album, send_push
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 bp_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -1031,6 +1032,145 @@ def api_battle_vote():
             'loss': round(loser.elo_rating - Rl, 1),
         },
     })
+
+
+@bp.route('/song-requests', methods=['GET'])
+@bp_v1.route('/song-requests', methods=['GET'])
+@login_required
+def api_list_song_requests():
+    request_rows = (
+        SongRequest.query
+        .filter_by(user_id=current_user.id)
+        .order_by(SongRequest.timestamp.desc())
+        .all()
+    )
+
+    payload = [
+        {
+            'id': row.id,
+            'title': row.title,
+            'artist': row.artist,
+            'spotify_id': row.spotify_id,
+            'cover_url': row.cover_url,
+            'release_date': row.release_date,
+            'spotify_url': row.spotify_url,
+            'fulfilled': bool(row.fulfilled),
+            'timestamp': row.timestamp.isoformat() if row.timestamp else None,
+        }
+        for row in request_rows
+    ]
+
+    fulfilled = sum(1 for row in request_rows if row.fulfilled)
+    pending = len(request_rows) - fulfilled
+
+    return jsonify(
+        {
+            'requests': payload,
+            'stats': {
+                'total': len(request_rows),
+                'fulfilled': fulfilled,
+                'pending': pending,
+            },
+        }
+    )
+
+
+@bp.route('/song-requests/search', methods=['POST'])
+@bp_v1.route('/song-requests/search', methods=['POST'])
+@login_required
+def api_search_song_request_albums():
+    data = request.get_json(silent=True) or {}
+    album_query = (data.get('album_query') or '').strip()
+    if not album_query:
+        return jsonify({'error': 'album_query is required'}), 400
+
+    albums = search_album(album_query)
+
+    return jsonify(
+        {
+            'query': album_query,
+            'albums': [
+                {
+                    'id': album.get('id'),
+                    'title': album.get('name'),
+                    'artist': (album.get('artists') or [{}])[0].get('name'),
+                    'release_date': album.get('release_date'),
+                    'cover_url': (album.get('images') or [{}])[0].get('url') if album.get('images') else None,
+                    'spotify_url': (album.get('external_urls') or {}).get('spotify'),
+                }
+                for album in albums
+            ],
+        }
+    )
+
+
+@bp.route('/song-requests', methods=['POST'])
+@bp_v1.route('/song-requests', methods=['POST'])
+@login_required
+def api_create_song_request():
+    data = request.get_json(silent=True) or {}
+    title = (data.get('title') or '').strip()
+    artist = (data.get('artist') or '').strip()
+    spotify_id = (data.get('spotify_id') or '').strip()
+    cover_url = (data.get('cover_url') or '').strip()
+    release_date = (data.get('release_date') or '').strip()
+    spotify_url = (data.get('spotify_url') or '').strip()
+
+    if not title or not artist:
+        return jsonify({'error': 'Both album title and artist are required.'}), 400
+
+    req = SongRequest(
+        user_id=current_user.id,
+        title=title,
+        artist=artist,
+        spotify_id=spotify_id or None,
+        cover_url=cover_url or None,
+        release_date=release_date or None,
+        spotify_url=spotify_url or None,
+        timestamp=datetime.now(timezone.utc),
+    )
+    db.session.add(req)
+    db.session.commit()
+
+    admins = User.query.filter_by(is_admin=True).all()
+    for admin in admins:
+        if not admin.push_subscription:
+            continue
+        try:
+            subscriptions = json.loads(admin.push_subscription)
+        except Exception:
+            continue
+
+        if isinstance(subscriptions, dict):
+            subscriptions = [subscriptions]
+
+        for sub in subscriptions:
+            try:
+                send_push(
+                    subscription_info=json.dumps(sub),
+                    title='New Album Request',
+                    body=f'{current_user.username} requested "{title}" by {artist}.',
+                    url=url_for('admin.admin_song_requests', _external=True),
+                )
+            except Exception as ex:
+                current_app.logger.error(f"Web push failed: {ex}")
+
+    return jsonify(
+        {
+            'message': 'Your request has been submitted!',
+            'request': {
+                'id': req.id,
+                'title': req.title,
+                'artist': req.artist,
+                'spotify_id': req.spotify_id,
+                'cover_url': req.cover_url,
+                'release_date': req.release_date,
+                'spotify_url': req.spotify_url,
+                'fulfilled': bool(req.fulfilled),
+                'timestamp': req.timestamp.isoformat() if req.timestamp else None,
+            },
+        }
+    ), 201
 
 
 # -------- Retro voting endpoints --------

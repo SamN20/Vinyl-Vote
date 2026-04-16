@@ -10,6 +10,7 @@ import BattlePage from "./pages/BattlePage";
 import ResultsPage from "./pages/ResultsPage";
 import RetroHubPage from "./pages/RetroHubPage";
 import RetroVotePage from "./pages/RetroVotePage";
+import SongRequestsPage from "./pages/SongRequestsPage";
 import TopAlbumsPage from "./pages/TopAlbumsPage";
 import TopArtistsPage from "./pages/TopArtistsPage";
 import TopSongsPage from "./pages/TopSongsPage";
@@ -55,6 +56,10 @@ function parseHashRoute(hash) {
 
   if (pathOnly === "/top-songs") {
     return { page: "/top-songs", albumId: null };
+  }
+
+  if (pathOnly === "/song-requests") {
+    return { page: "/song-requests", albumId: null };
   }
 
   if (pathOnly === "/retro-hub") {
@@ -182,6 +187,10 @@ function App() {
 
         {route.page === "/top-songs" && sessionState !== "loading" && sessionState !== "error" ? (
           <TopSongsPage />
+        ) : null}
+
+        {sessionState === "authenticated" && route.page === "/song-requests" ? (
+          <SongRequestsPage />
         ) : null}
 
         {sessionState === "authenticated" && route.page === "/vote" ? (

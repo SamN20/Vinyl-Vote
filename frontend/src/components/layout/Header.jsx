@@ -143,7 +143,7 @@ export default function Header({
           <div className="nav-group user-group">
             {sessionState === "authenticated" ? (
               <>
-                <a href={legacyPageHref("/song-requests")} className="nav-btn request-btn" onClick={closeMobileOverlays}>
+                <a href="#/song-requests" className={`nav-btn request-btn ${route === "/song-requests" ? "active" : ""}`} onClick={closeMobileOverlays}>
                   <PlusCircleIcon className="icon-left" />
                   Request
                 </a>
