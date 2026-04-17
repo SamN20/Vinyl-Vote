@@ -109,6 +109,112 @@ def test_current_album_contract_matches_v1_for_authenticated_user():
         db.drop_all()
 
 
+def test_home_contract_matches_v1_and_includes_expected_sections():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+        current_song = Song.query.filter_by(album_id=current_album.id).first()
+
+        past_album = Album(
+            title="Past Favorite",
+            artist="Favorite Artist",
+            is_current=False,
+            queue_order=9,
+        )
+        db.session.add(past_album)
+        db.session.flush()
+        past_song = Song(album_id=past_album.id, title="Past Track", track_number=1)
+        db.session.add(past_song)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                Vote(user_id=user_id, song_id=current_song.id, score=4.0, ignored=False),
+                Vote(user_id=user_id, song_id=past_song.id, score=5.0, ignored=False),
+                AlbumScore(user_id=user_id, album_id=current_album.id, personal_score=4.5, ignored=False),
+                AlbumScore(user_id=user_id, album_id=past_album.id, personal_score=5.0, ignored=False),
+            ]
+        )
+
+        vote_period = VotePeriod.query.first()
+        vote_period.end_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        db.session.commit()
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/home")
+    v1 = client.get("/api/v1/home")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"current_album", "top_albums", "recent_history", "user"}
+    assert payload["current_album"] is not None
+    assert payload["current_album"]["stats_locked"] is False
+    assert payload["current_album"]["voter_count"] == 1
+    assert payload["user"]["is_authenticated"] is True
+    assert payload["user"]["streak"] == 1
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_home_anonymous_and_home_seo_contract_matches_v1():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    _seed_authenticated_user_and_album(app)
+    client = app.test_client()
+
+    home_legacy = client.get("/api/home")
+    home_v1 = client.get("/api/v1/home")
+
+    assert home_legacy.status_code == 200
+    assert home_v1.status_code == 200
+    assert home_v1.get_json() == home_legacy.get_json()
+    assert home_v1.get_json()["user"]["is_authenticated"] is False
+    assert home_v1.get_json()["user"]["streak"] is None
+    assert home_v1.get_json()["current_album"]["stats_locked"] is True
+    assert home_v1.get_json()["current_album"]["voter_count"] is None
+    assert home_v1.get_json()["current_album"]["avg_song_score"] is None
+    assert home_v1.get_json()["current_album"]["avg_album_score"] is None
+
+    seo_legacy = client.get("/api/home-seo")
+    seo_v1 = client.get("/api/v1/home-seo")
+
+    assert seo_legacy.status_code == 200
+    assert seo_v1.status_code == 200
+    assert seo_v1.get_json() == seo_legacy.get_json()
+
+    seo_payload = seo_v1.get_json()
+    assert set(seo_payload.keys()) == {
+        "title",
+        "description",
+        "canonical_url",
+        "robots",
+        "open_graph",
+        "twitter",
+        "schema",
+    }
+    assert seo_payload["title"]
+    assert seo_payload["description"]
+    assert seo_payload["canonical_url"].endswith("/")
+    assert seo_payload["open_graph"]["title"] == seo_payload["title"]
+    assert seo_payload["twitter"]["title"] == seo_payload["title"]
+
+    with app.app_context():
+        db.drop_all()
+
+
 def test_votes_validation_error_contract_matches_v1():
     app = _build_app()
     with app.app_context():

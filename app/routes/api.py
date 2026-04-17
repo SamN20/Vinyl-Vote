@@ -337,6 +337,257 @@ def _album_payload(album: Album, vote_end: str, user_votes: dict, personal_score
     return payload
 
 
+def _compute_user_streak(current_album: Album):
+    if not current_user.is_authenticated:
+        return None
+
+    if not current_album.queue_order:
+        return 0
+
+    past_albums = (
+        Album.query
+        .filter(Album.queue_order > 0, Album.queue_order < current_album.queue_order)
+        .order_by(Album.queue_order)
+        .all()
+    )
+    past_ids = [album.id for album in past_albums]
+    if not past_ids:
+        return 0
+
+    song_album_ids = [
+        row[0]
+        for row in (
+            db.session.query(Song.album_id)
+            .join(Vote, Vote.song_id == Song.id)
+            .filter(
+                Vote.user_id == current_user.id,
+                Vote.ignored.is_(False),
+                Vote.retroactive.is_(False),
+            )
+            .distinct()
+            .all()
+        )
+    ]
+    score_album_ids = [
+        row[0]
+        for row in (
+            db.session.query(AlbumScore.album_id)
+            .filter(
+                AlbumScore.user_id == current_user.id,
+                AlbumScore.ignored.is_(False),
+                AlbumScore.retroactive.is_(False),
+            )
+            .distinct()
+            .all()
+        )
+    ]
+
+    participated = set(song_album_ids + score_album_ids).intersection(set(past_ids))
+    streak = 0
+    for album_id in reversed(past_ids):
+        if album_id in participated:
+            streak += 1
+        else:
+            break
+    return streak
+
+
+def _build_home_payload():
+    album = Album.query.options(joinedload(Album.songs)).filter_by(is_current=True).first()
+    payload = {
+        'current_album': None,
+        'top_albums': [],
+        'recent_history': [],
+        'user': {
+            'is_authenticated': bool(current_user.is_authenticated),
+            'streak': None,
+        },
+    }
+
+    if not album:
+        return payload
+
+    vote_period = VotePeriod.query.first()
+    vote_end = vote_period.end_time.isoformat() if vote_period else None
+    stats_locked = False
+    if vote_period and vote_period.end_time:
+        vote_end_dt = vote_period.end_time
+        if vote_end_dt.tzinfo is None:
+            vote_end_dt = vote_end_dt.replace(tzinfo=timezone.utc)
+        stats_locked = datetime.now(timezone.utc) < vote_end_dt
+
+    song_ids = [song.id for song in album.songs]
+    avg_song_score = None
+    if song_ids:
+        raw_song_avg = db.session.query(func.avg(Vote.score)).filter(
+            Vote.song_id.in_(song_ids),
+            Vote.ignored.is_(False),
+        ).scalar()
+        avg_song_score = round(float(raw_song_avg), 2) if raw_song_avg is not None else None
+
+    raw_album_avg = db.session.query(func.avg(AlbumScore.personal_score)).filter_by(
+        album_id=album.id,
+        ignored=False,
+    ).scalar()
+    avg_album_score = round(float(raw_album_avg), 2) if raw_album_avg is not None else None
+
+    voter_count = (
+        db.session.query(func.count(func.distinct(AlbumScore.user_id)))
+        .filter_by(album_id=album.id, ignored=False)
+        .scalar()
+    )
+
+    payload['current_album'] = {
+        'id': album.id,
+        'title': album.title,
+        'artist': album.artist,
+        'release_date': album.release_date,
+        'cover_url': album.cover_url,
+        'spotify_url': album.spotify_url,
+        'apple_url': album.apple_url,
+        'youtube_url': album.youtube_url,
+        'song_count': len(song_ids),
+        'vote_end': vote_end,
+        'stats_locked': stats_locked,
+        'voter_count': None if stats_locked else int(voter_count or 0),
+        'avg_song_score': None if stats_locked else avg_song_score,
+        'avg_album_score': None if stats_locked else avg_album_score,
+    }
+
+    top_candidates = Album.query.filter(
+        Album.queue_order > 0,
+        Album.is_current.is_(False),
+    ).all()
+
+    top_albums = []
+    for candidate in top_candidates:
+        candidate_song_ids = [song.id for song in candidate.songs]
+        if not candidate_song_ids:
+            continue
+        raw_candidate_song_avg = db.session.query(func.avg(Vote.score)).filter(
+            Vote.song_id.in_(candidate_song_ids),
+            Vote.ignored.is_(False),
+        ).scalar()
+        if raw_candidate_song_avg is None:
+            continue
+
+        raw_candidate_album_avg = db.session.query(func.avg(AlbumScore.personal_score)).filter_by(
+            album_id=candidate.id,
+            ignored=False,
+        ).scalar()
+
+        top_albums.append(
+            {
+                'id': candidate.id,
+                'title': candidate.title,
+                'artist': candidate.artist,
+                'cover_url': candidate.cover_url,
+                'avg_song_score': round(float(raw_candidate_song_avg), 2),
+                'avg_album_score': round(float(raw_candidate_album_avg), 2) if raw_candidate_album_avg is not None else None,
+            }
+        )
+
+    top_albums.sort(key=lambda item: item['avg_song_score'], reverse=True)
+    payload['top_albums'] = top_albums[:3]
+
+    if album.queue_order:
+        history_rows = (
+            Album.query
+            .filter(Album.queue_order < album.queue_order, Album.queue_order > 0)
+            .order_by(Album.queue_order.desc())
+            .limit(3)
+            .all()
+        )
+    else:
+        history_rows = []
+
+    history = []
+    for item in history_rows:
+        item_song_ids = [song.id for song in item.songs]
+        raw_history_song_avg = db.session.query(func.avg(Vote.score)).filter(
+            Vote.song_id.in_(item_song_ids),
+            Vote.ignored.is_(False),
+        ).scalar() if item_song_ids else None
+        raw_history_album_avg = db.session.query(func.avg(AlbumScore.personal_score)).filter_by(
+            album_id=item.id,
+            ignored=False,
+        ).scalar()
+
+        history.append(
+            {
+                'id': item.id,
+                'title': item.title,
+                'artist': item.artist,
+                'cover_url': item.cover_url,
+                'avg_song_score': round(float(raw_history_song_avg), 2) if raw_history_song_avg is not None else None,
+                'avg_album_score': round(float(raw_history_album_avg), 2) if raw_history_album_avg is not None else None,
+            }
+        )
+    payload['recent_history'] = history
+
+    if current_user.is_authenticated:
+        payload['user']['streak'] = _compute_user_streak(album)
+
+    return payload
+
+
+def _build_home_seo_payload():
+    home_payload = _build_home_payload()
+    current_album = home_payload.get('current_album')
+    base_url = request.url_root.rstrip('/')
+    canonical_url = f"{base_url}/"
+    default_image = f"{base_url}/static/favicon_64x64.png"
+
+    if current_album:
+        vote_end_text = 'soon'
+        vote_end_raw = current_album.get('vote_end')
+        if vote_end_raw:
+            try:
+                vote_end_dt = datetime.fromisoformat(vote_end_raw)
+                vote_end_text = vote_end_dt.strftime('%b %-d, %Y at %I:%M %p')
+            except Exception:
+                vote_end_text = 'soon'
+
+        title = f"Vote on {current_album['title']} by {current_album['artist']} | Vinyl Vote"
+        description = (
+            f"Rate this week's featured album and explore community favorites. "
+            f"Voting ends {vote_end_text}."
+        )
+        image = current_album.get('cover_url') or default_image
+    else:
+        title = 'Vinyl Vote | Weekly Album Voting Community'
+        description = 'Rate weekly albums, discover top-ranked records, and join the Vinyl Vote community.'
+        image = default_image
+
+    return {
+        'title': title,
+        'description': description,
+        'canonical_url': canonical_url,
+        'robots': 'index,follow',
+        'open_graph': {
+            'type': 'website',
+            'site_name': 'Vinyl Vote',
+            'title': title,
+            'description': description,
+            'image': image,
+            'url': canonical_url,
+        },
+        'twitter': {
+            'card': 'summary_large_image',
+            'title': title,
+            'description': description,
+            'image': image,
+        },
+        'schema': {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            'name': 'Vinyl Vote',
+            'url': canonical_url,
+            'description': description,
+        },
+    }
+
+
 @bp.route('/current-album', methods=['GET'])
 @bp_v1.route('/current-album', methods=['GET'])
 @login_required
@@ -368,6 +619,18 @@ def get_current_album():
     payload['user']['has_voted'] = has_full_vote
 
     return jsonify(payload)
+
+
+@bp.route('/home', methods=['GET'])
+@bp_v1.route('/home', methods=['GET'])
+def get_home():
+    return jsonify(_build_home_payload())
+
+
+@bp.route('/home-seo', methods=['GET'])
+@bp_v1.route('/home-seo', methods=['GET'])
+def get_home_seo():
+    return jsonify(_build_home_seo_payload())
 
 
 @bp.route('/votes', methods=['POST'])

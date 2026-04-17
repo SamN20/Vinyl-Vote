@@ -83,6 +83,14 @@ export function getCurrentAlbum() {
   return request("/api/v1/current-album");
 }
 
+export function getHomeData() {
+  return request("/api/v1/home");
+}
+
+export function getHomeSeo() {
+  return request("/api/v1/home-seo");
+}
+
 export function submitVotes(payload) {
   return request("/api/v1/votes", {
     method: "POST",
