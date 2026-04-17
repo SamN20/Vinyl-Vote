@@ -544,7 +544,10 @@ def _build_home_seo_payload():
         if vote_end_raw:
             try:
                 vote_end_dt = datetime.fromisoformat(vote_end_raw)
-                vote_end_text = vote_end_dt.strftime('%b %-d, %Y at %I:%M %p')
+                vote_end_text = (
+                    f"{vote_end_dt.strftime('%b')} {vote_end_dt.day}, "
+                    f"{vote_end_dt.strftime('%Y at %I:%M %p')}"
+                )
             except Exception:
                 vote_end_text = 'soon'
 

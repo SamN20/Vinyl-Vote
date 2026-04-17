@@ -11,6 +11,12 @@ const defaultCardPalette = {
 
 const albumPaletteCache = new Map();
 
+/**
+ * Round and clamp an RGB channel value to the valid CSS color range [0, 255].
+ *
+ * @param {number} value - The channel value to normalize.
+ * @returns {number} The rounded channel value constrained to the range 0-255.
+ */
 function clampChannel(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }

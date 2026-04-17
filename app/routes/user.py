@@ -237,7 +237,7 @@ def sitemap_xml():
         {'loc': f'{base}/privacy', 'priority': '0.4', 'changefreq': 'monthly'},
     ]
 
-    current_date = datetime.utcnow().date().isoformat()
+    current_date = datetime.now(timezone.utc).date().isoformat()
     items = [
         (
             f"<url><loc>{page['loc']}</loc><lastmod>{current_date}</lastmod>"
