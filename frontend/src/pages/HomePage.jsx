@@ -281,12 +281,14 @@ function HomePageSkeleton() {
           <div className="home-hero-details">
             <div className="skeleton-line skeleton-artist" />
             <div className="skeleton-countdown-wrap">
-              <div className="skeleton-line skeleton-countdown" />
-              <div className="skeleton-countdown-grid">
-                <div className="skeleton-countdown-item" />
-                <div className="skeleton-countdown-item" />
-                <div className="skeleton-countdown-item" />
-                <div className="skeleton-countdown-item" />
+              <div className="skeleton-countdown-card">
+                <div className="skeleton-line skeleton-countdown" />
+                <div className="skeleton-countdown-grid">
+                  <div className="skeleton-countdown-item" />
+                  <div className="skeleton-countdown-item" />
+                  <div className="skeleton-countdown-item" />
+                  <div className="skeleton-countdown-item" />
+                </div>
               </div>
             </div>
             <div className="button-row home-cta-row">

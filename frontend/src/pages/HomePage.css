@@ -509,7 +509,9 @@
 .home-skeleton .skeleton-block::after,
 .home-skeleton .skeleton-pill::after,
 .home-skeleton .skeleton-btn::after,
-.home-skeleton .skeleton-tile::after {
+.home-skeleton .skeleton-tile::after,
+.home-skeleton .skeleton-countdown-item::after,
+.home-skeleton .skeleton-countdown-card::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -567,6 +569,19 @@
   gap: 0.55rem;
 }
 
+.skeleton-countdown-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-color));
+  background:
+    linear-gradient(130deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 72%),
+    color-mix(in srgb, var(--input-bg) 72%, transparent);
+  padding: 0.78rem 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
 .skeleton-countdown-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -574,8 +589,36 @@
 }
 
 .skeleton-countdown-item {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #fff 12%, var(--border-color));
   border-radius: 10px;
+  background:
+    linear-gradient(
+      165deg,
+      rgb(255 255 255 / 0.08),
+      rgb(255 255 255 / 0.02)
+    ),
+    color-mix(in srgb, var(--card-bg) 74%, #0f1418 26%);
   height: 58px;
+}
+
+[data-theme="light"] .skeleton-countdown-card {
+  border-color: color-mix(in srgb, var(--accent) 28%, #b9d9c6);
+  background:
+    linear-gradient(132deg, color-mix(in srgb, var(--accent) 15%, #f7fbf8), transparent 72%),
+    color-mix(in srgb, var(--input-bg) 78%, #fff);
+}
+
+[data-theme="light"] .skeleton-countdown-item {
+  border-color: color-mix(in srgb, #fff 42%, #bfc8c3);
+  background:
+    linear-gradient(
+      165deg,
+      rgb(255 255 255 / 0.36),
+      rgb(255 255 255 / 0.14)
+    ),
+    color-mix(in srgb, #7f888c 22%, var(--card-bg));
 }
 
 .skeleton-pill {
