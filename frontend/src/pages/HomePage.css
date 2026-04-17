@@ -1,8 +1,23 @@
 .home-hero {
+  --home-hero-primary: 56 209 153;
+  --home-hero-secondary: 10 16 20;
   background:
-    radial-gradient(140% 120% at 0% 0%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 60%),
-    linear-gradient(140deg, color-mix(in srgb, var(--card-bg) 90%, #0a1014), var(--card-bg));
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--border-color));
+    radial-gradient(
+      130% 115% at 2% 0%,
+      rgb(var(--home-hero-primary) / 0.22),
+      transparent 58%
+    ),
+    radial-gradient(
+      120% 110% at 94% 100%,
+      rgb(var(--home-hero-secondary) / 0.22),
+      transparent 62%
+    ),
+    linear-gradient(
+      140deg,
+      color-mix(in srgb, var(--card-bg) 88%, rgb(var(--home-hero-secondary))),
+      color-mix(in srgb, var(--card-bg) 93%, #0a1014)
+    );
+  border-color: color-mix(in srgb, rgb(var(--home-hero-primary)) 24%, var(--border-color));
 }
 
 .home-hero-grid {
@@ -60,7 +75,9 @@
 }
 
 .home-countdown-card {
-  border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--border-color));
+  --home-countdown-fluid-level: 0;
+  --home-countdown-fluid-width: clamp(0%, calc(var(--home-countdown-fluid-level) * 148%), 148%);
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border-color));
   border-radius: 14px;
   background:
     linear-gradient(130deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
@@ -68,6 +85,77 @@
   padding: 0.78rem 0.8rem;
   display: grid;
   gap: 0.45rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.home-countdown-card::before,
+.home-countdown-card::after {
+  content: "";
+  position: absolute;
+  left: -24%;
+  width: var(--home-countdown-fluid-width);
+  max-width: 148%;
+  bottom: -26%;
+  height: 148%;
+  pointer-events: none;
+  z-index: 0;
+  transition: width 0.8s ease;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 91%,
+    rgb(0 0 0 / 0.8) 95%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 91%,
+    rgb(0 0 0 / 0.8) 95%,
+    transparent 100%
+  );
+  clip-path: polygon(
+    0% 0%,
+    95% 0%,
+    97% 30%,
+    94% 52%,
+    97% 74%,
+    95% 100%,
+    0% 100%
+  );
+}
+
+.home-countdown-card::before {
+  background:
+    radial-gradient(
+      44% 40% at 28% 34%,
+      color-mix(in srgb, var(--accent) 24%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      40% 36% at 68% 58%,
+      color-mix(in srgb, var(--accent) 20%, transparent),
+      transparent 72%
+    );
+  filter: blur(6px) saturate(104%);
+  animation: countdown-fluid-drift 12s ease-in-out infinite alternate;
+}
+
+.home-countdown-card::after {
+  background:
+    linear-gradient(
+      116deg,
+      color-mix(in srgb, var(--accent) 11%, transparent),
+      transparent 66%
+    ),
+    radial-gradient(
+      48% 42% at 52% 46%,
+      color-mix(in srgb, var(--accent) 18%, transparent),
+      transparent 74%
+    );
+  filter: blur(7px) saturate(102%);
+  animation: countdown-fluid-drift-alt 16s ease-in-out infinite alternate-reverse;
 }
 
 .home-countdown-label {
@@ -77,6 +165,8 @@
   text-transform: uppercase;
   color: var(--muted);
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .home-countdown-grid {
@@ -85,13 +175,26 @@
   gap: 0.5rem;
   width: min(100%, 760px);
   justify-self: center;
+  position: relative;
+  z-index: 1;
 }
 
 .home-countdown-unit {
-  border: 1px solid var(--border-color);
+  border: 1px solid color-mix(in srgb, #fff 12%, var(--border-color));
   border-radius: 10px;
   padding: 0.45rem 0.3rem;
-  background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+  background:
+    linear-gradient(
+      165deg,
+      rgb(255 255 255 / 0.08),
+      rgb(255 255 255 / 0.02)
+    ),
+    color-mix(in srgb, var(--card-bg) 74%, #0f1418 26%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 8px 22px color-mix(in srgb, #000 22%, transparent);
+  backdrop-filter: blur(9px) saturate(104%);
+  -webkit-backdrop-filter: blur(9px) saturate(104%);
   display: grid;
   place-items: center;
 }
@@ -115,6 +218,8 @@
   color: var(--muted);
   font-size: 0.94rem;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .home-cta-row {
@@ -193,14 +298,27 @@
 }
 
 .home-tile {
+  --home-tile-primary: 56 209 153;
+  --home-tile-secondary: 10 16 20;
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--card-bg) 92%, var(--bg));
+  background:
+    radial-gradient(
+      115% 120% at 6% 0%,
+      rgb(var(--home-tile-primary) / 0.12),
+      transparent 58%
+    ),
+    radial-gradient(
+      95% 95% at 100% 100%,
+      rgb(var(--home-tile-secondary) / 0.14),
+      transparent 60%
+    ),
+    color-mix(in srgb, var(--card-bg) 90%, var(--bg));
   padding: 0.75rem;
   display: grid;
   grid-template-columns: 84px 1fr;
   gap: 0.8rem;
-  transition: border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+  transition: border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .home-tile-link {
@@ -210,9 +328,9 @@
 
 .home-tile-link:hover,
 .home-tile-link:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 60%, var(--border-color));
+  border-color: color-mix(in srgb, rgb(var(--home-tile-primary)) 58%, var(--border-color));
   transform: translateY(-2px);
-  box-shadow: 0 16px 28px color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: 0 16px 28px rgb(var(--home-tile-primary) / 0.18);
 }
 
 .home-tile-link:focus-visible {
@@ -490,6 +608,24 @@
 @keyframes home-skeleton-shimmer {
   100% {
     transform: translateX(100%);
+  }
+}
+
+@keyframes countdown-fluid-drift {
+  0% {
+    transform: translate3d(-4%, 4%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(4%, -3%, 0) scale(1.08);
+  }
+}
+
+@keyframes countdown-fluid-drift-alt {
+  0% {
+    transform: translate3d(3%, 3%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-3%, -4%, 0) scale(1.07);
   }
 }
 

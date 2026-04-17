@@ -4,6 +4,115 @@ import StatusCard from "../components/common/StatusCard";
 import StreamingLinks from "../components/common/StreamingLinks";
 import "./HomePage.css";
 
+const defaultCardPalette = {
+  primary: "56 209 153",
+  secondary: "10 16 20",
+};
+
+const albumPaletteCache = new Map();
+
+function clampChannel(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function rgbArrayToCss(rgb) {
+  if (!Array.isArray(rgb) || rgb.length !== 3) {
+    return "56 209 153";
+  }
+  return `${clampChannel(rgb[0])} ${clampChannel(rgb[1])} ${clampChannel(rgb[2])}`;
+}
+
+function colorDistance(a, b) {
+  return Math.sqrt(
+    (a[0] - b[0]) * (a[0] - b[0]) +
+      (a[1] - b[1]) * (a[1] - b[1]) +
+      (a[2] - b[2]) * (a[2] - b[2])
+  );
+}
+
+function blendToward(color, toward, ratio) {
+  return [
+    color[0] * (1 - ratio) + toward[0] * ratio,
+    color[1] * (1 - ratio) + toward[1] * ratio,
+    color[2] * (1 - ratio) + toward[2] * ratio,
+  ];
+}
+
+function averageRgbFromImageData(imageData) {
+  const { data } = imageData;
+  let totalR = 0;
+  let totalG = 0;
+  let totalB = 0;
+  let count = 0;
+
+  // Step by 16 bytes (4 pixels) to reduce work while keeping a stable palette.
+  for (let index = 0; index < data.length; index += 16) {
+    const alpha = data[index + 3];
+    if (alpha < 64) {
+      continue;
+    }
+    totalR += data[index];
+    totalG += data[index + 1];
+    totalB += data[index + 2];
+    count += 1;
+  }
+
+  if (!count) {
+    return null;
+  }
+
+  return [totalR / count, totalG / count, totalB / count];
+}
+
+async function extractHeroPalette(imageUrl) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+  image.referrerPolicy = "no-referrer";
+
+  const loaded = await new Promise((resolve, reject) => {
+    image.onload = () => resolve(true);
+    image.onerror = () => reject(new Error("Image load failed"));
+    image.src = imageUrl;
+  });
+
+  if (!loaded) {
+    return null;
+  }
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) {
+    return null;
+  }
+
+  canvas.width = 32;
+  canvas.height = 32;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const average = averageRgbFromImageData(imageData);
+  if (!average) {
+    return null;
+  }
+
+  const darkReference = [18, 18, 20];
+  let primary = blendToward(average, [46, 190, 130], 0.24);
+  if (colorDistance(primary, darkReference) < 75) {
+    primary = blendToward(primary, [72, 214, 158], 0.28);
+  }
+
+  const secondary = blendToward(primary, [13, 23, 31], 0.65);
+
+  return {
+    primary: rgbArrayToCss(primary),
+    secondary: rgbArrayToCss(secondary),
+  };
+}
+
 function formatCountdown(voteEnd, nowMs) {
   if (!voteEnd) {
     return "Voting window is not scheduled yet.";
@@ -54,6 +163,29 @@ function getCountdownParts(voteEnd, nowMs) {
     minutes: Math.floor((totalSeconds % 3600) / 60),
     seconds: totalSeconds % 60,
   };
+}
+
+function getCountdownFluidLevel(voteEnd, nowMs) {
+  if (!voteEnd) {
+    return 0;
+  }
+
+  const targetMs = Date.parse(voteEnd);
+  if (!Number.isFinite(targetMs)) {
+    return 0;
+  }
+
+  const diffMs = targetMs - nowMs;
+  if (diffMs <= 0) {
+    return 0;
+  }
+
+  // Voting rounds are weekly, so map remaining time to a 7-day fluid level.
+  const maxWindowMs = 7 * 24 * 60 * 60 * 1000;
+  const linearRatio = Math.max(0, Math.min(1, diffMs / maxWindowMs));
+
+  // Non-linear drain: fuller early in the week, then falls off faster near deadline.
+  return Math.pow(linearRatio, 1.35);
 }
 
 function upsertMetaTag({ name, property, content }) {
@@ -186,9 +318,58 @@ function HomePageSkeleton() {
 }
 
 function AlbumTile({ album, metricLabel }) {
+  const [tilePalette, setTilePalette] = useState(defaultCardPalette);
   const albumResultsHref = `#/results/${album.id}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    const coverUrl = album?.cover_url;
+
+    if (!coverUrl) {
+      setTilePalette(defaultCardPalette);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const cached = albumPaletteCache.get(coverUrl);
+    if (cached) {
+      setTilePalette(cached);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    extractHeroPalette(coverUrl)
+      .then((palette) => {
+        if (cancelled || !palette) {
+          return;
+        }
+        albumPaletteCache.set(coverUrl, palette);
+        setTilePalette(palette);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setTilePalette(defaultCardPalette);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [album?.cover_url]);
+
   return (
-    <a className="home-tile home-tile-link" href={albumResultsHref} aria-label={`View results for ${album.title} by ${album.artist}`}>
+    <a
+      className="home-tile home-tile-link"
+      href={albumResultsHref}
+      aria-label={`View results for ${album.title} by ${album.artist}`}
+      style={{
+        "--home-tile-primary": tilePalette.primary,
+        "--home-tile-secondary": tilePalette.secondary,
+      }}
+    >
       <div className="home-tile-cover-wrap">
         {album.cover_url ? (
           <img
@@ -223,8 +404,10 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
   const [homeData, setHomeData] = useState(null);
   const [countdownText, setCountdownText] = useState("Voting window is not scheduled yet.");
   const [countdownParts, setCountdownParts] = useState({ status: "unscheduled", days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [countdownFluidLevel, setCountdownFluidLevel] = useState(0);
   const [countdownAnnouncement, setCountdownAnnouncement] = useState("");
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
+  const [heroPalette, setHeroPalette] = useState(defaultCardPalette);
 
   useEffect(() => {
     let cancelled = false;
@@ -291,16 +474,20 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
     if (!currentAlbum?.vote_end) {
       setCountdownText("Voting window is not scheduled yet.");
       setCountdownParts({ status: "unscheduled", days: 0, hours: 0, minutes: 0, seconds: 0 });
+      setCountdownFluidLevel(0);
       setCountdownAnnouncement("Voting window is not scheduled yet.");
       return;
     }
 
     let ticks = 0;
     const tick = () => {
-      const value = formatCountdown(currentAlbum.vote_end, Date.now());
-      const parts = getCountdownParts(currentAlbum.vote_end, Date.now());
+      const nowMs = Date.now();
+      const value = formatCountdown(currentAlbum.vote_end, nowMs);
+      const parts = getCountdownParts(currentAlbum.vote_end, nowMs);
+      const fluidLevel = getCountdownFluidLevel(currentAlbum.vote_end, nowMs);
       setCountdownText(value);
       setCountdownParts(parts);
+      setCountdownFluidLevel(fluidLevel);
       if (ticks % 10 === 0 || value === "Voting closed") {
         setCountdownAnnouncement(value);
       }
@@ -314,6 +501,36 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
       window.clearInterval(intervalId);
     };
   }, [currentAlbum?.vote_end]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const coverUrl = currentAlbum?.cover_url;
+
+    if (!coverUrl) {
+      setHeroPalette(defaultCardPalette);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    extractHeroPalette(coverUrl)
+      .then((palette) => {
+        if (cancelled || !palette) {
+          return;
+        }
+        setHeroPalette(palette);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setHeroPalette(defaultCardPalette);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentAlbum?.cover_url]);
 
   const homeActions = useMemo(() => {
     const actions = [
@@ -378,7 +595,13 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
 
   return (
     <>
-      <section className="hero home-hero">
+      <section
+        className="hero home-hero"
+        style={{
+          "--home-hero-primary": heroPalette.primary,
+          "--home-hero-secondary": heroPalette.secondary,
+        }}
+      >
         <p className="eyebrow">Vinyl Vote</p>
         {currentAlbum ? (
           <>
@@ -410,8 +633,12 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
           </div>
 
           <div className="home-hero-details">
-            <div className="home-countdown-card" aria-live="off">
-                <p className="home-countdown-label">Voting countdown</p>
+            <div
+              className="home-countdown-card"
+              style={{ "--home-countdown-fluid-level": countdownFluidLevel }}
+              aria-live="off"
+            >
+              <p className="home-countdown-label">Voting countdown</p>
               {countdownParts.status === "active" ? (
                 <div className="home-countdown-grid" role="group" aria-label="Voting countdown">
                   <div className="home-countdown-unit">
