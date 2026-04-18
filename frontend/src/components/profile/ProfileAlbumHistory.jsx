@@ -1,3 +1,5 @@
+import { legacyPageHref } from "../../api";
+
 function formatScore(value) {
   if (value === null || value === undefined) {
     return "N/A";
@@ -12,6 +14,10 @@ export default function ProfileAlbumHistory({ albumVotes, search, onSearchChange
   });
 
   function renderAlbumCard(item) {
+    const voteCardHref = item.vote_card_href?.startsWith("http")
+      ? item.vote_card_href
+      : legacyPageHref(item.vote_card_href || "");
+
     return (
       <article key={item.album.id} className="profile-history-card">
         <div className="profile-history-top">
@@ -59,7 +65,7 @@ export default function ProfileAlbumHistory({ albumVotes, search, onSearchChange
 
         <div className="profile-history-actions">
           <a className="btn btn-secondary" href={item.results_href}>View Results</a>
-          <a className="btn btn-ghost" href={item.vote_card_href}>Download Vote Card</a>
+          <a className="btn btn-ghost" href={voteCardHref} target="_blank" rel="noopener noreferrer">Download Vote Card</a>
         </div>
       </article>
     );
