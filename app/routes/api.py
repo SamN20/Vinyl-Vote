@@ -392,6 +392,73 @@ def _compute_user_streak(current_album: Album):
     return streak
 
 
+def _song_avg_by_album_ids(album_ids):
+    if not album_ids:
+        return {}
+
+    rows = (
+        db.session.query(
+            Song.album_id,
+            func.avg(Vote.score).label('avg_song_score'),
+        )
+        .join(Vote, Vote.song_id == Song.id)
+        .filter(
+            Song.album_id.in_(album_ids),
+            Vote.ignored.is_(False),
+        )
+        .group_by(Song.album_id)
+        .all()
+    )
+    return {
+        row.album_id: round(float(row.avg_song_score), 2)
+        for row in rows
+        if row.avg_song_score is not None
+    }
+
+
+def _album_avg_by_album_ids(album_ids):
+    if not album_ids:
+        return {}
+
+    rows = (
+        db.session.query(
+            AlbumScore.album_id,
+            func.avg(AlbumScore.personal_score).label('avg_album_score'),
+        )
+        .filter(
+            AlbumScore.album_id.in_(album_ids),
+            AlbumScore.ignored.is_(False),
+        )
+        .group_by(AlbumScore.album_id)
+        .all()
+    )
+    return {
+        row.album_id: round(float(row.avg_album_score), 2)
+        for row in rows
+        if row.avg_album_score is not None
+    }
+
+
+def _home_seo_context():
+    album = (
+        Album.query
+        .with_entities(
+            Album.id,
+            Album.title,
+            Album.artist,
+            Album.cover_url,
+        )
+        .filter_by(is_current=True)
+        .first()
+    )
+    vote_period = VotePeriod.query.with_entities(VotePeriod.end_time).first()
+
+    return {
+        'album': album,
+        'vote_end': vote_period.end_time.isoformat() if vote_period and vote_period.end_time else None,
+    }
+
+
 def _build_home_payload():
     album = Album.query.options(joinedload(Album.songs)).filter_by(is_current=True).first()
     payload = {
@@ -454,27 +521,23 @@ def _build_home_payload():
         'avg_album_score': None if stats_locked else avg_album_score,
     }
 
-    top_candidates = Album.query.filter(
+    top_candidates_query = Album.query.filter(
         Album.queue_order > 0,
         Album.is_current.is_(False),
-    ).all()
+    )
+    if album.queue_order:
+        top_candidates_query = top_candidates_query.filter(Album.queue_order < album.queue_order)
+    top_candidates = top_candidates_query.all()
+
+    top_candidate_ids = [candidate.id for candidate in top_candidates]
+    top_song_avgs = _song_avg_by_album_ids(top_candidate_ids)
+    top_album_avgs = _album_avg_by_album_ids(top_candidate_ids)
 
     top_albums = []
     for candidate in top_candidates:
-        candidate_song_ids = [song.id for song in candidate.songs]
-        if not candidate_song_ids:
+        candidate_song_avg = top_song_avgs.get(candidate.id)
+        if candidate_song_avg is None:
             continue
-        raw_candidate_song_avg = db.session.query(func.avg(Vote.score)).filter(
-            Vote.song_id.in_(candidate_song_ids),
-            Vote.ignored.is_(False),
-        ).scalar()
-        if raw_candidate_song_avg is None:
-            continue
-
-        raw_candidate_album_avg = db.session.query(func.avg(AlbumScore.personal_score)).filter_by(
-            album_id=candidate.id,
-            ignored=False,
-        ).scalar()
 
         top_albums.append(
             {
@@ -482,8 +545,8 @@ def _build_home_payload():
                 'title': candidate.title,
                 'artist': candidate.artist,
                 'cover_url': candidate.cover_url,
-                'avg_song_score': round(float(raw_candidate_song_avg), 2),
-                'avg_album_score': round(float(raw_candidate_album_avg), 2) if raw_candidate_album_avg is not None else None,
+                'avg_song_score': candidate_song_avg,
+                'avg_album_score': top_album_avgs.get(candidate.id),
             }
         )
 
@@ -501,26 +564,20 @@ def _build_home_payload():
     else:
         history_rows = []
 
+    history_ids = [item.id for item in history_rows]
+    history_song_avgs = _song_avg_by_album_ids(history_ids)
+    history_album_avgs = _album_avg_by_album_ids(history_ids)
+
     history = []
     for item in history_rows:
-        item_song_ids = [song.id for song in item.songs]
-        raw_history_song_avg = db.session.query(func.avg(Vote.score)).filter(
-            Vote.song_id.in_(item_song_ids),
-            Vote.ignored.is_(False),
-        ).scalar() if item_song_ids else None
-        raw_history_album_avg = db.session.query(func.avg(AlbumScore.personal_score)).filter_by(
-            album_id=item.id,
-            ignored=False,
-        ).scalar()
-
         history.append(
             {
                 'id': item.id,
                 'title': item.title,
                 'artist': item.artist,
                 'cover_url': item.cover_url,
-                'avg_song_score': round(float(raw_history_song_avg), 2) if raw_history_song_avg is not None else None,
-                'avg_album_score': round(float(raw_history_album_avg), 2) if raw_history_album_avg is not None else None,
+                'avg_song_score': history_song_avgs.get(item.id),
+                'avg_album_score': history_album_avgs.get(item.id),
             }
         )
     payload['recent_history'] = history
@@ -532,15 +589,15 @@ def _build_home_payload():
 
 
 def _build_home_seo_payload():
-    home_payload = _build_home_payload()
-    current_album = home_payload.get('current_album')
+    seo_context = _home_seo_context()
+    current_album = seo_context.get('album')
     base_url = request.url_root.rstrip('/')
     canonical_url = f"{base_url}/"
     default_image = f"{base_url}/static/favicon_64x64.png"
 
     if current_album:
         vote_end_text = 'soon'
-        vote_end_raw = current_album.get('vote_end')
+        vote_end_raw = seo_context.get('vote_end')
         if vote_end_raw:
             try:
                 vote_end_dt = datetime.fromisoformat(vote_end_raw)
@@ -551,12 +608,12 @@ def _build_home_seo_payload():
             except Exception:
                 vote_end_text = 'soon'
 
-        title = f"Vote on {current_album['title']} by {current_album['artist']} | Vinyl Vote"
+        title = f"Vote on {current_album.title} by {current_album.artist} | Vinyl Vote"
         description = (
             f"Rate this week's featured album and explore community favorites. "
             f"Voting ends {vote_end_text}."
         )
-        image = current_album.get('cover_url') or default_image
+        image = current_album.cover_url or default_image
     else:
         title = 'Vinyl Vote | Weekly Album Voting Community'
         description = 'Rate weekly albums, discover top-ranked records, and join the Vinyl Vote community.'
