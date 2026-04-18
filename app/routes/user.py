@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, Response, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -208,6 +208,51 @@ def terms():
 def privacy():
     """Display the Privacy Policy page."""
     return render_template('legal/privacy_policy.html')
+
+
+@bp.route('/robots.txt')
+def robots_txt():
+    base = request.url_root.rstrip('/')
+    body = "\n".join(
+        [
+            'User-agent: *',
+            'Allow: /',
+            f'Sitemap: {base}/sitemap.xml',
+        ]
+    )
+    return Response(body, mimetype='text/plain')
+
+
+@bp.route('/sitemap.xml')
+def sitemap_xml():
+    base = request.url_root.rstrip('/')
+    pages = [
+        {'loc': f'{base}/', 'priority': '1.0', 'changefreq': 'daily'},
+        {'loc': f'{base}/results', 'priority': '0.9', 'changefreq': 'weekly'},
+        {'loc': f'{base}/top_albums', 'priority': '0.8', 'changefreq': 'weekly'},
+        {'loc': f'{base}/top_artists', 'priority': '0.8', 'changefreq': 'weekly'},
+        {'loc': f'{base}/top_songs', 'priority': '0.8', 'changefreq': 'weekly'},
+        {'loc': f'{base}/invite', 'priority': '0.7', 'changefreq': 'weekly'},
+        {'loc': f'{base}/terms', 'priority': '0.4', 'changefreq': 'monthly'},
+        {'loc': f'{base}/privacy', 'priority': '0.4', 'changefreq': 'monthly'},
+    ]
+
+    current_date = datetime.now(timezone.utc).date().isoformat()
+    items = [
+        (
+            f"<url><loc>{page['loc']}</loc><lastmod>{current_date}</lastmod>"
+            f"<changefreq>{page['changefreq']}</changefreq><priority>{page['priority']}</priority></url>"
+        )
+        for page in pages
+    ]
+
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + ''.join(items)
+        + '</urlset>'
+    )
+    return Response(body, mimetype='application/xml')
 
 @bp.route('/extension')
 def extension():

@@ -7,6 +7,7 @@ import RetroVoteCard from "./components/retro/RetroVoteCard";
 import VoteCard from "./components/vote/VoteCard";
 import FaceoffLeaderboardPage from "./pages/FaceoffLeaderboardPage";
 import BattlePage from "./pages/BattlePage";
+import HomePage from "./pages/HomePage";
 import ResultsPage from "./pages/ResultsPage";
 import RetroHubPage from "./pages/RetroHubPage";
 import RetroVotePage from "./pages/RetroVotePage";
@@ -22,7 +23,7 @@ import { useEffect, useState } from "react";
 function parseHashRoute(hash) {
   const raw = (hash || "").replace(/^#/, "").trim();
   if (!raw || raw === "/") {
-    return { page: "/vote", albumId: null };
+    return { page: "/home", albumId: null };
   }
 
   const normalized = raw.startsWith("/") ? raw : `/${raw}`;
@@ -40,6 +41,14 @@ function parseHashRoute(hash) {
 
   if (pathOnly === "/top-artists") {
     return { page: "/top-artists", albumId: null };
+  }
+
+  if (pathOnly === "/vote") {
+    return { page: "/vote", albumId: null };
+  }
+
+  if (pathOnly === "/home") {
+    return { page: "/home", albumId: null };
   }
 
   if (pathOnly === "/faceoff-leaderboard") {
@@ -66,7 +75,7 @@ function parseHashRoute(hash) {
     return { page: "/retro-hub", albumId: null };
   }
 
-  return { page: "/vote", albumId: null };
+  return { page: "/home", albumId: null };
 }
 
 function App() {
@@ -99,7 +108,8 @@ function App() {
   } = useVotingFlow();
   const retro = useRetroVotingFlow(sessionState === "authenticated");
   const { setSelectedAlbumId } = retro;
-  const isPublicDataPage = ["/results", "/top-artists", "/faceoff-leaderboard", "/top-albums", "/top-songs", "/battle"].includes(route.page);
+  const isPublicDataPage = ["/home", "/results", "/top-artists", "/faceoff-leaderboard", "/top-albums", "/top-songs", "/battle"].includes(route.page);
+  const showGlobalSessionStatus = route.page !== "/home";
 
   useEffect(() => {
     function onHashChange() {
@@ -142,15 +152,23 @@ function App() {
           </section>
         ) : null}
 
-        {sessionState === "loading" ? (
+        {sessionState === "loading" && showGlobalSessionStatus ? (
           <StatusCard message="Checking your session..." />
         ) : null}
 
-        {sessionState === "error" ? (
+        {sessionState === "error" && showGlobalSessionStatus ? (
           <StatusCard
             title="Session check failed"
             message={error || "Could not validate your session."}
             variant="error"
+          />
+        ) : null}
+
+        {route.page === "/home" ? (
+          <HomePage
+            loginHref={oauthLoginHref()}
+            legacyLoginHref={legacyLoginHref()}
+            sessionState={sessionState}
           />
         ) : null}
 

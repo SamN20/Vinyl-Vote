@@ -84,7 +84,7 @@ export default function Header({
   return (
     <header className="site-header">
       <div className="header-container">
-        <a className="brand-link" href={legacyPageHref("/")}>
+        <a className="brand-link" href="#/">
           <img
             src={legacyPageHref("/static/favicon_64x64.png")}
             alt="Vinyl Vote logo"
@@ -109,7 +109,7 @@ export default function Header({
 
         <nav id="v2-nav" className={`nav-links ${menuOpen ? "open" : ""}`}>
           <div className="nav-group primary-group">
-            <a href={legacyPageHref("/")} onClick={closeMobileOverlays}>Home</a>
+            <a href="#/" className={route === "/home" ? "active" : ""} onClick={closeMobileOverlays}>Home</a>
 
             {sessionState === "authenticated" && (
               <>
