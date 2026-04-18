@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, current_app, make_response, url_for
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -648,6 +648,336 @@ def _build_home_seo_payload():
     }
 
 
+def _build_profile_payload():
+    now_utc = datetime.now(timezone.utc)
+
+    total_albums_scored = (
+        db.session.query(func.count(AlbumScore.id))
+        .filter_by(user_id=current_user.id, ignored=False)
+        .scalar()
+        or 0
+    )
+    total_song_votes = (
+        db.session.query(func.count(Vote.id))
+        .filter_by(user_id=current_user.id, ignored=False)
+        .scalar()
+        or 0
+    )
+    avg_album_score_user = (
+        db.session.query(func.avg(AlbumScore.personal_score))
+        .filter_by(user_id=current_user.id, ignored=False)
+        .scalar()
+    )
+    avg_song_score_user = (
+        db.session.query(func.avg(Vote.score))
+        .filter_by(user_id=current_user.id, ignored=False)
+        .scalar()
+    )
+
+    since = now_utc - timedelta(days=60)
+    vote_rows_by_day = (
+        db.session.query(func.date(Vote.timestamp), func.count(Vote.id))
+        .filter(
+            Vote.user_id == current_user.id,
+            Vote.ignored.is_(False),
+            Vote.timestamp >= since,
+        )
+        .group_by(func.date(Vote.timestamp))
+        .order_by(func.date(Vote.timestamp))
+        .all()
+    )
+    faceoff_rows_by_day = (
+        db.session.query(func.date(BattleVote.timestamp), func.count(BattleVote.id))
+        .filter(
+            BattleVote.user_id == current_user.id,
+            BattleVote.timestamp >= since,
+        )
+        .group_by(func.date(BattleVote.timestamp))
+        .order_by(func.date(BattleVote.timestamp))
+        .all()
+    )
+    vote_counts_by_date = {str(day): int(count) for day, count in vote_rows_by_day}
+    faceoff_counts_by_date = {str(day): int(count) for day, count in faceoff_rows_by_day}
+    labels = []
+    vote_data = []
+    faceoff_data = []
+    total_data = []
+    for day_offset in range(60, -1, -1):
+        day = (now_utc - timedelta(days=day_offset)).date()
+        key = str(day)
+        labels.append(key)
+        day_votes = int(vote_counts_by_date.get(key, 0))
+        day_faceoff_votes = int(faceoff_counts_by_date.get(key, 0))
+        vote_data.append(day_votes)
+        faceoff_data.append(day_faceoff_votes)
+        total_data.append(day_votes + day_faceoff_votes)
+
+    song_album_ids = {
+        row[0]
+        for row in (
+            db.session.query(Song.album_id)
+            .join(Vote, Vote.song_id == Song.id)
+            .filter(
+                Vote.user_id == current_user.id,
+                Vote.ignored.is_(False),
+                Vote.retroactive.is_(False),
+            )
+            .distinct()
+            .all()
+        )
+    }
+    score_album_ids = {
+        row[0]
+        for row in (
+            db.session.query(AlbumScore.album_id)
+            .filter(
+                AlbumScore.user_id == current_user.id,
+                AlbumScore.ignored.is_(False),
+                AlbumScore.retroactive.is_(False),
+            )
+            .distinct()
+            .all()
+        )
+    }
+
+    current_album = Album.query.with_entities(Album.id, Album.queue_order).filter_by(is_current=True).first()
+    albums_query = Album.query.filter(Album.queue_order > 0)
+    if current_album and current_album.queue_order:
+        albums_query = albums_query.filter(Album.queue_order < current_album.queue_order)
+    historical_albums = albums_query.with_entities(Album.id).order_by(Album.queue_order).all()
+    historical_ids = [row.id for row in historical_albums]
+    participated = (song_album_ids | score_album_ids).intersection(set(historical_ids))
+
+    current_streak = 0
+    for album_id in reversed(historical_ids):
+        if album_id in participated:
+            current_streak += 1
+        else:
+            break
+
+    longest_streak = 0
+    run = 0
+    for album_id in historical_ids:
+        if album_id in participated:
+            run += 1
+            longest_streak = max(longest_streak, run)
+        else:
+            run = 0
+
+    last_song_ts = (
+        db.session.query(func.max(Vote.timestamp))
+        .join(Song, Vote.song_id == Song.id)
+        .filter(
+            Vote.user_id == current_user.id,
+            Vote.ignored.is_(False),
+            Vote.retroactive.is_(False),
+        )
+        .scalar()
+    )
+    last_score_ts = (
+        db.session.query(func.max(AlbumScore.timestamp))
+        .filter(
+            AlbumScore.user_id == current_user.id,
+            AlbumScore.ignored.is_(False),
+            AlbumScore.retroactive.is_(False),
+        )
+        .scalar()
+    )
+
+    def _aware(dt):
+        if not dt:
+            return None
+        return dt if getattr(dt, 'tzinfo', None) else dt.replace(tzinfo=timezone.utc)
+
+    last_candidates = [stamp for stamp in [_aware(last_song_ts), _aware(last_score_ts)] if stamp]
+    if last_candidates:
+        last_ts = max(last_candidates)
+        days = (now_utc - last_ts).days
+        last_vote_label = 'today' if days <= 0 else ('1 d' if days == 1 else f'{days} d')
+        last_vote_full = last_ts.strftime('%Y-%m-%d %H:%M UTC')
+        last_vote_iso = last_ts.isoformat()
+    else:
+        last_vote_label = '—'
+        last_vote_full = '—'
+        last_vote_iso = None
+
+    battle_count = BattleVote.query.filter_by(user_id=current_user.id).count()
+    favorite_gladiator = None
+    if battle_count > 0:
+        top_winner_row = (
+            db.session.query(BattleVote.winner_id, func.count(BattleVote.winner_id).label('wins'))
+            .filter(BattleVote.user_id == current_user.id)
+            .group_by(BattleVote.winner_id)
+            .order_by(func.count(BattleVote.winner_id).desc())
+            .first()
+        )
+        if top_winner_row:
+            top_song = (
+                Song.query.options(joinedload(Song.album))
+                .filter(Song.id == top_winner_row.winner_id)
+                .first()
+            )
+            if top_song:
+                favorite_gladiator = {
+                    'wins': int(top_winner_row.wins or 0),
+                    'song': {
+                        'id': top_song.id,
+                        'title': top_song.title,
+                        'album': {
+                            'id': top_song.album.id if top_song.album else None,
+                            'title': top_song.album.title if top_song.album else None,
+                            'artist': top_song.album.artist if top_song.album else None,
+                            'cover_url': top_song.album.cover_url if top_song.album else None,
+                        },
+                    },
+                }
+
+    keyn_profile = None
+    if current_user.keyn_migrated and current_user.keyn_profile_json:
+        try:
+            keyn_profile = json.loads(current_user.keyn_profile_json)
+        except Exception:
+            keyn_profile = None
+
+    album_ids_votes = {
+        row[0]
+        for row in (
+            db.session.query(Album.id)
+            .join(Song, Song.album_id == Album.id)
+            .join(Vote, Vote.song_id == Song.id)
+            .filter(Vote.user_id == current_user.id)
+            .distinct()
+            .all()
+        )
+    }
+    album_ids_scores = {
+        row[0]
+        for row in (
+            db.session.query(AlbumScore.album_id)
+            .filter(AlbumScore.user_id == current_user.id)
+            .distinct()
+            .all()
+        )
+    }
+    album_ids = list(album_ids_votes | album_ids_scores)
+
+    albums = []
+    if album_ids:
+        albums = (
+            Album.query.options(joinedload(Album.songs))
+            .filter(Album.id.in_(album_ids))
+            .order_by(Album.queue_order.desc())
+            .all()
+        )
+
+    vote_rows = []
+    if album_ids:
+        vote_rows = (
+            db.session.query(Song.album_id, Song.id, Vote.score)
+            .join(Vote, Vote.song_id == Song.id)
+            .filter(
+                Vote.user_id == current_user.id,
+                Song.album_id.in_(album_ids),
+            )
+            .all()
+        )
+    album_song_vote_map = {}
+    for album_id, song_id, score in vote_rows:
+        album_song_vote_map.setdefault(album_id, {})[song_id] = score
+
+    score_rows = []
+    if album_ids:
+        score_rows = (
+            db.session.query(AlbumScore.album_id, AlbumScore.personal_score)
+            .filter(
+                AlbumScore.user_id == current_user.id,
+                AlbumScore.album_id.in_(album_ids),
+            )
+            .all()
+        )
+    album_score_map = {
+        album_id: personal_score
+        for album_id, personal_score in score_rows
+    }
+
+    album_votes = []
+    for album in albums:
+        song_vote_map = album_song_vote_map.get(album.id, {})
+        user_song_scores = list(song_vote_map.values())
+        avg_song_score = round(sum(user_song_scores) / len(user_song_scores), 2) if user_song_scores else None
+        songs_payload = []
+        for song in sorted(album.songs, key=lambda s: s.track_number or 0):
+            songs_payload.append(
+                {
+                    'id': song.id,
+                    'track_number': song.track_number,
+                    'title': song.title,
+                    'user_rating': song_vote_map.get(song.id),
+                }
+            )
+
+        album_votes.append(
+            {
+                'album': {
+                    'id': album.id,
+                    'title': album.title,
+                    'artist': album.artist,
+                    'cover_url': album.cover_url,
+                },
+                'songs': songs_payload,
+                'album_score': album_score_map.get(album.id),
+                'song_score': avg_song_score,
+                'results_href': f"#/results/{album.id}",
+                'vote_card_href': url_for('user.share_vote_card', album_id=album.id),
+            }
+        )
+
+    return {
+        'user': {
+            'id': current_user.id,
+            'username': current_user.username,
+            'email': current_user.email,
+            'keyn_id': current_user.keyn_id,
+            'keyn_migrated': bool(current_user.keyn_migrated),
+            'last_login': current_user.last_login.isoformat() if current_user.last_login else None,
+        },
+        'keyn_profile': keyn_profile,
+        'profile_stats': {
+            'total_albums_scored': int(total_albums_scored),
+            'total_song_votes': int(total_song_votes),
+            'avg_album_score': round(float(avg_album_score_user), 2) if avg_album_score_user is not None else None,
+            'avg_song_score': round(float(avg_song_score_user), 2) if avg_song_score_user is not None else None,
+        },
+        'votes_timeseries': {
+            'labels': labels,
+            'data': total_data,
+            'vote_data': vote_data,
+            'faceoff_data': faceoff_data,
+        },
+        'profile_streaks': {
+            'current': current_streak,
+            'longest': longest_streak,
+        },
+        'profile_extras': {
+            'active_weeks': len(participated),
+            'last_on_time_vote': last_vote_label,
+            'last_on_time_vote_full': last_vote_full,
+            'last_on_time_vote_iso': last_vote_iso,
+        },
+        'battle_stats': {
+            'count': int(battle_count or 0),
+            'top_pick': favorite_gladiator,
+        },
+        'album_votes': album_votes,
+        'keyn_links': {
+            'profile': 'https://auth-keyn.bynolo.ca/profile',
+            'edit_profile': 'https://auth-keyn.bynolo.ca/profile/edit',
+            'change_password': 'https://auth-keyn.bynolo.ca/profile/change-password',
+            'notifications': 'https://nolofication.bynolo.ca/sites/vinylvote/preferences',
+        },
+    }
+
+
 @bp.route('/current-album', methods=['GET'])
 @bp_v1.route('/current-album', methods=['GET'])
 @login_required
@@ -691,6 +1021,13 @@ def get_home():
 @bp_v1.route('/home-seo', methods=['GET'])
 def get_home_seo():
     return jsonify(_build_home_seo_payload())
+
+
+@bp.route('/profile', methods=['GET'])
+@bp_v1.route('/profile', methods=['GET'])
+@login_required
+def get_profile():
+    return jsonify(_build_profile_payload())
 
 
 @bp.route('/votes', methods=['POST'])
