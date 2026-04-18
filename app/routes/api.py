@@ -939,7 +939,15 @@ def _build_profile_payload():
             'email': current_user.email,
             'keyn_id': current_user.keyn_id,
             'keyn_migrated': bool(current_user.keyn_migrated),
-            'last_login': current_user.last_login.isoformat() if current_user.last_login else None,
+            'last_login': (
+                (
+                    current_user.last_login.astimezone(timezone.utc)
+                    if current_user.last_login.tzinfo is not None
+                    else current_user.last_login.replace(tzinfo=timezone.utc)
+                ).isoformat().replace('+00:00', 'Z')
+                if current_user.last_login
+                else None
+            ),
         },
         'keyn_profile': keyn_profile,
         'profile_stats': {
