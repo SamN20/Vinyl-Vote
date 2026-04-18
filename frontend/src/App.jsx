@@ -8,6 +8,7 @@ import VoteCard from "./components/vote/VoteCard";
 import FaceoffLeaderboardPage from "./pages/FaceoffLeaderboardPage";
 import BattlePage from "./pages/BattlePage";
 import HomePage from "./pages/HomePage";
+import ProfilePage from "./pages/ProfilePage";
 import ResultsPage from "./pages/ResultsPage";
 import RetroHubPage from "./pages/RetroHubPage";
 import RetroVotePage from "./pages/RetroVotePage";
@@ -69,6 +70,10 @@ function parseHashRoute(hash) {
 
   if (pathOnly === "/song-requests") {
     return { page: "/song-requests", albumId: null };
+  }
+
+  if (pathOnly === "/profile") {
+    return { page: "/profile", albumId: null };
   }
 
   if (pathOnly === "/retro-hub") {
@@ -209,6 +214,10 @@ function App() {
 
         {sessionState === "authenticated" && route.page === "/song-requests" ? (
           <SongRequestsPage />
+        ) : null}
+
+        {sessionState === "authenticated" && route.page === "/profile" ? (
+          <ProfilePage />
         ) : null}
 
         {sessionState === "authenticated" && route.page === "/vote" ? (

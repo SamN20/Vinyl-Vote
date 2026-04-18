@@ -91,6 +91,10 @@ export function getHomeSeo() {
   return request("/api/v1/home-seo");
 }
 
+export function getProfileData() {
+  return request("/api/v1/profile");
+}
+
 export function submitVotes(payload) {
   return request("/api/v1/votes", {
     method: "POST",

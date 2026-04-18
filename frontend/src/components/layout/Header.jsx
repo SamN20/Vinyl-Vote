@@ -165,7 +165,7 @@ export default function Header({
                     <div className="dropdown-header">
                       Signed in as <strong>{sessionInfo?.username || "user"}</strong>
                     </div>
-                    <a href={legacyPageHref("/profile")} onClick={closeMobileOverlays}>Profile</a>
+                    <a href="#/profile" className={route === "/profile" ? "active" : ""} onClick={closeMobileOverlays}>Profile</a>
                     <div className="dropdown-divider" />
                     <a href={legacyPageHref("/logout")} onClick={closeMobileOverlays}>Sign Out</a>
                   </div>
