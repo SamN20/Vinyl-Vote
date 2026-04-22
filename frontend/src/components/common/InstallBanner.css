@@ -1,0 +1,67 @@
+.install-banner-v2 {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-bg) 92%, var(--bg));
+  box-shadow: 0 14px 28px rgb(0 0 0 / 0.35);
+  padding: 12px 14px;
+}
+
+.install-banner-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.install-banner-text strong {
+  color: var(--text);
+}
+
+.install-banner-text span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.install-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 1024px) {
+  .install-banner-v2 {
+    left: 50%;
+    right: auto;
+    width: min(960px, calc(100vw - 32px));
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 760px) {
+  .install-banner-v2 {
+    flex-direction: column;
+    align-items: flex-start;
+    bottom: 12px;
+    left: 10px;
+    right: 10px;
+  }
+
+  .install-banner-actions {
+    width: 100%;
+  }
+
+  .install-banner-actions .btn {
+    flex: 1;
+    text-align: center;
+  }
+}

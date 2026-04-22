@@ -1,7 +1,10 @@
 import { legacyLoginHref, oauthLoginHref } from "./api";
 import AuthCard from "./components/auth/AuthCard";
 import CommentsCard from "./components/comments/CommentsCard";
+import InstallBanner from "./components/common/InstallBanner";
 import StatusCard from "./components/common/StatusCard";
+import SiteNotifications from "./components/common/SiteNotifications";
+import { ToastProvider } from "./components/common/ToastProvider";
 import Header from "./components/layout/Header";
 import RetroVoteCard from "./components/retro/RetroVoteCard";
 import VoteCard from "./components/vote/VoteCard";
@@ -134,18 +137,21 @@ function App() {
   }, [route.albumId, route.page, setSelectedAlbumId]);
 
   return (
-    <div className="app-shell">
-      <Header
-        loginHref={oauthLoginHref()}
-        legacyLoginHref={legacyLoginHref()}
-        sessionInfo={sessionInfo}
-        sessionState={sessionState}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        route={route.page}
-      />
+    <ToastProvider>
+      <div className="app-shell">
+        <Header
+          loginHref={oauthLoginHref()}
+          legacyLoginHref={legacyLoginHref()}
+          sessionInfo={sessionInfo}
+          sessionState={sessionState}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          route={route.page}
+        />
 
-      <main className="page">
+        <SiteNotifications />
+
+        <main className="page">
         {route.page === "/vote" ? (
           <section className="hero">
             <p className="eyebrow">Vinyl Vote V2</p>
@@ -279,8 +285,11 @@ function App() {
         {sessionState === "authenticated" && route.page === "/retro-vote" ? (
           <RetroVotePage retro={retro} />
         ) : null}
-      </main>
-    </div>
+        </main>
+
+        <InstallBanner />
+      </div>
+    </ToastProvider>
   );
 }
 

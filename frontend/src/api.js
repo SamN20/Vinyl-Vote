@@ -1,3 +1,5 @@
+import { pushToast } from "./utils/toastBus";
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const LEGACY_BASE_URL = (
   import.meta.env.VITE_LEGACY_BASE_URL || (import.meta.env.DEV ? "http://127.0.0.1:5000" : "")
@@ -62,6 +64,17 @@ async function request(path, options = {}) {
     const error = new Error(formatErrorMessage(path, response.status, payload));
     error.status = response.status;
     error.payload = payload;
+
+    const requestMethod = (options.method || "GET").toUpperCase();
+    const shouldToastError = options.toastOnError ?? (requestMethod !== "GET");
+    if (shouldToastError) {
+      pushToast({
+        title: "Request failed",
+        message: error.message,
+        variant: "error",
+      });
+    }
+
     throw error;
   }
 
@@ -89,6 +102,10 @@ export function getHomeData() {
 
 export function getHomeSeo() {
   return request("/api/v1/home-seo");
+}
+
+export function getActiveNotifications() {
+  return request("/api/v1/notifications/active", { toastOnError: false });
 }
 
 export function getProfileData() {
