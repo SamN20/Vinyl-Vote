@@ -5,12 +5,15 @@ import InstallBanner from "./components/common/InstallBanner";
 import StatusCard from "./components/common/StatusCard";
 import SiteNotifications from "./components/common/SiteNotifications";
 import { ToastProvider } from "./components/common/ToastProvider";
+import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 import RetroVoteCard from "./components/retro/RetroVoteCard";
 import VoteCard from "./components/vote/VoteCard";
 import FaceoffLeaderboardPage from "./pages/FaceoffLeaderboardPage";
 import BattlePage from "./pages/BattlePage";
+import ExtensionPage from "./pages/ExtensionPage";
 import HomePage from "./pages/HomePage";
+import PrivacyPage from "./pages/PrivacyPage";
 import ProfilePage from "./pages/ProfilePage";
 import ResultsPage from "./pages/ResultsPage";
 import RetroHubPage from "./pages/RetroHubPage";
@@ -19,6 +22,7 @@ import SongRequestsPage from "./pages/SongRequestsPage";
 import TopAlbumsPage from "./pages/TopAlbumsPage";
 import TopArtistsPage from "./pages/TopArtistsPage";
 import TopSongsPage from "./pages/TopSongsPage";
+import TermsPage from "./pages/TermsPage";
 import { useRetroVotingFlow } from "./hooks/useRetroVotingFlow";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useVotingFlow } from "./hooks/useVotingFlow";
@@ -83,6 +87,18 @@ function parseHashRoute(hash) {
     return { page: "/retro-hub", albumId: null };
   }
 
+  if (pathOnly === "/terms") {
+    return { page: "/terms", albumId: null };
+  }
+
+  if (pathOnly === "/privacy") {
+    return { page: "/privacy", albumId: null };
+  }
+
+  if (pathOnly === "/extension") {
+    return { page: "/extension", albumId: null };
+  }
+
   return { page: "/home", albumId: null };
 }
 
@@ -116,7 +132,18 @@ function App() {
   } = useVotingFlow();
   const retro = useRetroVotingFlow(sessionState === "authenticated");
   const { setSelectedAlbumId } = retro;
-  const isPublicDataPage = ["/home", "/results", "/top-artists", "/faceoff-leaderboard", "/top-albums", "/top-songs", "/battle"].includes(route.page);
+  const isPublicDataPage = [
+    "/home",
+    "/results",
+    "/top-artists",
+    "/faceoff-leaderboard",
+    "/top-albums",
+    "/top-songs",
+    "/battle",
+    "/terms",
+    "/privacy",
+    "/extension",
+  ].includes(route.page);
   const showGlobalSessionStatus = route.page !== "/home";
 
   useEffect(() => {
@@ -218,6 +245,12 @@ function App() {
           <TopSongsPage />
         ) : null}
 
+        {route.page === "/terms" ? <TermsPage /> : null}
+
+        {route.page === "/privacy" ? <PrivacyPage /> : null}
+
+        {route.page === "/extension" ? <ExtensionPage /> : null}
+
         {sessionState === "authenticated" && route.page === "/song-requests" ? (
           <SongRequestsPage />
         ) : null}
@@ -286,6 +319,8 @@ function App() {
           <RetroVotePage retro={retro} />
         ) : null}
         </main>
+
+        <Footer />
 
         <InstallBanner />
       </div>
