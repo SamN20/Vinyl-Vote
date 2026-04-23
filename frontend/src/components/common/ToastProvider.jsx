@@ -53,9 +53,14 @@ export function ToastProvider({ children }) {
         if (updated.length <= 3) {
           return updated;
         }
+
         const [oldest] = updated;
         if (oldest?.id) {
-          removeToast(oldest.id);
+          const timeoutId = timeoutMapRef.current.get(oldest.id);
+          if (timeoutId) {
+            window.clearTimeout(timeoutId);
+            timeoutMapRef.current.delete(oldest.id);
+          }
         }
         return updated.slice(-3);
       });
