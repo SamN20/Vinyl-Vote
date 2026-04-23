@@ -7,7 +7,7 @@ import json
 import requests
 
 from .. import db
-from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote, SongRequest, User
+from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote, SongRequest, User, Notification
 from ..utils import fetch_artist_image, search_album, send_push
 
 bp = Blueprint('api', __name__, url_prefix='/api')
@@ -648,6 +648,43 @@ def _build_home_seo_payload():
     }
 
 
+def _active_notifications_payload():
+    now = datetime.utcnow()
+    active_rows = (
+        Notification.query
+        .filter(
+            Notification.is_active.is_(True),
+            Notification.start_time <= now,
+            Notification.end_time >= now,
+        )
+        .order_by(Notification.start_time.desc(), Notification.id.desc())
+        .all()
+    )
+
+    payload = {
+        'banner': None,
+        'popups': [],
+    }
+
+    for notification in active_rows:
+        item = {
+            'id': notification.id,
+            'message': notification.message,
+            'type': notification.type,
+            'start_time': notification.start_time.isoformat() if notification.start_time else None,
+            'end_time': notification.end_time.isoformat() if notification.end_time else None,
+        }
+
+        if notification.type == 'banner' and payload['banner'] is None:
+            payload['banner'] = item
+            continue
+
+        if notification.type == 'popup':
+            payload['popups'].append(item)
+
+    return payload
+
+
 def _build_profile_payload():
     now_utc = datetime.now(timezone.utc)
 
@@ -1029,6 +1066,12 @@ def get_home():
 @bp_v1.route('/home-seo', methods=['GET'])
 def get_home_seo():
     return jsonify(_build_home_seo_payload())
+
+
+@bp.route('/notifications/active', methods=['GET'])
+@bp_v1.route('/notifications/active', methods=['GET'])
+def get_active_notifications():
+    return jsonify(_active_notifications_payload())
 
 
 @bp.route('/profile', methods=['GET'])

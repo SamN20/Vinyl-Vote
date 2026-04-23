@@ -4,7 +4,7 @@ from unittest.mock import patch
 from flask import Flask
 
 from app import db, login_manager
-from app.models import Album, AlbumScore, BattleVote, Setting, Song, SongRequest, User, Vote, VotePeriod
+from app.models import Album, AlbumScore, BattleVote, Notification, Setting, Song, SongRequest, User, Vote, VotePeriod
 from app.routes import api
 
 
@@ -210,6 +210,64 @@ def test_home_anonymous_and_home_seo_contract_matches_v1():
     assert seo_payload["canonical_url"].endswith("/")
     assert seo_payload["open_graph"]["title"] == seo_payload["title"]
     assert seo_payload["twitter"]["title"] == seo_payload["title"]
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_active_notifications_contract_matches_v1_and_filters_time_window():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+        now = datetime.utcnow()
+        db.session.add_all(
+            [
+                Notification(
+                    message="Primary banner",
+                    type="banner",
+                    start_time=now - timedelta(hours=1),
+                    end_time=now + timedelta(hours=3),
+                    is_active=True,
+                ),
+                Notification(
+                    message="Active popup",
+                    type="popup",
+                    start_time=now - timedelta(minutes=20),
+                    end_time=now + timedelta(hours=1),
+                    is_active=True,
+                ),
+                Notification(
+                    message="Expired popup",
+                    type="popup",
+                    start_time=now - timedelta(hours=3),
+                    end_time=now - timedelta(minutes=1),
+                    is_active=True,
+                ),
+                Notification(
+                    message="Inactive banner",
+                    type="banner",
+                    start_time=now - timedelta(hours=1),
+                    end_time=now + timedelta(hours=1),
+                    is_active=False,
+                ),
+            ]
+        )
+        db.session.commit()
+
+    client = app.test_client()
+    legacy = client.get("/api/notifications/active")
+    v1 = client.get("/api/v1/notifications/active")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"banner", "popups"}
+    assert payload["banner"]["message"] == "Primary banner"
+    assert len(payload["popups"]) == 1
+    assert payload["popups"][0]["message"] == "Active popup"
 
     with app.app_context():
         db.drop_all()
