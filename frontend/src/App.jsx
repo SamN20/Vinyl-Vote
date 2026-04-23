@@ -1,6 +1,7 @@
 import { legacyLoginHref, oauthLoginHref } from "./api";
 import AuthCard from "./components/auth/AuthCard";
 import CommentsCard from "./components/comments/CommentsCard";
+import ExtensionInstallChip from "./components/common/ExtensionInstallChip";
 import InstallBanner from "./components/common/InstallBanner";
 import StatusCard from "./components/common/StatusCard";
 import SiteNotifications from "./components/common/SiteNotifications";
@@ -321,6 +322,8 @@ function App() {
         </main>
 
         <Footer />
+
+        <ExtensionInstallChip route={route.page} />
 
         <InstallBanner />
       </div>
