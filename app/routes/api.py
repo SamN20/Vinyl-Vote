@@ -964,7 +964,7 @@ def _build_profile_payload():
                 'songs': songs_payload,
                 'album_score': album_score_map.get(album.id),
                 'song_score': avg_song_score,
-                'results_href': f"#/results/{album.id}",
+                'results_href': f"/results/{album.id}",
                 'vote_card_href': url_for('user.share_vote_card', album_id=album.id),
             }
         )
