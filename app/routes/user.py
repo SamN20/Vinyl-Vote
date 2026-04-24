@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, Response, render_template, redirect, url_for, flash, request, session, make_response
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -490,11 +490,38 @@ def _legacy_register_flow():
         force_keyn_login=current_app.config.get('FORCE_KEYN_LOGIN', False),
     )
 
-@bp.route('/logout')
-@login_required
+@bp.route('/logout', methods=['GET', 'POST'])
 def logout():
+    """Log out user and clear all session/auth cookies."""
     logout_user()
-    return redirect(url_for('user.index'))
+    session.clear()
+
+    # Create response with redirect
+    response = make_response(redirect(url_for('user.index')))
+
+    # Explicitly expire session cookies with both max_age and expires for maximum compatibility
+    expires = 'Thu, 01 Jan 1970 00:00:00 GMT'
+    
+    response.set_cookie(
+        'remember_token',
+        '',
+        max_age=0,
+        expires=expires,
+        path='/',
+        samesite='Lax',
+        httponly=True,
+    )
+    response.set_cookie(
+        'session',
+        '',
+        max_age=0,
+        expires=expires,
+        path='/',
+        samesite='Lax',
+        httponly=True,
+    )
+
+    return response
 
 @bp.route('/update_email', methods=['POST'])
 @login_required

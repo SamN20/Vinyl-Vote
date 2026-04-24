@@ -684,7 +684,7 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
               ) : (
                 <>
                   <a className="btn btn-primary" href={loginHref}>Log In to Vote</a>
-                  <a className="btn btn-secondary" href={legacyLoginHref}>Legacy Login</a>
+                  {/* <a className="btn btn-secondary" href={legacyLoginHref}>Legacy Login</a> */}
                 </>
               )}
               <a className="btn btn-secondary" href="/battle">Face-Off</a>
