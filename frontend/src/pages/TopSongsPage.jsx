@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { getLeaderboardSongs } from "../api";
 import LeaderboardPagination from "../components/common/LeaderboardPagination";
 import LeaderboardTableSkeleton from "../components/common/LeaderboardTableSkeleton";
@@ -104,9 +105,9 @@ export default function TopSongsPage() {
         sortable: true,
         sortKey: "artist",
         render: (row) => (
-          <a className="bare-link" href={`#/top-artists?q=${encodeURIComponent(row.album?.artist || "")}`}>
+          <Link className="bare-link" to={`/top-artists?q=${encodeURIComponent(row.album?.artist || "")}`}>
             {row.album?.artist || "Unknown"}
-          </a>
+          </Link>
         ),
       },
       {
@@ -115,7 +116,7 @@ export default function TopSongsPage() {
         sortable: true,
         sortKey: "album",
         render: (row) => (
-          row.album?.id ? <a className="bare-link" href={`#/results/${row.album.id}`}>{row.album.title}</a> : "-"
+          row.album?.id ? <Link className="bare-link" to={`/results/${row.album.id}`}>{row.album.title}</Link> : "-"
         ),
       },
       {

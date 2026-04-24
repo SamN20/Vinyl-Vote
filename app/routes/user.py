@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, Response, render_template, redirect, url_for, flash, request, session, make_response
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -257,7 +257,7 @@ def sitemap_xml():
 @bp.route('/extension')
 def extension():
     """Open the chrome web store page for the extension in a new tab."""
-    return redirect("https://chrome.google.com/webstore/detail/nmknoocoofipjkkhfgameiinddigekpb", code=302)
+    return redirect(current_app.config.get('CHROME_EXTENSION_STORE_URL'), code=302)
 
 # VAPID keys are used for web push notifications
 @bp.route('/vapid-public-key')
@@ -490,11 +490,38 @@ def _legacy_register_flow():
         force_keyn_login=current_app.config.get('FORCE_KEYN_LOGIN', False),
     )
 
-@bp.route('/logout')
-@login_required
+@bp.route('/logout', methods=['GET', 'POST'])
 def logout():
+    """Log out user and clear all session/auth cookies."""
     logout_user()
-    return redirect(url_for('user.index'))
+    session.clear()
+
+    # Create response with redirect
+    response = make_response(redirect(url_for('user.index')))
+
+    # Explicitly expire session cookies with both max_age and expires for maximum compatibility
+    expires = 'Thu, 01 Jan 1970 00:00:00 GMT'
+    
+    response.set_cookie(
+        'remember_token',
+        '',
+        max_age=0,
+        expires=expires,
+        path='/',
+        samesite='Lax',
+        httponly=True,
+    )
+    response.set_cookie(
+        'session',
+        '',
+        max_age=0,
+        expires=expires,
+        path='/',
+        samesite='Lax',
+        httponly=True,
+    )
+
+    return response
 
 @bp.route('/update_email', methods=['POST'])
 @login_required
@@ -1530,7 +1557,7 @@ def profile():
         last_vote_iso = None
     profile_extras = { 'active_weeks': active_weeks, 'last_on_time_vote': last_vote_label, 'last_on_time_vote_full': last_vote_full, 'last_on_time_vote_iso': last_vote_iso }
 
-    keyn_auth_server_url = current_app.config.get('KEYN_AUTH_SERVER_URL', 'https://auth-keyn.bynolo.ca')
+    keyn_auth_server_url = current_app.config.get('KEYN_AUTH_SERVER_URL')
     keyn_profile = None
     if current_user.keyn_migrated and current_user.keyn_profile_json:
         import json

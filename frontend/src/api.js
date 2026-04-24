@@ -197,6 +197,10 @@ export function oauthLoginHref() {
   return buildUrl("/oauth/login");
 }
 
+export function logoutHref() {
+  return buildUrl("/logout");
+}
+
 let battleInFlightRequest = null;
 
 export function getBattle(options = {}) {

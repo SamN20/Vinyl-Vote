@@ -49,3 +49,6 @@ dev-stack:
 dev-stack-detached:
 	docker compose up -d --build
 	@echo "Docker services started. Run 'cd frontend && npm run dev' to start the frontend dev server."
+
+prod-deploy:
+	docker compose -f docker-compose.prod.yml up -d --build

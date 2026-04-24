@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { getLeaderboardBattle, legacyPageHref } from "../api";
+import { Link } from "react-router-dom";
+import { getLeaderboardBattle } from "../api";
 import LeaderboardPagination from "../components/common/LeaderboardPagination";
 import LeaderboardTableSkeleton from "../components/common/LeaderboardTableSkeleton";
 import LeaderboardTable from "../components/common/LeaderboardTable";
@@ -123,9 +124,9 @@ export default function FaceoffLeaderboardPage() {
         sortKey: "artist",
         width: "220px",
         render: (row) => (
-          <a className="bare-link" href={`#/top-artists?q=${encodeURIComponent(row.album?.artist || "")}`}>
+          <Link className="bare-link" to={`/top-artists?q=${encodeURIComponent(row.album?.artist || "")}`}>
             {row.album?.artist || "Unknown"}
-          </a>
+          </Link>
         ),
       },
       {
@@ -157,7 +158,7 @@ export default function FaceoffLeaderboardPage() {
           <h1>Face-Off Leaderboard</h1>
           <p className="subtitle">Elo-based fan favorites ranked by battle outcomes.</p>
         </div>
-        <a className="btn btn-primary" href="#/battle">Play Face-Off</a>
+        <Link className="btn btn-primary" to="/battle">Play Face-Off</Link>
       </section>
 
       <LeaderboardToolbar

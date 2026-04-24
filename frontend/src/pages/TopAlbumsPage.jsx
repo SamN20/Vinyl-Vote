@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { getLeaderboardAlbums } from "../api";
 import LeaderboardPagination from "../components/common/LeaderboardPagination";
 import LeaderboardTableSkeleton from "../components/common/LeaderboardTableSkeleton";
@@ -86,7 +87,7 @@ export default function TopAlbumsPage() {
         sortKey: "title",
         render: (row) => (
           <div className="album-cell">
-            <a className="bare-link" href={`#/results/${row.id}`}>{row.title}</a>
+            <Link className="bare-link" to={`/results/${row.id}`}>{row.title}</Link>
             <p className="muted-copy">{row.artist}</p>
           </div>
         ),

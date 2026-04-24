@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { legacyPageHref } from "../../api";
+import { Link } from "react-router-dom";
+import { legacyPageHref, logoutHref } from "../../api";
 import "./Header.css";
 
 function isMobileWidth() {
@@ -84,7 +85,7 @@ export default function Header({
   return (
     <header className="site-header">
       <div className="header-container">
-        <a className="brand-link" href="#/">
+        <Link className="brand-link" to="/home" onClick={closeMobileOverlays}>
           <img
             src={legacyPageHref("/static/favicon_64x64.png")}
             alt="Vinyl Vote logo"
@@ -95,7 +96,7 @@ export default function Header({
           <span>
             Vinyl Vote <span className="brand-footnote"><span className="gradient-text">byNolo</span></span>
           </span>
-        </a>
+        </Link>
 
         <button
           className="mobile-menu-toggle"
@@ -109,13 +110,13 @@ export default function Header({
 
         <nav id="v2-nav" className={`nav-links ${menuOpen ? "open" : ""}`}>
           <div className="nav-group primary-group">
-            <a href="#/" className={route === "/home" ? "active" : ""} onClick={closeMobileOverlays}>Home</a>
+            <Link to="/home" className={route === "/home" ? "active" : ""} onClick={closeMobileOverlays}>Home</Link>
 
             {sessionState === "authenticated" && (
               <>
-                <a href="#/vote" className={route === "/vote" ? "active" : ""} onClick={closeMobileOverlays}>Vote</a>
-                <a href="#/battle" className={route === "/battle" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off</a>
-                <a href="#/retro-hub" className={route === "/retro-hub" || route === "/retro-vote" ? "active" : ""} onClick={closeMobileOverlays}>Retro Hub</a>
+                <Link to="/vote" className={route === "/vote" ? "active" : ""} onClick={closeMobileOverlays}>Vote</Link>
+                <Link to="/battle" className={route === "/battle" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off</Link>
+                <Link to="/retro-hub" className={route === "/retro-hub" || route === "/retro-vote" ? "active" : ""} onClick={closeMobileOverlays}>Retro Hub</Link>
               </>
             )}
 
@@ -130,12 +131,12 @@ export default function Header({
                 Data <ChevronDownIcon className="icon-right" />
               </button>
               <div className="dropdown-content">
-                <a href="#/results" className={route === "/results" ? "active" : ""} onClick={closeMobileOverlays}>Weekly Results</a>
+                <Link to="/results" className={route === "/results" ? "active" : ""} onClick={closeMobileOverlays}>Weekly Results</Link>
                 <div className="dropdown-divider" />
-                <a href="#/top-albums" className={route === "/top-albums" ? "active" : ""} onClick={closeMobileOverlays}>Top Albums</a>
-                <a href="#/top-artists" className={route === "/top-artists" ? "active" : ""} onClick={closeMobileOverlays}>Top Artists</a>
-                <a href="#/top-songs" className={route === "/top-songs" ? "active" : ""} onClick={closeMobileOverlays}>Top Songs</a>
-                <a href="#/faceoff-leaderboard" className={route === "/faceoff-leaderboard" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off Leaderboard</a>
+                <Link to="/top-albums" className={route === "/top-albums" ? "active" : ""} onClick={closeMobileOverlays}>Top Albums</Link>
+                <Link to="/top-artists" className={route === "/top-artists" ? "active" : ""} onClick={closeMobileOverlays}>Top Artists</Link>
+                <Link to="/top-songs" className={route === "/top-songs" ? "active" : ""} onClick={closeMobileOverlays}>Top Songs</Link>
+                <Link to="/faceoff-leaderboard" className={route === "/faceoff-leaderboard" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off Leaderboard</Link>
               </div>
             </div>
           </div>
@@ -143,10 +144,10 @@ export default function Header({
           <div className="nav-group user-group">
             {sessionState === "authenticated" ? (
               <>
-                <a href="#/song-requests" className={`nav-btn request-btn ${route === "/song-requests" ? "active" : ""}`} onClick={closeMobileOverlays}>
+                <Link to="/song-requests" className={`nav-btn request-btn ${route === "/song-requests" ? "active" : ""}`} onClick={closeMobileOverlays}>
                   <PlusCircleIcon className="icon-left" />
                   Request
-                </a>
+                </Link>
 
                 <div className={`dropdown user-dropdown ${userDropdownOpen ? "open" : ""}`}>
                   <button
@@ -165,16 +166,16 @@ export default function Header({
                     <div className="dropdown-header">
                       Signed in as <strong>{sessionInfo?.username || "user"}</strong>
                     </div>
-                    <a href="#/profile" className={route === "/profile" ? "active" : ""} onClick={closeMobileOverlays}>Profile</a>
+                    <Link to="/profile" className={route === "/profile" ? "active" : ""} onClick={closeMobileOverlays}>Profile</Link>
                     <div className="dropdown-divider" />
-                    <a href={legacyPageHref("/logout")} onClick={closeMobileOverlays}>Sign Out</a>
+                    <a href={logoutHref()} onClick={closeMobileOverlays}>Sign Out</a>
                   </div>
                 </div>
               </>
             ) : (
               <>
                 <a className="nav-btn login-btn" href={loginHref} onClick={closeMobileOverlays}>Login</a>
-                <a className="nav-btn" href={legacyLoginHref} onClick={closeMobileOverlays}>Legacy Login</a>
+                {/* <a className="nav-btn" href={legacyLoginHref} onClick={closeMobileOverlays}>Legacy Login</a> */}
               </>
             )}
 

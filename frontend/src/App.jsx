@@ -27,16 +27,16 @@ import TermsPage from "./pages/TermsPage";
 import { useRetroVotingFlow } from "./hooks/useRetroVotingFlow";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useVotingFlow } from "./hooks/useVotingFlow";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
-function parseHashRoute(hash) {
-  const raw = (hash || "").replace(/^#/, "").trim();
-  if (!raw || raw === "/") {
+function parsePathRoute(pathname) {
+  if (!pathname || pathname === "/") {
     return { page: "/home", albumId: null };
   }
 
-  const normalized = raw.startsWith("/") ? raw : `/${raw}`;
-  const [pathOnly] = normalized.split("?");
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const pathOnly = normalized;
 
   const retroVoteMatch = pathOnly.match(/^\/retro-vote\/(\d+)$/);
   if (retroVoteMatch) {
@@ -107,7 +107,8 @@ function App() {
   const showDevLogin = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_LOGIN === "true";
   const showRetroPreviewOnHome = (import.meta.env.VITE_SHOW_RETRO_PREVIEW_ON_HOME || "false") === "true";
   const devLoginUsername = import.meta.env.VITE_DEV_LOGIN_USERNAME || "dev-user";
-  const [route, setRoute] = useState(parseHashRoute(window.location.hash));
+  const location = useLocation();
+  const route = parsePathRoute(location.pathname);
   const { theme, toggleTheme } = useThemePreference("dark");
   const {
     albumPayload,
@@ -146,17 +147,6 @@ function App() {
     "/extension",
   ].includes(route.page);
   const showGlobalSessionStatus = route.page !== "/home";
-
-  useEffect(() => {
-    function onHashChange() {
-      setRoute(parseHashRoute(window.location.hash));
-    }
-
-    window.addEventListener("hashchange", onHashChange);
-    return () => {
-      window.removeEventListener("hashchange", onHashChange);
-    };
-  }, []);
 
   useEffect(() => {
     if (route.page === "/retro-vote" && route.albumId) {
