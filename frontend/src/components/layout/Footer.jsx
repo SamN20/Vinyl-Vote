@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import "./Footer.css";
 
 export default function Footer() {
@@ -7,9 +8,9 @@ export default function Footer() {
     <footer className="site-footer-v2" aria-label="Site footer">
       <p className="site-footer-v2-copy">
         &copy; {currentYear} Vinyl Vote - <span className="footer-gradient-text">byNolo</span> &middot;
-        <a href="/terms">Terms &amp; Conditions</a> |
-        <a href="/privacy">Privacy Policy</a> |
-        <a href="/extension">Browser Extension</a>
+        <Link to="/terms">Terms &amp; Conditions</Link> |
+        <Link to="/privacy">Privacy Policy</Link> |
+        <Link to="/extension">Browser Extension</Link>
       </p>
     </footer>
   );

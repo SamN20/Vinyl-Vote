@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { legacyPageHref } from "../../api";
 
 function formatScore(value) {
@@ -17,6 +18,7 @@ export default function ProfileAlbumHistory({ albumVotes, search, onSearchChange
     const voteCardHref = item.vote_card_href?.startsWith("http")
       ? item.vote_card_href
       : legacyPageHref(item.vote_card_href || "");
+    const resultsPath = item.results_href || `/results/${item.album.id}`;
 
     return (
       <article key={item.album.id} className="profile-history-card">
@@ -34,7 +36,7 @@ export default function ProfileAlbumHistory({ albumVotes, search, onSearchChange
           )}
           <div>
             <h3>
-              <a href={item.results_href}>{item.album.title}</a>
+              <Link to={resultsPath}>{item.album.title}</Link>
             </h3>
             <p>{item.album.artist}</p>
             <p>Your album score: <strong>{formatScore(item.album_score)}</strong></p>
@@ -64,7 +66,7 @@ export default function ProfileAlbumHistory({ albumVotes, search, onSearchChange
         </div>
 
         <div className="profile-history-actions">
-          <a className="btn btn-secondary" href={item.results_href}>View Results</a>
+          <Link className="btn btn-secondary" to={resultsPath}>View Results</Link>
           <a className="btn btn-ghost" href={voteCardHref} target="_blank" rel="noopener noreferrer">Download Vote Card</a>
         </div>
       </article>

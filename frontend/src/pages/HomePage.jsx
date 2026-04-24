@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { getHomeData, getHomeSeo } from "../api";
 import StatusCard from "../components/common/StatusCard";
 import StreamingLinks from "../components/common/StreamingLinks";
@@ -327,7 +328,7 @@ function HomePageSkeleton() {
 
 function AlbumTile({ album, metricLabel }) {
   const [tilePalette, setTilePalette] = useState(defaultCardPalette);
-  const albumResultsHref = `/results/${album.id}`;
+  const albumResultsPath = `/results/${album.id}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -369,9 +370,9 @@ function AlbumTile({ album, metricLabel }) {
   }, [album?.cover_url]);
 
   return (
-    <a
+    <Link
       className="home-tile home-tile-link"
-      href={albumResultsHref}
+      to={albumResultsPath}
       aria-label={`View results for ${album.title} by ${album.artist}`}
       style={{
         "--home-tile-primary": tilePalette.primary,
@@ -402,7 +403,7 @@ function AlbumTile({ album, metricLabel }) {
           <strong>Album Avg:</strong> {album.avg_album_score ?? "N/A"}
         </p>
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -680,14 +681,14 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
 
             <div className="button-row home-cta-row">
               {homeData?.user?.is_authenticated ? (
-                <a className="btn btn-primary" href="/vote">Go Vote</a>
+                <Link className="btn btn-primary" to="/vote">Go Vote</Link>
               ) : (
                 <>
                   <a className="btn btn-primary" href={loginHref}>Log In to Vote</a>
                   {/* <a className="btn btn-secondary" href={legacyLoginHref}>Legacy Login</a> */}
                 </>
               )}
-              <a className="btn btn-secondary" href="/battle">Face-Off</a>
+              <Link className="btn btn-secondary" to="/battle">Face-Off</Link>
             </div>
           </div>
         </div>
@@ -756,11 +757,11 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
 
         <div className="button-row home-join-actions">
           {homeData?.user?.is_authenticated ? (
-            <a className="btn btn-primary" href="/vote">Start This Week's Vote</a>
+            <Link className="btn btn-primary" to="/vote">Start This Week's Vote</Link>
           ) : (
             <a className="btn btn-primary" href={loginHref}>Create or Use Your Account</a>
           )}
-          <a className="btn btn-ghost" href="/results">See Past Results</a>
+          <Link className="btn btn-ghost" to="/results">See Past Results</Link>
         </div>
       </section>
 
@@ -776,7 +777,7 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
 
         <div className="home-action-grid" role="group" aria-label="Quick action links">
           {homeActions.map((action) => (
-            <a key={action.href} className="home-action" href={action.href}>{action.label}</a>
+            <Link key={action.href} className="home-action" to={action.href}>{action.label}</Link>
           ))}
           {installPromptEvent ? (
             <button className="home-action home-action-button" type="button" onClick={handleInstallPrompt}>
