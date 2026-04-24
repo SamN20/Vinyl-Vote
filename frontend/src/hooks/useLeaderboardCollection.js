@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export function parseInitialQuery(routePath, defaults) {
-  const hash = (window.location.hash || "").replace(/^#/, "").trim();
-  if (!hash) {
+  const pathPart = window.location.pathname || "";
+  if (!pathPart) {
     return { ...defaults };
   }
 
-  const [pathPart, queryPart = ""] = hash.split("?");
   if (pathPart !== routePath) {
     return { ...defaults };
   }
 
+  const queryPart = window.location.search?.replace(/^\?/, "") || "";
   const params = new URLSearchParams(queryPart);
   const next = { ...defaults };
 
@@ -31,7 +31,7 @@ export function parseInitialQuery(routePath, defaults) {
   return next;
 }
 
-function syncHash(routePath, query, defaults) {
+function syncQuery(routePath, query, defaults) {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") {
@@ -44,8 +44,7 @@ function syncHash(routePath, query, defaults) {
   });
 
   const suffix = params.toString();
-  const nextHash = suffix ? `#${routePath}?${suffix}` : `#${routePath}`;
-  const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+  const nextUrl = suffix ? `${routePath}?${suffix}` : routePath;
   window.history.replaceState(null, "", nextUrl);
 }
 
@@ -76,7 +75,7 @@ export function useLeaderboardCollection({ routePath, fetcher, defaults }) {
   }, [fetcher, requestPayload]);
 
   useEffect(() => {
-    syncHash(routePath, query, defaults);
+    syncQuery(routePath, query, defaults);
   }, [defaults, query, routePath]);
 
   useEffect(() => {

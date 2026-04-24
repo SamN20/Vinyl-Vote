@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from config import Config
@@ -190,6 +190,10 @@ def create_app():
     def inject_asset_version():
         # Expose asset version for cache-busting in templates
         return {'asset_version': app.config.get('ASSET_VERSION', '1')}
+
+    @app.get('/health')
+    def health_check():
+        return jsonify({'status': 'ok'}), 200
 
     @app.errorhandler(401)
     def unauthorized(e):

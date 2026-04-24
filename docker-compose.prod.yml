@@ -1,0 +1,47 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vinyl-vote-web:prod
+    env_file:
+      - .env
+    environment:
+      ENABLE_SCHEDULER: "false"
+      RUN_MIGRATIONS_ON_START: "true"
+      SESSION_COOKIE_SECURE: "true"
+      REMEMBER_COOKIE_SECURE: "true"
+      SQLALCHEMY_DATABASE_URI: sqlite:////app/data/album_vote.db
+    volumes:
+      - ./db:/app/data
+    restart: unless-stopped
+
+  scheduler:
+    image: vinyl-vote-web:prod
+    env_file:
+      - .env
+    environment:
+      ENABLE_SCHEDULER: "true"
+      RUN_MIGRATIONS_ON_START: "false"
+      SESSION_COOKIE_SECURE: "true"
+      REMEMBER_COOKIE_SECURE: "true"
+      SQLALCHEMY_DATABASE_URI: sqlite:////app/data/album_vote.db
+    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "run:app"]
+    depends_on:
+      - web
+    volumes:
+      - ./db:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost}
+    image: vinyl-vote-frontend:prod
+    ports:
+      - "${FRONTEND_HOST_PORT:-8088}:8080"
+    depends_on:
+      - web
+    restart: unless-stopped

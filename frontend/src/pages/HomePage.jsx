@@ -327,7 +327,7 @@ function HomePageSkeleton() {
 
 function AlbumTile({ album, metricLabel }) {
   const [tilePalette, setTilePalette] = useState(defaultCardPalette);
-  const albumResultsHref = `#/results/${album.id}`;
+  const albumResultsHref = `/results/${album.id}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -542,17 +542,17 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
 
   const homeActions = useMemo(() => {
     const actions = [
-      { href: "#/results", label: "Latest Results" },
-      { href: "#/battle", label: "Face-Off" },
-      { href: "#/top-albums", label: "Top Albums" },
-      { href: "#/top-artists", label: "Top Artists" },
-      { href: "#/top-songs", label: "Top Songs" },
+      { href: "/results", label: "Latest Results" },
+      { href: "/battle", label: "Face-Off" },
+      { href: "/top-albums", label: "Top Albums" },
+      { href: "/top-artists", label: "Top Artists" },
+      { href: "/top-songs", label: "Top Songs" },
     ];
 
     if (homeData?.user?.is_authenticated) {
-      actions.unshift({ href: "#/vote", label: "Resume Voting" });
-      actions.push({ href: "#/retro-hub", label: "Retro Hub" });
-      actions.push({ href: "#/song-requests", label: "Request an Album" });
+      actions.unshift({ href: "/vote", label: "Resume Voting" });
+      actions.push({ href: "/retro-hub", label: "Retro Hub" });
+      actions.push({ href: "/song-requests", label: "Request an Album" });
     }
 
     return actions;
@@ -680,14 +680,14 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
 
             <div className="button-row home-cta-row">
               {homeData?.user?.is_authenticated ? (
-                <a className="btn btn-primary" href="#/vote">Go Vote</a>
+                <a className="btn btn-primary" href="/vote">Go Vote</a>
               ) : (
                 <>
                   <a className="btn btn-primary" href={loginHref}>Log In to Vote</a>
                   <a className="btn btn-secondary" href={legacyLoginHref}>Legacy Login</a>
                 </>
               )}
-              <a className="btn btn-secondary" href="#/battle">Face-Off</a>
+              <a className="btn btn-secondary" href="/battle">Face-Off</a>
             </div>
           </div>
         </div>
@@ -756,11 +756,11 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
 
         <div className="button-row home-join-actions">
           {homeData?.user?.is_authenticated ? (
-            <a className="btn btn-primary" href="#/vote">Start This Week's Vote</a>
+            <a className="btn btn-primary" href="/vote">Start This Week's Vote</a>
           ) : (
             <a className="btn btn-primary" href={loginHref}>Create or Use Your Account</a>
           )}
-          <a className="btn btn-ghost" href="#/results">See Past Results</a>
+          <a className="btn btn-ghost" href="/results">See Past Results</a>
         </div>
       </section>
 

@@ -257,7 +257,7 @@ def sitemap_xml():
 @bp.route('/extension')
 def extension():
     """Open the chrome web store page for the extension in a new tab."""
-    return redirect("https://chrome.google.com/webstore/detail/nmknoocoofipjkkhfgameiinddigekpb", code=302)
+    return redirect(current_app.config.get('CHROME_EXTENSION_STORE_URL'), code=302)
 
 # VAPID keys are used for web push notifications
 @bp.route('/vapid-public-key')
@@ -1530,7 +1530,7 @@ def profile():
         last_vote_iso = None
     profile_extras = { 'active_weeks': active_weeks, 'last_on_time_vote': last_vote_label, 'last_on_time_vote_full': last_vote_full, 'last_on_time_vote_iso': last_vote_iso }
 
-    keyn_auth_server_url = current_app.config.get('KEYN_AUTH_SERVER_URL', 'https://auth-keyn.bynolo.ca')
+    keyn_auth_server_url = current_app.config.get('KEYN_AUTH_SERVER_URL')
     keyn_profile = None
     if current_user.keyn_migrated and current_user.keyn_profile_json:
         import json

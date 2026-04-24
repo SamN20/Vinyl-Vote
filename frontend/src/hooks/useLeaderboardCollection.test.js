@@ -11,11 +11,11 @@ describe("parseInitialQuery", () => {
   };
 
   afterEach(() => {
-    window.location.hash = "";
+    window.history.replaceState(null, "", "/");
   });
 
   it("parses numeric parameters as numbers", () => {
-    window.location.hash = "#/top-songs?page=2&per_page=10&min_ratings=5";
+    window.history.replaceState(null, "", "/top-songs?page=2&per_page=10&min_ratings=5");
 
     const parsed = parseInitialQuery("/top-songs", defaults);
 
@@ -25,7 +25,7 @@ describe("parseInitialQuery", () => {
   });
 
   it("parses string parameters", () => {
-    window.location.hash = "#/top-songs?q=metallica&sort_by=title&sort_dir=asc";
+    window.history.replaceState(null, "", "/top-songs?q=metallica&sort_by=title&sort_dir=asc");
 
     const parsed = parseInitialQuery("/top-songs", defaults);
 
@@ -35,7 +35,7 @@ describe("parseInitialQuery", () => {
   });
 
   it("uses defaults for missing parameters", () => {
-    window.location.hash = "#/top-songs?q=power";
+    window.history.replaceState(null, "", "/top-songs?q=power");
 
     const parsed = parseInitialQuery("/top-songs", defaults);
 
@@ -46,7 +46,7 @@ describe("parseInitialQuery", () => {
   });
 
   it("falls back to default for invalid numeric parameters", () => {
-    window.location.hash = "#/top-songs?page=not-a-number&per_page=oops&min_ratings=NaN";
+    window.history.replaceState(null, "", "/top-songs?page=not-a-number&per_page=oops&min_ratings=NaN");
 
     const parsed = parseInitialQuery("/top-songs", defaults);
 
@@ -55,8 +55,8 @@ describe("parseInitialQuery", () => {
     expect(parsed.min_ratings).toBe(defaults.min_ratings);
   });
 
-  it("returns defaults when hash path does not match route", () => {
-    window.location.hash = "#/top-artists?page=3&q=abc";
+  it("returns defaults when path does not match route", () => {
+    window.history.replaceState(null, "", "/top-artists?page=3&q=abc");
 
     const parsed = parseInitialQuery("/top-songs", defaults);
 

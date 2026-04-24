@@ -86,7 +86,7 @@ export default function TopAlbumsPage() {
         sortKey: "title",
         render: (row) => (
           <div className="album-cell">
-            <a className="bare-link" href={`#/results/${row.id}`}>{row.title}</a>
+            <a className="bare-link" href={`/results/${row.id}`}>{row.title}</a>
             <p className="muted-copy">{row.artist}</p>
           </div>
         ),

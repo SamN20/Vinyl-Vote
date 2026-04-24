@@ -135,7 +135,7 @@ export default function BattlePage({ sessionState, theme }) {
 
         <div className="skip-container">
           <button className="btn btn-secondary" type="button" onClick={() => loadPair({ force: true })}>Skip this match</button>
-          <a className="muted-link" href="#/faceoff-leaderboard">View Face-Off Leaderboard</a>
+          <a className="muted-link" href="/faceoff-leaderboard">View Face-Off Leaderboard</a>
         </div>
 
         {result ? (

@@ -62,6 +62,18 @@ docker compose up --build
 
 See `docs/PROXMOX_DEPLOY.md` for deployment flow and `docker-compose.yml` for local services.
 
+Production stack (frontend + backend + scheduler):
+
+```bash
+export FRONTEND_HOST_PORT=8088
+mkdir -p db
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Use any free host port instead of `80`.
+
+The production stack bind-mounts SQLite data to the repository-local `db/` folder so the existing database is easy to inspect, back up, and migrate.
+
 ## Developer Commands
 
 With virtualenv active:
@@ -116,6 +128,16 @@ KEYN_CLIENT_ID=your_client_id
 KEYN_CLIENT_SECRET=your_client_secret
 KEYN_CLIENT_REDIRECT=http://127.0.0.1:5000/oauth/callback
 KEYN_DEFAULT_SCOPES=id,username,email,display_name,is_verified
+```
+
+Optional overrides for centralized profile/manage links:
+
+```text
+KEYN_PROFILE_URL=https://auth-keyn.bynolo.ca/profile
+KEYN_EDIT_PROFILE_URL=https://auth-keyn.bynolo.ca/profile/edit
+KEYN_CHANGE_PASSWORD_URL=https://auth-keyn.bynolo.ca/profile/change-password
+NOLOFICATION_PREFERENCES_URL=https://nolofication.bynolo.ca/sites/vinylvote/preferences
+CHROME_EXTENSION_STORE_URL=https://chrome.google.com/webstore/detail/nmknoocoofipjkkhfgameiinddigekpb
 ```
 
 Auth defaults in V2 migration:

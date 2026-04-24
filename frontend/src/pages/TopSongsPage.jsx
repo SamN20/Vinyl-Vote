@@ -104,7 +104,7 @@ export default function TopSongsPage() {
         sortable: true,
         sortKey: "artist",
         render: (row) => (
-          <a className="bare-link" href={`#/top-artists?q=${encodeURIComponent(row.album?.artist || "")}`}>
+          <a className="bare-link" href={`/top-artists?q=${encodeURIComponent(row.album?.artist || "")}`}>
             {row.album?.artist || "Unknown"}
           </a>
         ),
@@ -115,7 +115,7 @@ export default function TopSongsPage() {
         sortable: true,
         sortKey: "album",
         render: (row) => (
-          row.album?.id ? <a className="bare-link" href={`#/results/${row.album.id}`}>{row.album.title}</a> : "-"
+          row.album?.id ? <a className="bare-link" href={`/results/${row.album.id}`}>{row.album.title}</a> : "-"
         ),
       },
       {

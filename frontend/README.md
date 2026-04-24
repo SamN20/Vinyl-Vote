@@ -33,6 +33,8 @@ By default, Vite proxies backend routes to `http://127.0.0.1:5000` for local dev
 
 You can also set `VITE_API_BASE_URL` to point to a separate backend host.
 
+For production builds, set `PUBLIC_SITE_URL` in the root `.env` (or pass it as a Docker build arg) so `index.html` can stamp canonical, Open Graph, and Twitter card URLs correctly.
+
 Example:
 
 ```bash

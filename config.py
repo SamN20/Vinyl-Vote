@@ -19,6 +19,7 @@ class Config:
     REMEMBER_COOKIE_SECURE = os.environ.get('REMEMBER_COOKIE_SECURE', 'False').lower() == 'true'
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = 'Lax'  # Better for mobile web apps
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
     SESSION_COOKIE_SAMESITE = 'Lax'   # Better for mobile web apps
     ENABLE_SCHEDULER = os.getenv('ENABLE_SCHEDULER', 'True').lower() == 'true'
 
@@ -65,10 +66,22 @@ class Config:
     DEV_AUTH_BYPASS = os.environ.get('DEV_AUTH_BYPASS', 'false').lower() in ('1', 'true', 'yes')
     DEV_AUTH_BYPASS_DEFAULT_USERNAME = os.environ.get('DEV_AUTH_BYPASS_DEFAULT_USERNAME', 'dev-user')
 
+    # Centralized KeyN profile/manage links (override if your KeyN host differs)
+    KEYN_PROFILE_URL = os.getenv('KEYN_PROFILE_URL') or f"{KEYN_AUTH_SERVER_URL.rstrip('/')}/profile"
+    KEYN_EDIT_PROFILE_URL = os.getenv('KEYN_EDIT_PROFILE_URL') or f"{KEYN_AUTH_SERVER_URL.rstrip('/')}/profile/edit"
+    KEYN_CHANGE_PASSWORD_URL = os.getenv('KEYN_CHANGE_PASSWORD_URL') or f"{KEYN_AUTH_SERVER_URL.rstrip('/')}/profile/change-password"
+
     # --- Nolofication settings ---
     NOLOFICATION_URL = os.getenv('NOLOFICATION_URL', 'https://nolofication.bynolo.ca')
     NOLOFICATION_SITE_ID = os.getenv('NOLOFICATION_SITE_ID', 'vinylvote')
     NOLOFICATION_API_KEY = os.getenv('NOLOFICATION_API_KEY')
+    NOLOFICATION_PREFERENCES_URL = os.getenv('NOLOFICATION_PREFERENCES_URL') or f"{NOLOFICATION_URL.rstrip('/')}/sites/{NOLOFICATION_SITE_ID}/preferences"
+
+    # Public extension listing link
+    CHROME_EXTENSION_STORE_URL = os.getenv(
+        'CHROME_EXTENSION_STORE_URL',
+        'https://chrome.google.com/webstore/detail/nmknoocoofipjkkhfgameiinddigekpb'
+    )
 
     @staticmethod
     def get_vote_end_time():

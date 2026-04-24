@@ -1015,10 +1015,10 @@ def _build_profile_payload():
         },
         'album_votes': album_votes,
         'keyn_links': {
-            'profile': 'https://auth-keyn.bynolo.ca/profile',
-            'edit_profile': 'https://auth-keyn.bynolo.ca/profile/edit',
-            'change_password': 'https://auth-keyn.bynolo.ca/profile/change-password',
-            'notifications': 'https://nolofication.bynolo.ca/sites/vinylvote/preferences',
+            'profile': current_app.config.get('KEYN_PROFILE_URL'),
+            'edit_profile': current_app.config.get('KEYN_EDIT_PROFILE_URL'),
+            'change_password': current_app.config.get('KEYN_CHANGE_PASSWORD_URL'),
+            'notifications': current_app.config.get('NOLOFICATION_PREFERENCES_URL'),
         },
     }
 

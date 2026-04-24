@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./RetroHubPage.css";
 
 export default function RetroHubPage({ retro }) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
   const filteredAlbums = useMemo(() => {
@@ -15,7 +17,7 @@ export default function RetroHubPage({ retro }) {
   }, [query, retro.albums]);
 
   function openRetroVote(albumId) {
-    window.location.hash = `#/retro-vote/${albumId}`;
+    navigate(`/retro-vote/${albumId}`);
   }
 
   return (
