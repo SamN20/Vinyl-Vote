@@ -88,6 +88,35 @@ def test_session_check_anonymous_contract_matches_v1():
         db.drop_all()
 
 
+def test_session_check_authenticated_contract_includes_admin_flag():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="admin-user", password_hash="hash", is_admin=True)
+        db.session.add(user)
+        db.session.commit()
+        user_id = user.id
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/session-check")
+    v1 = client.get("/api/v1/session-check")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+    assert v1.get_json() == {
+        "authenticated": True,
+        "user_id": user_id,
+        "username": "admin-user",
+        "is_admin": True,
+    }
+
+    with app.app_context():
+        db.drop_all()
+
+
 def test_current_album_contract_matches_v1_for_authenticated_user():
     app = _build_app()
     with app.app_context():

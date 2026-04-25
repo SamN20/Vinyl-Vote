@@ -23,7 +23,7 @@ export default function RetroHubPage({ retro }) {
   return (
     <>
       <section className="hero retro-hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
+        <p className="eyebrow">Vinyl Vote</p>
         <h1>Retro Vote Hub</h1>
         <p className="subtitle">
           Catch up on albums you missed. Recommendations are sorted by predicted taste match.

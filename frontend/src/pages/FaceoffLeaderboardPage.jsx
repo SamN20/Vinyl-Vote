@@ -154,7 +154,7 @@ export default function FaceoffLeaderboardPage() {
     <>
       <section className="hero leaderboard-hero-row">
         <div>
-          <p className="eyebrow">Vinyl Vote V2</p>
+          <p className="eyebrow">Vinyl Vote</p>
           <h1>Face-Off Leaderboard</h1>
           <p className="subtitle">Elo-based fan favorites ranked by battle outcomes.</p>
         </div>

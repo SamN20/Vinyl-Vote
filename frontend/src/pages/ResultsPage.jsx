@@ -11,11 +11,10 @@ export default function ResultsPage({ routeAlbumId }) {
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
+        <p className="eyebrow">Vinyl Vote</p>
         <h1>Weekly Results</h1>
         <p className="subtitle">
-          Track-level voting outcomes for the most recent completed album. This mirrors the V1 data layout while
-          using versioned V2 APIs.
+          Track-level voting outcomes for the most recent completed album.
         </p>
       </section>
 

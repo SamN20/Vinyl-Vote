@@ -248,7 +248,7 @@ export default function TopArtistsPage() {
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
+        <p className="eyebrow">Vinyl Vote</p>
         <h1>Top Artists</h1>
         <p className="subtitle">
           Ranked artist leaderboard with filters, pagination, and expandable artist details.

@@ -46,7 +46,6 @@ function MoonIcon() {
 
 export default function Header({
   loginHref,
-  legacyLoginHref,
   route,
   sessionInfo,
   sessionState,
@@ -167,6 +166,9 @@ export default function Header({
                       Signed in as <strong>{sessionInfo?.username || "user"}</strong>
                     </div>
                     <Link to="/profile" className={route === "/profile" ? "active" : ""} onClick={closeMobileOverlays}>Profile</Link>
+                    {sessionInfo?.is_admin ? (
+                      <a href={legacyPageHref("/admin/")} onClick={closeMobileOverlays}>Admin</a>
+                    ) : null}
                     <div className="dropdown-divider" />
                     <a href={logoutHref()} onClick={closeMobileOverlays}>Sign Out</a>
                   </div>
@@ -175,7 +177,6 @@ export default function Header({
             ) : (
               <>
                 <a className="nav-btn login-btn" href={loginHref} onClick={closeMobileOverlays}>Login</a>
-                {/* <a className="nav-btn" href={legacyLoginHref} onClick={closeMobileOverlays}>Legacy Login</a> */}
               </>
             )}
 

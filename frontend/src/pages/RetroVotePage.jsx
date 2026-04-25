@@ -4,7 +4,7 @@ export default function RetroVotePage({ retro }) {
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
+        <p className="eyebrow">Vinyl Vote</p>
         <h1>Retro Vote</h1>
         <p className="subtitle">
           This album's official window has passed. Your vote is recorded as retroactive and still counts.

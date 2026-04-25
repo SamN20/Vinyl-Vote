@@ -141,7 +141,7 @@ export default function TopSongsPage() {
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
+        <p className="eyebrow">Vinyl Vote</p>
         <h1>Top Songs</h1>
         <p className="subtitle">
           Explore highest-rated tracks with streaming links and configurable thresholds.

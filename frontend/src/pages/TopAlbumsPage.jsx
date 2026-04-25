@@ -128,7 +128,7 @@ export default function TopAlbumsPage() {
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
+        <p className="eyebrow">Vinyl Vote</p>
         <h1>Top Albums</h1>
         <p className="subtitle">
           Explore all-time album rankings with server-side search, sort, and pagination.

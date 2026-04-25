@@ -407,7 +407,7 @@ function AlbumTile({ album, metricLabel }) {
   );
 }
 
-export default function HomePage({ loginHref, legacyLoginHref }) {
+export default function HomePage({ loginHref }) {
   const [dataState, setDataState] = useState("loading");
   const [error, setError] = useState("");
   const [homeData, setHomeData] = useState(null);
@@ -685,7 +685,6 @@ export default function HomePage({ loginHref, legacyLoginHref }) {
               ) : (
                 <>
                   <a className="btn btn-primary" href={loginHref}>Log In to Vote</a>
-                  {/* <a className="btn btn-secondary" href={legacyLoginHref}>Legacy Login</a> */}
                 </>
               )}
               <Link className="btn btn-secondary" to="/battle">Face-Off</Link>

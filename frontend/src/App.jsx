@@ -159,7 +159,6 @@ function App() {
       <div className="app-shell">
         <Header
           loginHref={oauthLoginHref()}
-          legacyLoginHref={legacyLoginHref()}
           sessionInfo={sessionInfo}
           sessionState={sessionState}
           theme={theme}
@@ -172,11 +171,10 @@ function App() {
         <main className="page">
         {route.page === "/vote" ? (
           <section className="hero">
-            <p className="eyebrow">Vinyl Vote V2</p>
-            <h1>Vote Flow Migration</h1>
+            <p className="eyebrow">Weekly Album</p>
+            <h1>Cast Your Vote</h1>
             <p className="subtitle">
-              V2 keeps the V1 visual shell while this React page incrementally replaces server-rendered
-              voting screens. Theme preference persists across refreshes.
+              Rate each track, give the album an overall score, and save your picks for this week's record.
             </p>
           </section>
         ) : null}
@@ -196,7 +194,6 @@ function App() {
         {route.page === "/home" ? (
           <HomePage
             loginHref={oauthLoginHref()}
-            legacyLoginHref={legacyLoginHref()}
             sessionState={sessionState}
           />
         ) : null}

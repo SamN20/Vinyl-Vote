@@ -120,8 +120,7 @@
 .spotify-embed-wrapper { position: relative; border-radius: 12px; overflow: hidden; background: var(--card-bg); height: 80px; }
 
 
-/* Use the V1 approach: give the iframe the rounded corners and no borders.
-   Keep a simple wrapper for layout only and avoid scaling/overlay hacks. */
+/* Give the iframe rounded corners and keep the wrapper focused on layout. */
 .spotify-embed-wrapper iframe {
   display: block;
   width: 100%;

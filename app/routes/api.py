@@ -292,7 +292,8 @@ def session_check():
         return jsonify({
             'authenticated': True,
             'user_id': current_user.id,
-            'username': current_user.username
+            'username': current_user.username,
+            'is_admin': bool(current_user.is_admin),
         }), 200
     else:
         return jsonify({

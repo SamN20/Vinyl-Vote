@@ -126,7 +126,7 @@ export default function SongRequestsPage() {
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Vinyl Vote V2</p>
+        <p className="eyebrow">Vinyl Vote</p>
         <h1>Album Requests</h1>
         <p className="subtitle">Search Spotify, submit requests, and track what has been fulfilled.</p>
       </section>
