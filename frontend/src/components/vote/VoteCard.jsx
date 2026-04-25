@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { legacyPageHref } from "../../api";
 import StreamingLinks from "../common/StreamingLinks";
 import { formatVoteEnd } from "../../hooks/useVotingFlow";
@@ -6,6 +7,376 @@ import StarRatingInput from "./StarRatingInput";
 import VoteCardLoadingSkeleton from "./VoteCardLoadingSkeleton";
 import { formatAlbumLength, formatCountdown, parseDurationToSeconds } from "./voteCardUtils";
 import "./VoteCard.css";
+
+const VOTE_PIP_STYLES = `
+  :root {
+    color-scheme: dark light;
+    --bg: #0f1115;
+    --card-bg: #171a21;
+    --input-bg: #10131a;
+    --text: #f3f5f7;
+    --muted: #aeb6c4;
+    --accent: #1db954;
+    --border-color: rgba(255, 255, 255, 0.14);
+    --success-color: #2ecc71;
+  }
+
+  [data-theme="light"] {
+    --bg: #f6f7f9;
+    --card-bg: #ffffff;
+    --input-bg: #f2f4f7;
+    --text: #15171c;
+    --muted: #5c6675;
+    --border-color: rgba(16, 24, 40, 0.14);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #vote-pip-root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--card-bg);
+    color: var(--text);
+    font: 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden;
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  .vote-pip-shell {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    background: var(--card-bg);
+  }
+
+  .vote-pip-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.7rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--card-bg);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  }
+
+  .vote-pip-title {
+    min-width: 0;
+  }
+
+  .vote-pip-title strong,
+  .vote-pip-title span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vote-pip-title span {
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-top: 0.1rem;
+  }
+
+  .vote-pip-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .vote-pip-toggle input {
+    accent-color: var(--accent);
+  }
+
+  .vote-pip-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .vote-pip-form {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .vote-pip-list {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    display: grid;
+    align-content: start;
+    gap: 0.45rem;
+    padding: 0.65rem 0.7rem;
+  }
+
+  .vote-pip-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.55rem;
+    align-items: center;
+    padding: 0.55rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+
+  .vote-pip-track {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vote-pip-control {
+    width: 82px;
+  }
+
+  .vote-pip-row.lazy .vote-pip-control {
+    width: 202px;
+  }
+
+  .vote-pip-control .score-input {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0.45rem 0.5rem;
+  }
+
+  .vote-pip-control .score-input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .lazy-stars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 202px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .lazy-stars.disabled {
+    pointer-events: none;
+  }
+
+  .star-btn,
+  .half-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--muted);
+    padding: 0.2rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .star-btn.active,
+  .half-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .half-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .vote-pip-footer {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.65rem 0.7rem;
+    border-top: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--card-bg) 94%, transparent);
+  }
+
+  .vote-pip-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+
+  .vote-pip-status strong {
+    color: var(--text);
+  }
+
+  .vote-pip-bar {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--input-bg);
+  }
+
+  .vote-pip-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+  }
+
+  .vote-pip-submit {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #07110a;
+    font-weight: 800;
+    padding: 0.72rem 0.9rem;
+    cursor: pointer;
+  }
+
+  .vote-pip-submit:disabled {
+    opacity: 0.64;
+    cursor: wait;
+  }
+`;
+
+function VotePopoutContent({
+  albumPayload,
+  albumScore,
+  closePopout,
+  lazyMode,
+  onSubmit,
+  progressPercent,
+  ratedTracks,
+  remainingTracks,
+  setAlbumScore,
+  setSongScore,
+  songScores,
+  songs,
+  statusLabel,
+  submitState,
+  toggleLazyMode,
+}) {
+  const album = albumPayload?.album;
+
+  return (
+    <section className="vote-pip-shell" aria-label="Voting pop-out">
+      <header className="vote-pip-topbar">
+        <div className="vote-pip-title">
+          <strong>{album?.title || "Voting"}</strong>
+          <span>{album?.artist || "Vinyl Vote"}</span>
+        </div>
+        <label className="vote-pip-toggle">
+          <input type="checkbox" checked={lazyMode} onChange={toggleLazyMode} />
+          <span>Lazy</span>
+        </label>
+        <button className="vote-pip-close" type="button" onClick={closePopout} aria-label="Close pop-out">
+          x
+        </button>
+      </header>
+
+      <form className="vote-pip-form" onSubmit={onSubmit}>
+        <div className="vote-pip-list">
+          {songs.map((song) => (
+            <label className={`vote-pip-row ${lazyMode ? "lazy" : ""}`} key={song.id}>
+              <span className="vote-pip-track">
+                <strong>{song.track_number ? `${song.track_number}. ` : ""}</strong>
+                {song.title}
+              </span>
+              <span className="vote-pip-control">
+                {lazyMode ? (
+                  <StarRatingInput
+                    value={songScores[song.id] ?? ""}
+                    onChange={(next) => setSongScore(song.id, next)}
+                  />
+                ) : (
+                  <input
+                    className="score-input"
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={songScores[song.id] ?? ""}
+                    onChange={(event) => setSongScore(song.id, event.target.value)}
+                    placeholder="0-5"
+                  />
+                )}
+              </span>
+            </label>
+          ))}
+
+          <label className={`vote-pip-row ${lazyMode ? "lazy" : ""}`}>
+            <span className="vote-pip-track">
+              <strong>Album score</strong>
+            </span>
+            <span className="vote-pip-control">
+              {lazyMode ? (
+                <StarRatingInput value={albumScore} onChange={setAlbumScore} />
+              ) : (
+                <input
+                  className="score-input"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={albumScore}
+                  onChange={(event) => setAlbumScore(event.target.value)}
+                  placeholder="0-5"
+                />
+              )}
+            </span>
+          </label>
+        </div>
+
+        <footer className="vote-pip-footer">
+          <div className="vote-pip-status">
+            <strong>{statusLabel}</strong>
+            <span>{remainingTracks > 0 ? `${ratedTracks}/${songs.length} rated` : "Ready"}</span>
+          </div>
+          <div
+            className="vote-pip-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progressPercent)}
+            aria-label="Track rating progress"
+          >
+            <div className="vote-pip-fill" style={{ width: `${progressPercent}%` }} />
+          </div>
+          <button className="vote-pip-submit" type="submit" disabled={submitState === "saving"}>
+            {submitState === "saving" ? "Saving..." : "Submit"}
+          </button>
+        </footer>
+      </form>
+    </section>
+  );
+}
 
 export default function VoteCard({
   albumPayload,
@@ -36,8 +407,11 @@ export default function VoteCard({
   const submitRef = useRef(null);
   const [isDocked, setIsDocked] = useState(true);
   const [pipSupported, setPipSupported] = useState(false);
+  const [pipRoot, setPipRoot] = useState(null);
+  const [pipWindow, setPipWindow] = useState(null);
   const [popoutHint, setPopoutHint] = useState("");
   const [countdownText, setCountdownText] = useState("No deadline");
+  const pipCleanupRef = useRef(null);
 
   const albumLength = useMemo(() => {
     const total = songs.reduce((sum, song) => sum + parseDurationToSeconds(song.duration), 0);
@@ -118,12 +492,93 @@ export default function VoteCard({
     });
   }
 
-  function openPopout() {
+  const closePopout = useCallback(() => {
+    if (pipCleanupRef.current) {
+      pipCleanupRef.current();
+      pipCleanupRef.current = null;
+    }
+
+    setPipWindow((currentWindow) => {
+      if (currentWindow && !currentWindow.closed) {
+        currentWindow.close();
+      }
+      return null;
+    });
+    setPipRoot(null);
+  }, []);
+
+  useEffect(() => closePopout, [closePopout]);
+
+  async function openPopout() {
     if (typeof window === "undefined") {
       return;
     }
-    window.open(window.location.href, "vinyl-vote-popout", "width=980,height=920,resizable=yes,scrollbars=yes");
-    setPopoutHint("Opened in a new window.");
+
+    if (!pipSupported) {
+      setPopoutHint("Pop-out is not supported in this browser.");
+      return;
+    }
+
+    try {
+      if (pipWindow && !pipWindow.closed) {
+        pipWindow.focus();
+        setPopoutHint("Pop-out is already open.");
+        return;
+      }
+
+      closePopout();
+
+      const nextWindow = await window.documentPictureInPicture.requestWindow({
+        width: 360,
+        height: 620,
+      });
+      const { document: pipDocument } = nextWindow;
+      pipDocument.title = "Vinyl Vote - Pop-out";
+      pipDocument.body.textContent = "";
+      pipDocument.documentElement.setAttribute(
+        "data-theme",
+        document.documentElement.getAttribute("data-theme") || "dark"
+      );
+
+      const style = pipDocument.createElement("style");
+      style.textContent = VOTE_PIP_STYLES;
+      pipDocument.head.appendChild(style);
+
+      const root = pipDocument.createElement("div");
+      root.id = "vote-pip-root";
+      pipDocument.body.appendChild(root);
+
+      const syncTheme = () => {
+        pipDocument.documentElement.setAttribute(
+          "data-theme",
+          document.documentElement.getAttribute("data-theme") || "dark"
+        );
+      };
+      const themeObserver = new MutationObserver(syncTheme);
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
+      });
+
+      const handleClose = () => {
+        themeObserver.disconnect();
+        setPipWindow(null);
+        setPipRoot(null);
+        pipCleanupRef.current = null;
+      };
+
+      nextWindow.addEventListener("pagehide", handleClose, { once: true });
+      pipCleanupRef.current = () => {
+        nextWindow.removeEventListener("pagehide", handleClose);
+        themeObserver.disconnect();
+      };
+
+      setPipWindow(nextWindow);
+      setPipRoot(root);
+      setPopoutHint("Opened in pop-out.");
+    } catch {
+      setPopoutHint("Could not open pop-out.");
+    }
   }
 
   function renderProgressFooter(linkTabIndex) {
@@ -344,6 +799,27 @@ export default function VoteCard({
           >
             {renderProgressFooter(isDocked ? -1 : 0)}
           </div>
+
+          {pipRoot ? createPortal(
+            <VotePopoutContent
+              albumPayload={albumPayload}
+              albumScore={albumScore}
+              closePopout={closePopout}
+              lazyMode={lazyMode}
+              onSubmit={onSubmit}
+              progressPercent={progressPercent}
+              ratedTracks={ratedTracks}
+              remainingTracks={remainingTracks}
+              setAlbumScore={setAlbumScore}
+              setSongScore={setSongScore}
+              songScores={songScores}
+              songs={songs}
+              statusLabel={statusLabel}
+              submitState={submitState}
+              toggleLazyMode={toggleLazyMode}
+            />,
+            pipRoot
+          ) : null}
         </>
       ) : null}
     </section>
