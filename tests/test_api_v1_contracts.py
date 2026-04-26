@@ -513,6 +513,70 @@ def test_results_contract_matches_v1_for_latest_and_album_routes():
         db.drop_all()
 
 
+def test_album_results_are_blocked_for_current_future_and_unscheduled_albums():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current_album = Album.query.filter_by(is_current=True).first()
+
+        past_album = Album(
+            title="Past Album",
+            artist="Past Artist",
+            is_current=False,
+            queue_order=current_album.queue_order - 1,
+        )
+        future_album = Album(
+            title="Future Album",
+            artist="Future Artist",
+            is_current=False,
+            queue_order=current_album.queue_order + 1,
+        )
+        unscheduled_album = Album(
+            title="Unscheduled Album",
+            artist="Hidden Artist",
+            is_current=False,
+            queue_order=0,
+        )
+        db.session.add_all([past_album, future_album, unscheduled_album])
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                Song(album_id=past_album.id, title="Past Track", track_number=1),
+                Song(album_id=future_album.id, title="Future Track", track_number=1),
+                Song(album_id=unscheduled_album.id, title="Hidden Track", track_number=1),
+            ]
+        )
+        db.session.commit()
+
+        current_id = current_album.id
+        past_id = past_album.id
+        future_id = future_album.id
+        unscheduled_id = unscheduled_album.id
+
+    client = app.test_client()
+
+    past_response = client.get(f"/api/v1/results/album/{past_id}")
+    current_response = client.get(f"/api/v1/results/album/{current_id}")
+    future_response = client.get(f"/api/v1/results/album/{future_id}")
+    unscheduled_response = client.get(f"/api/v1/results/album/{unscheduled_id}")
+
+    assert past_response.status_code == 200
+    assert past_response.get_json()["album"]["id"] == past_id
+
+    assert current_response.status_code == 403
+    assert future_response.status_code == 403
+    assert unscheduled_response.status_code == 403
+    assert current_response.get_json() == {"error": "Results are only available for completed albums."}
+
+    with app.app_context():
+        db.drop_all()
+
+
 def test_results_exclude_ignored_votes_and_scores_from_summary():
     app = _build_app()
     with app.app_context():
@@ -522,21 +586,37 @@ def test_results_exclude_ignored_votes_and_scores_from_summary():
 
     with app.app_context():
         current_album = Album.query.filter_by(is_current=True).first()
-        songs = Song.query.filter_by(album_id=current_album.id).order_by(Song.track_number.asc()).all()
-        song_a, song_b = songs[0], songs[1]
+        current_album.is_current = False
+
+        completed_album = Album(
+            title="Completed Album",
+            artist="Completed Artist",
+            is_current=False,
+            queue_order=9,
+        )
+        db.session.add(completed_album)
+        db.session.flush()
+
+        song_a = Song(album_id=completed_album.id, title="Track A", track_number=1)
+        song_b = Song(album_id=completed_album.id, title="Track B", track_number=2)
+        db.session.add_all([song_a, song_b])
+        db.session.flush()
+
+        current_album.queue_order = 10
+        current_album.is_current = True
         song_b_id = song_b.id
 
         db.session.add_all(
             [
                 Vote(user_id=user_id, song_id=song_a.id, score=5, ignored=False),
                 Vote(user_id=user_id, song_id=song_b.id, score=1, ignored=True),
-                AlbumScore(user_id=user_id, album_id=current_album.id, personal_score=4.0, ignored=False),
-                AlbumScore(user_id=user_id, album_id=current_album.id, personal_score=1.0, ignored=True),
+                AlbumScore(user_id=user_id, album_id=completed_album.id, personal_score=4.0, ignored=False),
+                AlbumScore(user_id=user_id, album_id=completed_album.id, personal_score=1.0, ignored=True),
             ]
         )
         db.session.commit()
 
-        target_album_id = current_album.id
+        target_album_id = completed_album.id
 
     client = app.test_client()
     _login(client, user_id)

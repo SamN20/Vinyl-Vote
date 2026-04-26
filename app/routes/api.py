@@ -141,6 +141,14 @@ def _latest_results_album():
     return previous, None
 
 
+def _album_results_are_published(album: Album):
+    current = Album.query.filter_by(is_current=True).first()
+    if not current or not current.queue_order:
+        return False
+
+    return bool(album.queue_order and album.queue_order > 0 and album.queue_order < current.queue_order)
+
+
 def _pagination_payload(total: int, page: int, per_page: int):
     pages = max((total + per_page - 1) // per_page, 1) if per_page > 0 else 1
     return {
@@ -1296,6 +1304,9 @@ def get_results_for_album(album_id):
     album = db.session.get(Album, album_id, options=[joinedload(Album.songs)])
     if not album:
         return jsonify({'error': 'Album not found.'}), 404
+
+    if not _album_results_are_published(album):
+        return jsonify({'error': 'Results are only available for completed albums.'}), 403
 
     return jsonify(_results_summary_for_album(album))
 

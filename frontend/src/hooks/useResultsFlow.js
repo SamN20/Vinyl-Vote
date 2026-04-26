@@ -18,6 +18,8 @@ export function useResultsFlow(routeAlbumId) {
       setResultsPayload(null);
       if (loadError.status === 404) {
         setResultsState("empty");
+      } else if (loadError.status === 403) {
+        setResultsState("restricted");
       } else {
         setResultsState("error");
       }
