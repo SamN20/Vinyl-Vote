@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { legacyPageHref } from "../../api";
+import { extensionListingHref } from "../../api";
 import "./ExtensionInstallChip.css";
 
 const DISMISS_KEY = "vv_ext_chip_dismiss_v1";
@@ -105,7 +105,7 @@ export default function ExtensionInstallChip({ route }) {
         <strong>Get the Vinyl Vote Companion</strong>
         <span className="vv-ext-chip__sub">Quick voting from Spotify, Apple Music, and YouTube</span>
       </div>
-      <a className="vv-ext-chip__cta" href={legacyPageHref("/extension")} target="_blank" rel="noopener noreferrer">
+      <a className="vv-ext-chip__cta" href={extensionListingHref()} target="_blank" rel="noopener noreferrer">
         Install
       </a>
     </div>

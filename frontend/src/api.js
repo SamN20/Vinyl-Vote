@@ -4,6 +4,9 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, ""
 const LEGACY_BASE_URL = (
   import.meta.env.VITE_LEGACY_BASE_URL || (import.meta.env.DEV ? "http://127.0.0.1:5000" : "")
 ).replace(/\/$/, "");
+const CHROME_EXTENSION_STORE_URL =
+  import.meta.env.VITE_CHROME_EXTENSION_STORE_URL ||
+  "https://chrome.google.com/webstore/detail/nmknoocoofipjkkhfgameiinddigekpb";
 
 function buildUrl(path) {
   if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -274,4 +277,8 @@ export function legacyPageHref(path) {
     return normalizedPath;
   }
   return `${LEGACY_BASE_URL}${normalizedPath}`;
+}
+
+export function extensionListingHref() {
+  return CHROME_EXTENSION_STORE_URL;
 }

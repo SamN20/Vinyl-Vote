@@ -1,4 +1,4 @@
-import { legacyPageHref } from "../api";
+import { extensionListingHref } from "../api";
 import "./LegalPages.css";
 
 const supportList = [
@@ -41,7 +41,7 @@ export default function ExtensionPage() {
             Use the official browser store listing to install the extension and open options for platform-specific behavior.
           </p>
           <div className="legal-v2-actions">
-            <a className="btn btn-primary" href={legacyPageHref("/extension")} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn-primary" href={extensionListingHref()} target="_blank" rel="noopener noreferrer">
               Open Extension Listing
             </a>
           </div>
