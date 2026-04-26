@@ -4,6 +4,7 @@ import StatusCard from "../components/common/StatusCard";
 import AdditionalInsights from "../components/results/AdditionalInsights";
 import ResultsCard from "../components/results/ResultsCard";
 import { useResultsFlow } from "../hooks/useResultsFlow";
+import { Navigate } from "react-router-dom";
 
 export default function ResultsPage({ routeAlbumId }) {
   const { error, loadResults, resultsPayload, resultsState } = useResultsFlow(routeAlbumId);
@@ -59,6 +60,8 @@ export default function ResultsPage({ routeAlbumId }) {
       </section>
 
       {resultsState === "loading" ? <StatusCard message="Loading latest results..." /> : null}
+
+      {resultsState === "restricted" && routeAlbumId ? <Navigate to="/results" replace /> : null}
 
       {resultsState === "error" ? (
         <StatusCard

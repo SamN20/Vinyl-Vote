@@ -157,6 +157,17 @@ def album_results(album_id: int):
         flash("Album not found.")
         return redirect(url_for('user.index'))
 
+    current = Album.query.filter_by(is_current=True).first()
+    if (
+        not current
+        or not current.queue_order
+        or not album.queue_order
+        or album.queue_order <= 0
+        or album.queue_order >= current.queue_order
+    ):
+        flash("Results are only available for completed albums.")
+        return redirect(url_for('user.results'))
+
     # Song stats
     song_stats = []
     user_votes = {}
