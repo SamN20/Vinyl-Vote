@@ -3,6 +3,7 @@ import AuthCard from "./components/auth/AuthCard";
 import CommentsCard from "./components/comments/CommentsCard";
 import ExtensionInstallChip from "./components/common/ExtensionInstallChip";
 import InstallBanner from "./components/common/InstallBanner";
+import Seo from "./components/common/Seo";
 import StatusCard from "./components/common/StatusCard";
 import SiteNotifications from "./components/common/SiteNotifications";
 import { ToastProvider } from "./components/common/ToastProvider";
@@ -109,6 +110,55 @@ function parsePathRoute(pathname) {
   return { page: "/home", albumId: null };
 }
 
+const routeSeo = {
+  "/top-albums": {
+    title: "Top Albums",
+    description: "Browse Vinyl Vote's community-ranked album leaderboard, sorted by average song score, album score, and total votes.",
+    path: "/top-albums",
+  },
+  "/top-artists": {
+    title: "Top Artists",
+    description: "Discover the highest-rated artists on Vinyl Vote based on community song ratings across featured albums.",
+    path: "/top-artists",
+  },
+  "/top-songs": {
+    title: "Top Songs",
+    description: "Explore Vinyl Vote's highest-rated tracks with album context, artist links, rating counts, and streaming shortcuts.",
+    path: "/top-songs",
+  },
+  "/faceoff-leaderboard": {
+    title: "Face-Off Leaderboard",
+    description: "See the songs fans keep choosing in Vinyl Vote's head-to-head Face-Off rankings.",
+    path: "/faceoff-leaderboard",
+  },
+  "/battle": {
+    title: "Song Face-Off",
+    description: "Pick between two songs and help shape Vinyl Vote's community Face-Off song rankings.",
+    path: "/battle",
+  },
+  "/terms": {
+    title: "Terms of Use",
+    description: "Read the terms that apply when using Vinyl Vote.",
+    path: "/terms",
+  },
+  "/privacy": {
+    title: "Privacy Policy",
+    description: "Learn how Vinyl Vote handles account, voting, and notification data.",
+    path: "/privacy",
+  },
+  "/extension": {
+    title: "Browser Extension",
+    description: "Install the Vinyl Vote browser extension for quicker access to weekly album voting.",
+    path: "/extension",
+  },
+};
+
+const privateRouteSeo = {
+  title: "Vinyl Vote",
+  description: "Vinyl Vote account and voting tools.",
+  robots: "noindex,nofollow",
+};
+
 function App() {
   const showDevLogin = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_LOGIN === "true";
   const showRetroPreviewOnHome = (import.meta.env.VITE_SHOW_RETRO_PREVIEW_ON_HOME || "false") === "true";
@@ -154,6 +204,7 @@ function App() {
     "/extension",
   ].includes(route.page);
   const showGlobalSessionStatus = route.page !== "/home";
+  const seo = routeSeo[route.page] || (!isPublicDataPage && route.page !== "/home" && route.page !== "/results" ? privateRouteSeo : null);
 
   useEffect(() => {
     if (route.page === "/retro-vote" && route.albumId) {
@@ -172,6 +223,15 @@ function App() {
           toggleTheme={toggleTheme}
           route={route.page}
         />
+
+        {seo ? (
+          <Seo
+            title={seo.title}
+            description={seo.description}
+            path={seo.path || route.page}
+            robots={seo.robots}
+          />
+        ) : null}
 
         <SiteNotifications />
 

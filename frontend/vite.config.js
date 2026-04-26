@@ -1,8 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+function publicSiteUrlPlugin() {
+  const publicSiteUrl = (process.env.VITE_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+
+  return {
+    name: "public-site-url-html",
+    transformIndexHtml(html) {
+      return html.replaceAll("__PUBLIC_SITE_URL__", publicSiteUrl);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), publicSiteUrlPlugin()],
   base: process.env.VITE_BASE || "/",
   test: {
     environment: "jsdom",
