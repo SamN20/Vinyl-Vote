@@ -14,6 +14,7 @@ import FaceoffLeaderboardPage from "./pages/FaceoffLeaderboardPage";
 import BattlePage from "./pages/BattlePage";
 import ExtensionPage from "./pages/ExtensionPage";
 import HomePage from "./pages/HomePage";
+import NextAlbumVotePage from "./pages/NextAlbumVotePage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ProfilePage from "./pages/ProfilePage";
 import ResultsPage from "./pages/ResultsPage";
@@ -25,6 +26,7 @@ import TopArtistsPage from "./pages/TopArtistsPage";
 import TopSongsPage from "./pages/TopSongsPage";
 import TermsPage from "./pages/TermsPage";
 import { useRetroVotingFlow } from "./hooks/useRetroVotingFlow";
+import { useNextAlbumVoteFlow } from "./hooks/useNextAlbumVoteFlow";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useVotingFlow } from "./hooks/useVotingFlow";
 import { useEffect } from "react";
@@ -54,6 +56,10 @@ function parsePathRoute(pathname) {
 
   if (pathOnly === "/vote") {
     return { page: "/vote", albumId: null };
+  }
+
+  if (pathOnly === "/next-album-vote") {
+    return { page: "/next-album-vote", albumId: null };
   }
 
   if (pathOnly === "/home") {
@@ -133,6 +139,7 @@ function App() {
     submitState,
   } = useVotingFlow();
   const retro = useRetroVotingFlow(sessionState === "authenticated");
+  const nextAlbum = useNextAlbumVoteFlow(sessionState === "authenticated" && route.page === "/next-album-vote");
   const { setSelectedAlbumId } = retro;
   const isPublicDataPage = [
     "/home",
@@ -245,6 +252,10 @@ function App() {
 
         {sessionState === "authenticated" && route.page === "/profile" ? (
           <ProfilePage />
+        ) : null}
+
+        {sessionState === "authenticated" && route.page === "/next-album-vote" ? (
+          <NextAlbumVotePage nextAlbum={nextAlbum} />
         ) : null}
 
         {sessionState === "authenticated" && route.page === "/vote" ? (

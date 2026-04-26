@@ -598,7 +598,100 @@
   color: var(--muted);
 }
 
-.post-vote-actions {
+.post-vote-flow {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--border-color));
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--accent) 12%, transparent), transparent 44%),
+    color-mix(in oklab, var(--bg) 88%, var(--card-bg));
+  border-radius: 10px;
+  padding: 0.9rem;
+}
+
+.post-vote-flow-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.post-vote-flow-copy h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  line-height: 1.16;
+}
+
+.post-vote-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.post-vote-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.55rem;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  background: color-mix(in oklab, var(--card-bg) 90%, var(--bg));
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+
+.post-vote-step.active {
+  border-color: color-mix(in oklab, var(--accent) 58%, var(--border-color));
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg));
+}
+
+.post-vote-step.complete {
+  border-color: rgba(46, 204, 113, 0.42);
+}
+
+.post-vote-step-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.post-vote-step.active .post-vote-step-marker {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #07110a;
+}
+
+.post-vote-step.complete .post-vote-step-marker {
+  border-color: var(--success-color);
+  color: var(--success-color);
+}
+
+.post-vote-step strong,
+.post-vote-step small {
+  display: block;
+  min-width: 0;
+}
+
+.post-vote-step strong {
+  font-size: 0.92rem;
+}
+
+.post-vote-step small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin-top: 0.16rem;
+}
+
+.post-vote-flow-actions {
   display: flex;
   gap: 0.65rem;
   flex-wrap: wrap;
@@ -817,6 +910,15 @@
   }
 
   .vote-progress-footer .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .post-vote-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .post-vote-flow-actions .btn {
     width: 100%;
     text-align: center;
   }

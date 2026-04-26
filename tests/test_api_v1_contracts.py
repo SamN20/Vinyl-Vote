@@ -4,7 +4,7 @@ from unittest.mock import patch
 from flask import Flask
 
 from app import db, login_manager
-from app.models import Album, AlbumScore, BattleVote, Notification, Setting, Song, SongRequest, User, Vote, VotePeriod
+from app.models import Album, AlbumScore, BattleVote, NextAlbumVote, Notification, Setting, Song, SongRequest, User, Vote, VotePeriod
 from app.routes import api
 
 
@@ -320,6 +320,70 @@ def test_votes_validation_error_contract_matches_v1():
     assert v1.get_json() == legacy.get_json()
 
     with app.app_context():
+        db.drop_all()
+
+
+def test_next_album_vote_options_and_submit_contract_matches_v1():
+    app = _build_app()
+    app.config["NEXT_ALBUM_OPTION_COUNT"] = 2
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        db.session.add_all(
+            [
+                Album(
+                    title="Next One",
+                    artist="Next Artist",
+                    is_current=False,
+                    queue_order=11,
+                    cover_url="https://example.com/next-one.jpg",
+                ),
+                Album(
+                    title="Next Two",
+                    artist="Second Artist",
+                    is_current=False,
+                    queue_order=12,
+                ),
+                Album(
+                    title="Too Far",
+                    artist="Far Artist",
+                    is_current=False,
+                    queue_order=13,
+                ),
+            ]
+        )
+        db.session.commit()
+        first_option_id = Album.query.filter_by(title="Next One").first().id
+
+    client = app.test_client()
+    _login(client, user_id)
+
+    legacy = client.get("/api/next-album-vote")
+    v1 = client.get("/api/v1/next-album-vote")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"albums", "current_album", "selected_album_id", "vote_period_id"}
+    assert [album["title"] for album in payload["albums"]] == ["Next One", "Next Two"]
+    assert payload["selected_album_id"] is None
+
+    post_legacy = client.post("/api/next-album-vote", json={"album_id": first_option_id})
+    post_v1 = client.post("/api/v1/next-album-vote", json={"album_id": first_option_id})
+
+    assert post_legacy.status_code == 200
+    assert post_v1.status_code == 200
+    assert post_v1.get_json()["selected_album_id"] == first_option_id
+    assert post_v1.get_json()["message"] == "Your choice for next week has been recorded."
+
+    with app.app_context():
+        saved = NextAlbumVote.query.filter_by(user_id=user_id).one()
+        assert saved.album_id == first_option_id
         db.drop_all()
 
 

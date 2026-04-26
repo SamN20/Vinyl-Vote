@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import VoteCard from "./VoteCard";
 
 function renderReadyVoteCard(overrides = {}) {
@@ -38,7 +39,11 @@ function renderReadyVoteCard(overrides = {}) {
     ...overrides,
   };
 
-  render(<VoteCard {...props} />);
+  render(
+    <MemoryRouter>
+      <VoteCard {...props} />
+    </MemoryRouter>
+  );
   return props;
 }
 
@@ -78,5 +83,37 @@ describe("VoteCard pop-out", () => {
     expect(openSpy).not.toHaveBeenCalled();
     expect(pipDocument.body.textContent).toContain("Album score");
     expect(pipDocument.body.textContent).not.toContain("Refresh");
+  });
+});
+
+describe("VoteCard post-vote flow", () => {
+  it("guides saved voters from weekly vote to next-week pick before retro voting", () => {
+    renderReadyVoteCard({
+      albumPayload: {
+        album: {
+          id: 42,
+          title: "Test Pressing",
+          artist: "The Fixtures",
+          release_date: "2026",
+          songs: [
+            { id: 10, title: "First Track", track_number: 1, duration: "3:12" },
+          ],
+        },
+        user: { has_voted: true },
+        vote_end: "2026-05-01T04:00:00Z",
+      },
+      feedback: "Votes saved.",
+      hasSavedVotes: true,
+      statusLabel: "VOTED!",
+    });
+
+    expect(screen.getByRole("heading", { name: "Keep the vote train moving" })).toBeInTheDocument();
+    expect(screen.getByText("Weekly vote")).toBeInTheDocument();
+    expect(screen.getByText("Pick next week")).toBeInTheDocument();
+    expect(screen.getByText("Retro vote")).toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: "Pick Next Week Album" }).href).toMatch(/\/next-album-vote$/);
+    expect(screen.getByRole("link", { name: "Download Vote Card" }).href).toMatch(/\/share-card\/42$/);
+    expect(screen.queryByRole("link", { name: /retro/i })).not.toBeInTheDocument();
   });
 });
