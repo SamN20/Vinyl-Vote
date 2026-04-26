@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { legacyPageHref } from "../../api";
 import StreamingLinks from "../common/StreamingLinks";
 import { formatVoteEnd } from "../../hooks/useVotingFlow";
@@ -374,6 +375,52 @@ function VotePopoutContent({
           </button>
         </footer>
       </form>
+    </section>
+  );
+}
+
+function PostVoteFlow({ albumId }) {
+  return (
+    <section className="post-vote-flow" aria-labelledby="post-vote-flow-title">
+      <div className="post-vote-flow-copy">
+        <p className="vote-kicker">Next Up</p>
+        <h3 id="post-vote-flow-title">Keep the vote train moving</h3>
+      </div>
+
+      <ol className="post-vote-steps" aria-label="Post-vote flow">
+        <li className="post-vote-step complete">
+          <span className="post-vote-step-marker" aria-hidden="true">1</span>
+          <span>
+            <strong>Weekly vote</strong>
+            <small>Complete</small>
+          </span>
+        </li>
+        <li className="post-vote-step active">
+          <span className="post-vote-step-marker" aria-hidden="true">2</span>
+          <span>
+            <strong>Pick next week</strong>
+            <small>Choose the album the group rates next.</small>
+          </span>
+        </li>
+        <li className="post-vote-step">
+          <span className="post-vote-step-marker" aria-hidden="true">3</span>
+          <span>
+            <strong>Retro vote</strong>
+            <small>Catch up on missed albums after your next-week pick.</small>
+          </span>
+        </li>
+      </ol>
+
+      <div className="post-vote-flow-actions">
+        <Link className="btn btn-primary" to="/next-album-vote">
+          Pick Next Week Album
+        </Link>
+        {albumId ? (
+          <a className="btn btn-secondary" href={legacyPageHref(`/share-card/${albumId}`)}>
+            Download Vote Card
+          </a>
+        ) : null}
+      </div>
     </section>
   );
 }
@@ -760,16 +807,9 @@ export default function VoteCard({
               {statusLabel}
             </div>
 
-            {feedback && <p className="success-text">{feedback}</p>}
-            {feedback && albumPayload?.album?.id && showPostVoteActions ? (
-              <div className="post-vote-actions">
-                <a className="btn btn-secondary" href={legacyPageHref(`/share-card/${albumPayload.album.id}`)}>
-                  Download Vote Card
-                </a>
-                <a className="btn btn-secondary" href={legacyPageHref("/next_album_vote")}>
-                  Pick Next Week Album
-                </a>
-              </div>
+            {feedback ? <p className="success-text">{feedback}</p> : null}
+            {feedback && showPostVoteActions ? (
+              <PostVoteFlow albumId={albumPayload?.album?.id} />
             ) : null}
             {error && <p className="error-text">{error}</p>}
 

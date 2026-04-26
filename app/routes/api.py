@@ -7,7 +7,7 @@ import json
 import requests
 
 from .. import db
-from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote, SongRequest, User, Notification
+from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote, SongRequest, User, Notification, NextAlbumVote
 from ..utils import fetch_artist_image, search_album, send_push
 
 bp = Blueprint('api', __name__, url_prefix='/api')
@@ -1164,6 +1164,119 @@ def submit_votes():
     payload['message'] = 'Votes saved successfully.'
     payload['user']['has_voted'] = bool(personal_score) and len(votes) == len(album.songs)
 
+    return jsonify(payload)
+
+
+def _next_album_option_payload(album: Album):
+    return {
+        'id': album.id,
+        'title': album.title,
+        'artist': album.artist,
+        'release_date': album.release_date,
+        'cover_url': album.cover_url,
+        'spotify_url': album.spotify_url,
+        'apple_url': album.apple_url,
+        'youtube_url': album.youtube_url,
+        'queue_order': album.queue_order,
+        'song_count': len(album.songs),
+    }
+
+
+def _next_album_vote_payload():
+    current = Album.query.filter_by(is_current=True).first()
+    vote_period = VotePeriod.query.first()
+    option_count = current_app.config.get('NEXT_ALBUM_OPTION_COUNT', 3)
+
+    albums = []
+    if current:
+        albums = (
+            Album.query.options(joinedload(Album.songs))
+            .filter(Album.queue_order > current.queue_order)
+            .order_by(Album.queue_order)
+            .limit(option_count)
+            .all()
+        )
+
+    selected = None
+    if vote_period:
+        existing = NextAlbumVote.query.filter_by(
+            user_id=current_user.id,
+            vote_period_id=vote_period.id,
+        ).first()
+        selected = existing.album_id if existing else None
+
+    return {
+        'albums': [_next_album_option_payload(album) for album in albums],
+        'selected_album_id': selected,
+        'current_album': {
+            'id': current.id,
+            'title': current.title,
+            'artist': current.artist,
+            'queue_order': current.queue_order,
+        } if current else None,
+        'vote_period_id': vote_period.id if vote_period else None,
+    }
+
+
+@bp.route('/next-album-vote', methods=['GET'])
+@bp_v1.route('/next-album-vote', methods=['GET'])
+@login_required
+def get_next_album_vote_options():
+    return jsonify(_next_album_vote_payload())
+
+
+@bp.route('/next-album-vote', methods=['POST'])
+@bp_v1.route('/next-album-vote', methods=['POST'])
+@login_required
+def submit_next_album_vote():
+    data = request.get_json(silent=True) or {}
+    album_id = data.get('album_id')
+
+    try:
+        album_id = int(album_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'album_id is required.'}), 400
+
+    current = Album.query.filter_by(is_current=True).first()
+    vote_period = VotePeriod.query.first()
+
+    if not current:
+        return jsonify({'error': 'No current album is set.'}), 404
+    if not vote_period:
+        return jsonify({'error': 'No active vote period is set.'}), 404
+
+    option_count = current_app.config.get('NEXT_ALBUM_OPTION_COUNT', 3)
+    option_ids = [
+        row.id
+        for row in (
+            Album.query
+            .with_entities(Album.id)
+            .filter(Album.queue_order > current.queue_order)
+            .order_by(Album.queue_order)
+            .limit(option_count)
+            .all()
+        )
+    ]
+    if album_id not in option_ids:
+        return jsonify({'error': 'Album is not eligible for next-week voting.'}), 400
+
+    existing = NextAlbumVote.query.filter_by(
+        user_id=current_user.id,
+        vote_period_id=vote_period.id,
+    ).first()
+    if existing:
+        existing.album_id = album_id
+    else:
+        db.session.add(NextAlbumVote(
+            user_id=current_user.id,
+            album_id=album_id,
+            vote_period_id=vote_period.id,
+        ))
+
+    db.session.commit()
+
+    payload = _next_album_vote_payload()
+    payload['message'] = 'Your choice for next week has been recorded.'
     return jsonify(payload)
 
 

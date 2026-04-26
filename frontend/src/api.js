@@ -119,6 +119,17 @@ export function submitVotes(payload) {
   });
 }
 
+export function getNextAlbumVoteOptions() {
+  return request("/api/v1/next-album-vote");
+}
+
+export function submitNextAlbumVote(albumId) {
+  return request("/api/v1/next-album-vote", {
+    method: "POST",
+    body: JSON.stringify({ album_id: albumId }),
+  });
+}
+
 export function getRetroAlbums() {
   return request("/api/v1/retro-albums");
 }
