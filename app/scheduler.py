@@ -300,13 +300,15 @@ def weekly_rollover_job(force: bool = False):
                     if users:
                         keyn_ids = [u.keyn_id for u in users]
                         
+                        site_url = current_app.config.get('PUBLIC_SITE_URL', 'https://vinylvote.bynolo.ca').rstrip('/')
+
                         # Create HTML message
                         html_msg = f"""
                         <div style="font-family: Arial, sans-serif; max-width: 600px;">
                             <h2 style="color: #00c853;">🎶 New Album of the Week!</h2>
                             <p><strong>{next_album.title}</strong> by <strong>{next_album.artist}</strong> is now live!</p>
                             <p>Head over to Vinyl Vote and start rating tracks.</p>
-                            <a href="https://vinylvote.com/vote" 
+                            <a href="{site_url}/vote"
                                style="display: inline-block; padding: 12px 24px; background: #00c853; 
                                       color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">
                                 Vote Now
@@ -404,6 +406,8 @@ def remind_unvoted_users():
             vote_period = VotePeriod.query.first()
             vote_end_str = vote_period.end_time.strftime('%A, %B %d') if vote_period else 'this week'
             
+            site_url = current_app.config.get('PUBLIC_SITE_URL', 'https://vinylvote.bynolo.ca').rstrip('/')
+
             # Create HTML reminder
             html_msg = f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px;">
@@ -411,7 +415,7 @@ def remind_unvoted_users():
                 <p>Don't forget to rate this week's album:</p>
                 <p><strong>{current_album.title}</strong> by <strong>{current_album.artist}</strong></p>
                 <p>Voting ends on <strong>{vote_end_str}</strong>.</p>
-                <a href="https://vinylvote.com/vote" 
+                <a href="{site_url}/vote"
                    style="display: inline-block; padding: 12px 24px; background: #ff9800; 
                           color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">
                     Vote Now

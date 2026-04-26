@@ -12,6 +12,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY')
     SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or 'sqlite:///' + os.path.join(basedir, 'album_vote.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    PUBLIC_SITE_URL = os.getenv('PUBLIC_SITE_URL', 'https://vinylvote.bynolo.ca').rstrip('/')
 
     # Session configuration for better mobile persistence
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)  # 30 days for remember me

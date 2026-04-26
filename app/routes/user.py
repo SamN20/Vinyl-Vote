@@ -1558,6 +1558,10 @@ def profile():
     profile_extras = { 'active_weeks': active_weeks, 'last_on_time_vote': last_vote_label, 'last_on_time_vote_full': last_vote_full, 'last_on_time_vote_iso': last_vote_iso }
 
     keyn_auth_server_url = current_app.config.get('KEYN_AUTH_SERVER_URL')
+    keyn_profile_url = current_app.config.get('KEYN_PROFILE_URL')
+    keyn_edit_profile_url = current_app.config.get('KEYN_EDIT_PROFILE_URL')
+    keyn_change_password_url = current_app.config.get('KEYN_CHANGE_PASSWORD_URL')
+    nolofication_preferences_url = current_app.config.get('NOLOFICATION_PREFERENCES_URL')
     keyn_profile = None
     if current_user.keyn_migrated and current_user.keyn_profile_json:
         import json
@@ -1571,6 +1575,10 @@ def profile():
                            email_form=email_form,
                            album_votes=album_votes,
                            keyn_auth_server_url=keyn_auth_server_url,
+                           keyn_profile_url=keyn_profile_url,
+                           keyn_edit_profile_url=keyn_edit_profile_url,
+                           keyn_change_password_url=keyn_change_password_url,
+                           nolofication_preferences_url=nolofication_preferences_url,
                            keyn_profile=keyn_profile,
                            profile_stats=profile_stats,
                            votes_timeseries=votes_timeseries,
