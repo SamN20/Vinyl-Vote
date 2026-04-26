@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from datetime import timedelta, timezone
+from xml.sax.saxutils import escape
 import pytz
 import secrets
 
@@ -212,35 +213,73 @@ def privacy():
 
 @bp.route('/robots.txt')
 def robots_txt():
-    base = request.url_root.rstrip('/')
+    base = current_app.config.get('PUBLIC_SITE_URL') or request.url_root.rstrip('/')
+    base = base.rstrip('/')
     body = "\n".join(
         [
             'User-agent: *',
             'Allow: /',
+            'Disallow: /admin',
+            'Disallow: /api/',
+            'Disallow: /dev/',
+            'Disallow: /legacy/',
+            'Disallow: /login',
+            'Disallow: /logout',
+            'Disallow: /oauth/',
+            'Disallow: /profile',
+            'Disallow: /register',
+            'Disallow: /reset_password',
+            'Disallow: /reset_password_request',
+            'Disallow: /retro-hub',
+            'Disallow: /retro-vote',
+            'Disallow: /retro_',
+            'Disallow: /song-requests',
+            'Disallow: /update_email',
+            'Disallow: /vote',
             f'Sitemap: {base}/sitemap.xml',
         ]
-    )
+    ) + "\n"
     return Response(body, mimetype='text/plain')
 
 
 @bp.route('/sitemap.xml')
 def sitemap_xml():
-    base = request.url_root.rstrip('/')
+    base = current_app.config.get('PUBLIC_SITE_URL') or request.url_root.rstrip('/')
+    base = base.rstrip('/')
+    current_date = datetime.now(timezone.utc).date().isoformat()
     pages = [
-        {'loc': f'{base}/', 'priority': '1.0', 'changefreq': 'daily'},
-        {'loc': f'{base}/results', 'priority': '0.9', 'changefreq': 'weekly'},
-        {'loc': f'{base}/top_albums', 'priority': '0.8', 'changefreq': 'weekly'},
-        {'loc': f'{base}/top_artists', 'priority': '0.8', 'changefreq': 'weekly'},
-        {'loc': f'{base}/top_songs', 'priority': '0.8', 'changefreq': 'weekly'},
-        {'loc': f'{base}/invite', 'priority': '0.7', 'changefreq': 'weekly'},
-        {'loc': f'{base}/terms', 'priority': '0.4', 'changefreq': 'monthly'},
-        {'loc': f'{base}/privacy', 'priority': '0.4', 'changefreq': 'monthly'},
+        {'loc': f'{base}/', 'priority': '1.0', 'changefreq': 'daily', 'lastmod': current_date},
+        {'loc': f'{base}/results', 'priority': '0.9', 'changefreq': 'weekly', 'lastmod': current_date},
+        {'loc': f'{base}/top-albums', 'priority': '0.8', 'changefreq': 'weekly', 'lastmod': current_date},
+        {'loc': f'{base}/top-artists', 'priority': '0.8', 'changefreq': 'weekly', 'lastmod': current_date},
+        {'loc': f'{base}/top-songs', 'priority': '0.8', 'changefreq': 'weekly', 'lastmod': current_date},
+        {'loc': f'{base}/faceoff-leaderboard', 'priority': '0.7', 'changefreq': 'weekly', 'lastmod': current_date},
+        {'loc': f'{base}/battle', 'priority': '0.6', 'changefreq': 'weekly', 'lastmod': current_date},
+        {'loc': f'{base}/terms', 'priority': '0.4', 'changefreq': 'monthly', 'lastmod': current_date},
+        {'loc': f'{base}/privacy', 'priority': '0.4', 'changefreq': 'monthly', 'lastmod': current_date},
+        {'loc': f'{base}/extension', 'priority': '0.3', 'changefreq': 'monthly', 'lastmod': current_date},
     ]
 
-    current_date = datetime.now(timezone.utc).date().isoformat()
+    albums = (
+        Album.query
+        .filter(Album.queue_order > 0)
+        .order_by(Album.queue_order.desc())
+        .limit(500)
+        .all()
+    )
+    pages.extend(
+        {
+            'loc': f'{base}/results/{album.id}',
+            'priority': '0.6',
+            'changefreq': 'monthly',
+            'lastmod': current_date,
+        }
+        for album in albums
+    )
+
     items = [
         (
-            f"<url><loc>{page['loc']}</loc><lastmod>{current_date}</lastmod>"
+            f"<url><loc>{escape(page['loc'])}</loc><lastmod>{page['lastmod']}</lastmod>"
             f"<changefreq>{page['changefreq']}</changefreq><priority>{page['priority']}</priority></url>"
         )
         for page in pages
