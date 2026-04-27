@@ -150,6 +150,11 @@
   justify-content: center;
 }
 
+.header-search-icon {
+  width: 0.95em;
+  height: 0.95em;
+}
+
 .header-icon-button:hover {
   color: var(--accent);
   background: var(--input-bg);
