@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from html import escape
+from urllib.parse import quote
 import json
 import requests
 
@@ -158,6 +159,13 @@ def _pagination_payload(total: int, page: int, per_page: int):
         'per_page': per_page,
         'pages': pages,
     }
+
+
+def _album_result_url(album: Album, current_album: Album):
+    if current_album and album.id == current_album.id:
+        return '/home'
+
+    return f'/results/{album.id}'
 
 
 def _resolve_artist_image(artist: str):
@@ -1358,6 +1366,108 @@ def get_seo_preview(page_path):
 @bp_v1.route('/notifications/active', methods=['GET'])
 def get_active_notifications():
     return jsonify(_active_notifications_payload())
+
+
+@bp.route('/search', methods=['GET'])
+@bp_v1.route('/search', methods=['GET'])
+def site_search():
+    query = request.args.get('q', '', type=str).strip()
+    empty_payload = {
+        'query': query,
+        'items': {
+            'albums': [],
+            'songs': [],
+            'artists': [],
+        },
+    }
+
+    if len(query) < 2:
+        return jsonify(empty_payload)
+
+    current_album = Album.query.filter_by(is_current=True).first()
+    if not current_album or not current_album.queue_order:
+        return jsonify(empty_payload)
+
+    max_queue_order = current_album.queue_order
+    search = f'%{query}%'
+    public_album_filter = (
+        Album.queue_order > 0,
+        Album.queue_order <= max_queue_order,
+    )
+
+    album_rows = (
+        Album.query
+        .filter(*public_album_filter)
+        .filter(db.or_(Album.title.ilike(search), Album.artist.ilike(search)))
+        .order_by(Album.is_current.desc(), func.lower(Album.title).asc())
+        .limit(5)
+        .all()
+    )
+
+    song_rows = (
+        Song.query
+        .join(Album)
+        .options(joinedload(Song.album))
+        .filter(*public_album_filter)
+        .filter(db.or_(Song.title.ilike(search), Album.title.ilike(search), Album.artist.ilike(search)))
+        .order_by(func.lower(Song.title).asc())
+        .limit(5)
+        .all()
+    )
+
+    artist_rows = (
+        db.session.query(Album.artist, func.count(Album.id).label('album_count'))
+        .filter(*public_album_filter)
+        .filter(Album.artist.ilike(search))
+        .group_by(Album.artist)
+        .order_by(func.lower(Album.artist).asc())
+        .limit(5)
+        .all()
+    )
+
+    return jsonify(
+        {
+            'query': query,
+            'items': {
+                'albums': [
+                    {
+                        'type': 'album',
+                        'id': album.id,
+                        'title': album.title,
+                        'subtitle': album.artist,
+                        'cover_url': album.cover_url,
+                        'url': _album_result_url(album, current_album),
+                    }
+                    for album in album_rows
+                ],
+                'songs': [
+                    {
+                        'type': 'song',
+                        'id': song.id,
+                        'title': song.title,
+                        'subtitle': f'{song.album.artist} - {song.album.title}' if song.album else None,
+                        'cover_url': song.album.cover_url if song.album else None,
+                        'url': _album_result_url(song.album, current_album) if song.album else '/home',
+                        'album': {
+                            'id': song.album.id,
+                            'title': song.album.title,
+                            'artist': song.album.artist,
+                        } if song.album else None,
+                    }
+                    for song in song_rows
+                ],
+                'artists': [
+                    {
+                        'type': 'artist',
+                        'title': artist,
+                        'subtitle': f'{album_count} album{"s" if album_count != 1 else ""}',
+                        'url': f'/top-artists?q={quote(artist, safe="")}',
+                    }
+                    for artist, album_count in artist_rows
+                ],
+            },
+        }
+    )
 
 
 @bp.route('/profile', methods=['GET'])

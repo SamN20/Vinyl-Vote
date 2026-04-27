@@ -111,6 +111,11 @@ export function getActiveNotifications() {
   return request("/api/v1/notifications/active", { toastOnError: false });
 }
 
+export function siteSearch(q) {
+  const query = buildQueryString({ q });
+  return request(`/api/v1/search${query ? `?${query}` : ""}`, { toastOnError: false });
+}
+
 export function getProfileData() {
   return request("/api/v1/profile");
 }

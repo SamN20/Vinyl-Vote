@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
+import { FaSearch } from "react-icons/fa";
 import { legacyPageHref, logoutHref } from "../../api";
+import SiteSearch from "../common/SiteSearch";
 import "./Header.css";
 
 function isMobileWidth() {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;
   }
   return window.matchMedia("(max-width: 900px)").matches;
@@ -55,6 +57,7 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [dataDropdownOpen, setDataDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const closeMobileOverlays = useCallback(() => {
     if (!isMobileWidth()) {
@@ -64,6 +67,11 @@ export default function Header({
     setDataDropdownOpen(false);
     setUserDropdownOpen(false);
   }, []);
+
+  const openSearch = useCallback(() => {
+    setSearchOpen(true);
+    closeMobileOverlays();
+  }, [closeMobileOverlays]);
 
   const toggleDataDropdown = useCallback((event) => {
     if (!isMobileWidth()) {
@@ -181,7 +189,17 @@ export default function Header({
             )}
 
             <button
-              className="theme-toggle-icon"
+              className="header-icon-button search-toggle-icon"
+              type="button"
+              onClick={openSearch}
+              aria-label="Open site search"
+              title="Search"
+            >
+              <FaSearch aria-hidden="true" />
+            </button>
+
+            <button
+              className="header-icon-button theme-toggle-icon"
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -192,6 +210,11 @@ export default function Header({
           </div>
         </nav>
       </div>
+      <SiteSearch
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={closeMobileOverlays}
+      />
     </header>
   );
 }
