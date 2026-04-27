@@ -244,6 +244,103 @@ def test_home_anonymous_and_home_seo_contract_matches_v1():
         db.drop_all()
 
 
+def test_seo_preview_vote_reflects_current_album_details():
+    app = _build_app()
+    app.config["PUBLIC_SITE_URL"] = "https://vinylvote.example"
+    with app.app_context():
+        db.create_all()
+
+        album = Album(
+            title="Reactive Record",
+            artist="The Embeds",
+            cover_url="https://cdn.example/cover.jpg",
+            is_current=True,
+            queue_order=5,
+        )
+        db.session.add(album)
+        db.session.flush()
+        db.session.add_all(
+            [
+                Song(album_id=album.id, title="Open Graph", track_number=1, duration="3:30"),
+                Song(album_id=album.id, title="Twitter Card", track_number=2, duration="4:15"),
+            ]
+        )
+        db.session.add(
+            VotePeriod(
+                id=1,
+                end_time=datetime(2026, 5, 4, 23, 59, tzinfo=timezone.utc),
+            )
+        )
+        db.session.commit()
+
+    client = app.test_client()
+    response = client.get("/api/seo/preview/vote")
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+
+    body = response.get_data(as_text=True)
+    assert "Vote on Reactive Record by The Embeds | Vinyl Vote" in body
+    assert "https://cdn.example/cover.jpg" in body
+    assert "2 tracks" in body
+    assert "8 min" in body
+    assert "voting ends May 4, 2026 at 11:59 PM" in body
+    assert 'content="https://vinylvote.example/vote"' in body
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_seo_preview_results_uses_completed_album_result_summary():
+    app = _build_app()
+    app.config["PUBLIC_SITE_URL"] = "https://vinylvote.example"
+    with app.app_context():
+        db.create_all()
+
+        user = User(username="voter", password_hash="hash")
+        db.session.add(user)
+        db.session.flush()
+
+        current = Album(title="Current", artist="Artist", is_current=True, queue_order=10)
+        past = Album(
+            title="Finished Album",
+            artist="Past Artist",
+            cover_url="/static/finished.png",
+            is_current=False,
+            queue_order=9,
+        )
+        db.session.add_all([current, past])
+        db.session.flush()
+
+        song = Song(album_id=past.id, title="Rated Song", track_number=1, duration="2:00")
+        db.session.add(song)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                Vote(user_id=user.id, song_id=song.id, score=4.0, ignored=False),
+                AlbumScore(user_id=user.id, album_id=past.id, personal_score=4.5, ignored=False),
+            ]
+        )
+        db.session.commit()
+        past_id = past.id
+
+    client = app.test_client()
+    response = client.get(f"/api/seo/preview/results/{past_id}")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Finished Album by Past Artist Results | Vinyl Vote" in body
+    assert "Song average 4.0/5" in body
+    assert "album average 4.5/5" in body
+    assert "1 voter" in body
+    assert "https://vinylvote.example/static/finished.png" in body
+    assert f'content="https://vinylvote.example/results/{past_id}"' in body
+
+    with app.app_context():
+        db.drop_all()
+
+
 def test_active_notifications_contract_matches_v1_and_filters_time_window():
     app = _build_app()
     with app.app_context():

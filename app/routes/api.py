@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+from html import escape
 import json
 import requests
 
@@ -450,13 +451,7 @@ def _album_avg_by_album_ids(album_ids):
 
 def _home_seo_context():
     album = (
-        Album.query
-        .with_entities(
-            Album.id,
-            Album.title,
-            Album.artist,
-            Album.cover_url,
-        )
+        Album.query.options(joinedload(Album.songs))
         .filter_by(is_current=True)
         .first()
     )
@@ -466,6 +461,85 @@ def _home_seo_context():
         'album': album,
         'vote_end': vote_period.end_time.isoformat() if vote_period and vote_period.end_time else None,
     }
+
+
+def _public_site_url():
+    return (current_app.config.get('PUBLIC_SITE_URL') or request.url_root.rstrip('/')).rstrip('/')
+
+
+def _absolute_url(url):
+    if not url:
+        return f"{_public_site_url()}/static/favicon_180x180.png"
+    if url.startswith(('http://', 'https://')):
+        return url
+    return f"{_public_site_url()}/{url.lstrip('/')}"
+
+
+def _format_datetime_label(value):
+    if not value:
+        return None
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return f"{value.strftime('%b')} {value.day}, {value.strftime('%Y at %I:%M %p')}"
+
+
+def _duration_to_seconds(duration):
+    if not duration:
+        return 0
+    parts = str(duration).strip().split(':')
+    try:
+        numbers = [int(part) for part in parts]
+    except ValueError:
+        return 0
+    if len(numbers) == 2:
+        minutes, seconds = numbers
+        return minutes * 60 + seconds
+    if len(numbers) == 3:
+        hours, minutes, seconds = numbers
+        return hours * 3600 + minutes * 60 + seconds
+    return 0
+
+
+def _album_length_label(album):
+    total_seconds = sum(_duration_to_seconds(song.duration) for song in album.songs)
+    if total_seconds <= 0:
+        return None
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes = round(remainder / 60)
+    if minutes == 60:
+        hours += 1
+        minutes = 0
+    if hours:
+        return f"{hours} hr {minutes} min" if minutes else f"{hours} hr"
+    return f"{minutes} min"
+
+
+def _track_count_label(count):
+    return f"{count} track" if count == 1 else f"{count} tracks"
+
+
+def _voter_count_label(count):
+    return f"{count} voter" if count == 1 else f"{count} voters"
+
+
+def _album_embed_description(album, vote_end=None, prefix=None, include_length=True):
+    details = [_track_count_label(len(album.songs))]
+    album_length = _album_length_label(album) if include_length else None
+    if album_length:
+        details.append(album_length)
+    vote_end_label = _format_datetime_label(vote_end)
+    if vote_end_label:
+        details.append(f"voting ends {vote_end_label}")
+
+    summary = ', '.join(details)
+    if prefix:
+        return f"{prefix} {summary}."
+    return summary[0].upper() + summary[1:] + '.' if summary else f"{album.title} by {album.artist}."
 
 
 def _build_home_payload():
@@ -600,29 +674,18 @@ def _build_home_payload():
 def _build_home_seo_payload():
     seo_context = _home_seo_context()
     current_album = seo_context.get('album')
-    base_url = request.url_root.rstrip('/')
+    base_url = _public_site_url()
     canonical_url = f"{base_url}/"
-    default_image = f"{base_url}/static/favicon_64x64.png"
+    default_image = f"{base_url}/static/favicon_180x180.png"
 
     if current_album:
-        vote_end_text = 'soon'
-        vote_end_raw = seo_context.get('vote_end')
-        if vote_end_raw:
-            try:
-                vote_end_dt = datetime.fromisoformat(vote_end_raw)
-                vote_end_text = (
-                    f"{vote_end_dt.strftime('%b')} {vote_end_dt.day}, "
-                    f"{vote_end_dt.strftime('%Y at %I:%M %p')}"
-                )
-            except Exception:
-                vote_end_text = 'soon'
-
         title = f"Vote on {current_album.title} by {current_album.artist} | Vinyl Vote"
-        description = (
-            f"Rate this week's featured album and explore community favorites. "
-            f"Voting ends {vote_end_text}."
+        description = _album_embed_description(
+            current_album,
+            seo_context.get('vote_end'),
+            prefix="Rate this week's featured album.",
         )
-        image = current_album.cover_url or default_image
+        image = _absolute_url(current_album.cover_url) if current_album.cover_url else default_image
     else:
         title = 'Vinyl Vote | Weekly Album Voting Community'
         description = 'Rate weekly albums, discover top-ranked records, and join the Vinyl Vote community.'
@@ -655,6 +718,212 @@ def _build_home_seo_payload():
             'description': description,
         },
     }
+
+
+def _seo_payload(title, description, path='/', image=None, schema=None, robots='index,follow'):
+    base_url = _public_site_url()
+    canonical_url = f"{base_url}{path if path.startswith('/') else f'/{path}'}"
+    image_url = _absolute_url(image)
+    full_title = title if 'Vinyl Vote' in title else f"{title} | Vinyl Vote"
+    return {
+        'title': full_title,
+        'description': description,
+        'canonical_url': canonical_url,
+        'robots': robots,
+        'open_graph': {
+            'type': 'website',
+            'site_name': 'Vinyl Vote',
+            'title': full_title,
+            'description': description,
+            'image': image_url,
+            'url': canonical_url,
+        },
+        'twitter': {
+            'card': 'summary_large_image',
+            'title': full_title,
+            'description': description,
+            'image': image_url,
+        },
+        'schema': schema or {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            'name': full_title,
+            'url': canonical_url,
+            'description': description,
+        },
+    }
+
+
+def _current_album_preview(path):
+    seo_context = _home_seo_context()
+    album = seo_context.get('album')
+    if not album:
+        return _seo_payload(
+            'Weekly Album Voting',
+            'Rate weekly albums, discover top-ranked records, and join the Vinyl Vote community.',
+            path,
+        )
+
+    title = f"Vote on {album.title} by {album.artist}"
+    description = _album_embed_description(
+        album,
+        seo_context.get('vote_end'),
+        prefix="This week's Vinyl Vote album.",
+    )
+    return _seo_payload(
+        title,
+        description,
+        path,
+        image=album.cover_url,
+        schema={
+            '@context': 'https://schema.org',
+            '@type': 'MusicAlbum',
+            'name': album.title,
+            'byArtist': {'@type': 'MusicGroup', 'name': album.artist},
+            'numTracks': len(album.songs),
+            'image': _absolute_url(album.cover_url),
+            'url': f"{_public_site_url()}{path}",
+        },
+    )
+
+
+def _results_preview(path, album_id=None):
+    album = None
+    if album_id:
+        album = db.session.get(Album, album_id, options=[joinedload(Album.songs)])
+        if album and not _album_results_are_published(album):
+            album = None
+    else:
+        album, _ = _latest_results_album()
+
+    if not album:
+        return _seo_payload(
+            'Weekly Album Results',
+            'Explore Vinyl Vote community results, song ratings, album scores, and listener favorites.',
+            path,
+        )
+
+    summary = _results_summary_for_album(album)['summary']
+    score_bits = []
+    if summary['avg_song_score'] is not None:
+        score_bits.append(f"song average {summary['avg_song_score']}/5")
+    if summary['avg_album_score'] is not None:
+        score_bits.append(f"album average {summary['avg_album_score']}/5")
+    if summary['voter_count']:
+        score_bits.append(_voter_count_label(summary['voter_count']))
+    description = f"See community results for {album.title} by {album.artist}."
+    if score_bits:
+        description = f"{description} " + ', '.join(score_bits).capitalize() + '.'
+
+    return _seo_payload(
+        f"{album.title} by {album.artist} Results",
+        description,
+        path,
+        image=album.cover_url,
+    )
+
+
+def _leaderboard_preview(path):
+    previews = {
+        '/top-albums': (
+            'Top Albums',
+            "Browse Vinyl Vote's community-ranked albums by song score, album score, and rating activity.",
+        ),
+        '/top-artists': (
+            'Top Artists',
+            "Discover the artists Vinyl Vote listeners rate highest across featured albums.",
+        ),
+        '/top-songs': (
+            'Top Songs',
+            "Explore Vinyl Vote's highest-rated tracks with album context and streaming shortcuts.",
+        ),
+        '/faceoff-leaderboard': (
+            'Face-Off Leaderboard',
+            "See the songs fans keep choosing in Vinyl Vote's head-to-head Face-Off rankings.",
+        ),
+        '/battle': (
+            'Song Face-Off',
+            "Pick between two songs and help shape Vinyl Vote's community Face-Off rankings.",
+        ),
+        '/extension': (
+            'Browser Extension',
+            'Install the Vinyl Vote browser extension for quicker access to weekly album voting.',
+        ),
+        '/terms': (
+            'Terms of Use',
+            'Read the terms that apply when using Vinyl Vote.',
+        ),
+        '/privacy': (
+            'Privacy Policy',
+            'Learn how Vinyl Vote handles account, voting, and notification data.',
+        ),
+    }
+    title, description = previews.get(
+        path,
+        ('Vinyl Vote', 'Rate weekly albums, compare results, and discover standout records with the Vinyl Vote community.'),
+    )
+    return _seo_payload(title, description, path)
+
+
+def _preview_payload_for_path(page_path):
+    path = '/' + (page_path or '').strip('/')
+    if path == '/':
+        return _build_home_seo_payload()
+    if path == '/home':
+        payload = _build_home_seo_payload()
+        payload['canonical_url'] = f"{_public_site_url()}/home"
+        payload['open_graph']['url'] = payload['canonical_url']
+        return payload
+    if path == '/vote':
+        return _current_album_preview(path)
+    if path == '/results':
+        return _results_preview(path)
+
+    results_match = path.strip('/').split('/')
+    if len(results_match) == 2 and results_match[0] == 'results':
+        try:
+            return _results_preview(path, int(results_match[1]))
+        except ValueError:
+            return _leaderboard_preview(path)
+
+    return _leaderboard_preview(path)
+
+
+def _render_preview_html(payload):
+    schema = json.dumps(payload.get('schema') or {}, separators=(',', ':')).replace('<', '\\u003c')
+    canonical_url = payload['canonical_url']
+    body = f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{escape(payload['title'])}</title>
+    <meta name="description" content="{escape(payload['description'])}" />
+    <meta name="robots" content="{escape(payload.get('robots', 'index,follow'))}" />
+    <meta property="og:type" content="{escape(payload['open_graph']['type'])}" />
+    <meta property="og:site_name" content="{escape(payload['open_graph']['site_name'])}" />
+    <meta property="og:title" content="{escape(payload['open_graph']['title'])}" />
+    <meta property="og:description" content="{escape(payload['open_graph']['description'])}" />
+    <meta property="og:image" content="{escape(payload['open_graph']['image'])}" />
+    <meta property="og:url" content="{escape(payload['open_graph']['url'])}" />
+    <meta name="twitter:card" content="{escape(payload['twitter']['card'])}" />
+    <meta name="twitter:title" content="{escape(payload['twitter']['title'])}" />
+    <meta name="twitter:description" content="{escape(payload['twitter']['description'])}" />
+    <meta name="twitter:image" content="{escape(payload['twitter']['image'])}" />
+    <link rel="canonical" href="{escape(canonical_url)}" />
+    <script type="application/ld+json">{schema}</script>
+  </head>
+  <body>
+    <p><a href="{escape(canonical_url)}">{escape(payload['title'])}</a></p>
+  </body>
+</html>"""
+    response = make_response(body)
+    response.mimetype = 'text/html'
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    response.headers['Vary'] = 'User-Agent'
+    return response
 
 
 def _active_notifications_payload():
@@ -1075,6 +1344,14 @@ def get_home():
 @bp_v1.route('/home-seo', methods=['GET'])
 def get_home_seo():
     return jsonify(_build_home_seo_payload())
+
+
+@bp.route('/seo/preview/', defaults={'page_path': ''}, methods=['GET'])
+@bp.route('/seo/preview/<path:page_path>', methods=['GET'])
+@bp_v1.route('/seo/preview/', defaults={'page_path': ''}, methods=['GET'])
+@bp_v1.route('/seo/preview/<path:page_path>', methods=['GET'])
+def get_seo_preview(page_path):
+    return _render_preview_html(_preview_payload_for_path(page_path))
 
 
 @bp.route('/notifications/active', methods=['GET'])
