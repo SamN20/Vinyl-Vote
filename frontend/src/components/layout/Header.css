@@ -134,7 +134,7 @@
   background: rgba(29, 185, 84, 0.15);
 }
 
-.theme-toggle-icon {
+.header-icon-button {
   background: none;
   border: none;
   color: var(--text);
@@ -150,7 +150,7 @@
   justify-content: center;
 }
 
-.theme-toggle-icon:hover {
+.header-icon-button:hover {
   color: var(--accent);
   background: var(--input-bg);
 }
@@ -367,7 +367,7 @@
     width: 100%;
   }
 
-  .theme-toggle-icon {
+  .header-icon-button {
     width: 100%;
     justify-content: flex-start;
     border-radius: 6px;
@@ -376,6 +376,12 @@
 
   .theme-toggle-icon::after {
     content: " Toggle Theme";
+    font-size: 1rem;
+    margin-left: 10px;
+  }
+
+  .search-toggle-icon::after {
+    content: " Search";
     font-size: 1rem;
     margin-left: 10px;
   }

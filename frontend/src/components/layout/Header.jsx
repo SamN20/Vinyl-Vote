@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { FaSearch } from "react-icons/fa";
 import { legacyPageHref, logoutHref } from "../../api";
+import SiteSearch from "../common/SiteSearch";
 import "./Header.css";
 
 function isMobileWidth() {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;
   }
   return window.matchMedia("(max-width: 900px)").matches;
@@ -55,6 +57,7 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [dataDropdownOpen, setDataDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [headerHidden, setHeaderHidden] = useState(false);
   const headerRef = useRef(null);
@@ -99,10 +102,10 @@ export default function Header({
   }, []);
 
   useEffect(() => {
-    if (menuOpen || dataDropdownOpen || userDropdownOpen) {
+    if (menuOpen || dataDropdownOpen || userDropdownOpen || searchOpen) {
       setHeaderHidden(false);
     }
-  }, [dataDropdownOpen, menuOpen, userDropdownOpen]);
+  }, [dataDropdownOpen, menuOpen, searchOpen, userDropdownOpen]);
 
   const closeMobileOverlays = useCallback(() => {
     if (!isMobileWidth()) {
@@ -112,6 +115,11 @@ export default function Header({
     setDataDropdownOpen(false);
     setUserDropdownOpen(false);
   }, []);
+
+  const openSearch = useCallback(() => {
+    setSearchOpen(true);
+    closeMobileOverlays();
+  }, [closeMobileOverlays]);
 
   const toggleDataDropdown = useCallback((event) => {
     if (!isMobileWidth()) {
@@ -232,6 +240,16 @@ export default function Header({
             )}
 
             <button
+              className="header-icon-button search-toggle-icon"
+              type="button"
+              onClick={openSearch}
+              aria-label="Open site search"
+              title="Search"
+            >
+              <FaSearch aria-hidden="true" />
+            </button>
+
+            <button
               className="header-icon-button theme-toggle-icon"
               type="button"
               onClick={toggleTheme}
@@ -244,6 +262,11 @@ export default function Header({
         </nav>
       </div>
       </header>
+      <SiteSearch
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={closeMobileOverlays}
+      />
       <div className="header-spacer" style={{ height: headerHeight }} aria-hidden="true" />
     </>
   );

@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import Header from "./Header";
@@ -20,6 +20,15 @@ function renderHeader(overrides = {}) {
 }
 
 describe("Header", () => {
+  it("opens the site search palette from the header icon", () => {
+    renderHeader();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open site search" }));
+
+    expect(screen.getByRole("dialog", { name: "Find music" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toBeInTheDocument();
+  });
+
   it("hides after a meaningful downward scroll and returns on the way back up", () => {
     Object.defineProperty(window, "scrollY", { configurable: true, value: 220 });
     renderHeader();

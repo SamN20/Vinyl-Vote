@@ -399,6 +399,111 @@ def test_active_notifications_contract_matches_v1_and_filters_time_window():
         db.drop_all()
 
 
+def test_site_search_contract_matches_v1_and_finds_public_music_data():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        current = Album.query.filter_by(is_current=True).first()
+        current.title = "Current Radio Record"
+        current.artist = "Current Radio Artist"
+        current.cover_url = "https://example.com/current.jpg"
+
+        past = Album(
+            title="Radio Memories",
+            artist="The Searchers",
+            cover_url="https://example.com/radio.jpg",
+            is_current=False,
+            queue_order=current.queue_order - 1,
+        )
+        future = Album(
+            title="Future Radio Leak",
+            artist="Hidden Searchers",
+            is_current=False,
+            queue_order=current.queue_order + 1,
+        )
+        db.session.add_all([past, future])
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                Song(album_id=past.id, title="Signal Song", track_number=1),
+                Song(album_id=future.id, title="Future Signal", track_number=1),
+            ]
+        )
+        db.session.commit()
+
+        current_id = current.id
+        past_id = past.id
+
+    client = app.test_client()
+    legacy = client.get("/api/search?q=radio")
+    v1 = client.get("/api/v1/search?q=radio")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"query", "items"}
+    assert set(payload["items"].keys()) == {"albums", "songs", "artists"}
+
+    album_titles = [item["title"] for item in payload["items"]["albums"]]
+    assert "Current Radio Record" in album_titles
+    assert "Radio Memories" in album_titles
+    assert "Future Radio Leak" not in album_titles
+
+    current_result = next(item for item in payload["items"]["albums"] if item["id"] == current_id)
+    past_result = next(item for item in payload["items"]["albums"] if item["id"] == past_id)
+    assert current_result["url"] == "/home"
+    assert past_result["url"] == f"/results/{past_id}"
+
+    artist_titles = [item["title"] for item in payload["items"]["artists"]]
+    assert "Current Radio Artist" in artist_titles
+
+    song_response = client.get("/api/v1/search?q=signal")
+    assert song_response.status_code == 200
+    song_payload = song_response.get_json()
+    song_titles = [item["title"] for item in song_payload["items"]["songs"]]
+    assert "Signal Song" in song_titles
+    assert "Future Signal" not in song_titles
+    assert song_payload["items"]["songs"][0]["album"]["title"] == "Radio Memories"
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_site_search_short_query_returns_empty_groups():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    _seed_authenticated_user_and_album(app)
+    client = app.test_client()
+
+    response = client.get("/api/v1/search?q=r")
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "query": "r",
+        "items": {
+            "albums": [],
+            "songs": [],
+            "artists": [],
+        },
+    }
+
+    blank = client.get("/api/v1/search?q=%20%20")
+    assert blank.status_code == 200
+    assert blank.get_json()["query"] == ""
+    assert blank.get_json()["items"] == {"albums": [], "songs": [], "artists": []}
+
+    with app.app_context():
+        db.drop_all()
+
+
 def test_votes_validation_error_contract_matches_v1():
     app = _build_app()
     with app.app_context():
