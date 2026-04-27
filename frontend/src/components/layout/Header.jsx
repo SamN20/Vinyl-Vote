@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaSearch } from "react-icons/fa";
 import { legacyPageHref, logoutHref } from "../../api";
 import SiteSearch from "../common/SiteSearch";
 import "./Header.css";
@@ -42,6 +41,15 @@ function MoonIcon() {
   return (
     <svg className="icon-inline" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M21 14.5A9 9 0 1 1 9.5 3a7 7 0 1 0 11.5 11.5z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg className="icon-inline header-search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M20 20l-4.2-4.2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -195,7 +203,7 @@ export default function Header({
               aria-label="Open site search"
               title="Search"
             >
-              <FaSearch aria-hidden="true" />
+              <SearchIcon />
             </button>
 
             <button
