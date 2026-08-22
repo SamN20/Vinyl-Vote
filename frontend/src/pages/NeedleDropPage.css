@@ -1,0 +1,721 @@
+.needle-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 20px 56px;
+}
+
+.needle-shell {
+  display: grid;
+  gap: 20px;
+}
+
+.needle-shell > * {
+  animation: needle-rise 260ms ease both;
+}
+
+.needle-topbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--accent) 18%, transparent), transparent 45%),
+    var(--card-bg);
+}
+
+.needle-topbar h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 4.3rem);
+  line-height: 0.95;
+}
+
+.needle-subtitle {
+  max-width: 560px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.needle-mode-tabs,
+.needle-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.needle-mode-tabs {
+  justify-content: flex-end;
+}
+
+.needle-mode-tabs button,
+.needle-presets button {
+  min-height: 42px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.62rem 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 800;
+}
+
+.needle-mode-tabs button.active,
+.needle-presets button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 10%, var(--card-bg));
+}
+
+.needle-presets {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--card-bg) 88%, black);
+}
+
+.needle-modal-backdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.68);
+  animation: needle-fade-in 160ms ease both;
+}
+
+.needle-genre-modal {
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--border-color));
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 34%),
+    var(--card-bg);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.52);
+  padding: 20px;
+  animation: needle-modal-in 220ms ease both;
+}
+
+.needle-genre-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.needle-genre-heading h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1;
+}
+
+.needle-genre-heading button {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  padding: 0.55rem 0.72rem;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.needle-genre-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.needle-genre-grid button {
+  min-height: 48px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  text-transform: capitalize;
+  cursor: pointer;
+  font-weight: 800;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.needle-genre-grid button:hover,
+.needle-genre-grid button.active {
+  border-color: var(--accent);
+  color: #fff;
+  background: color-mix(in oklab, var(--accent) 16%, var(--card-bg));
+  transform: translateY(-1px);
+}
+
+.needle-genre-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.needle-stage {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.2fr) minmax(300px, 0.8fr);
+  gap: 18px;
+  align-items: stretch;
+  transition: grid-template-columns 320ms ease, gap 320ms ease;
+}
+
+.needle-stage.is-complete {
+  grid-template-columns: minmax(0, 900px);
+  justify-content: center;
+  align-items: start;
+  gap: 14px;
+}
+
+.needle-player,
+.needle-guess {
+  border: 1px solid var(--border-color);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.08), transparent 28%),
+    var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.26);
+}
+
+.needle-player {
+  display: grid;
+  gap: 22px;
+  justify-items: center;
+  padding: 24px;
+  min-height: 430px;
+  transition: min-height 320ms ease, padding 320ms ease, gap 320ms ease, transform 320ms ease;
+}
+
+.needle-stage.is-complete .needle-player {
+  grid-template-columns: minmax(160px, 1fr) auto minmax(280px, 1.8fr);
+  align-items: center;
+  justify-items: stretch;
+  gap: 14px;
+  min-height: 0;
+  padding: 12px 14px;
+  align-content: center;
+  animation: needle-settle-left 360ms ease both;
+}
+
+.needle-stage.is-complete .needle-player-meta {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.needle-player-meta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  transition: font-size 320ms ease;
+}
+
+.needle-player-meta strong {
+  color: var(--text);
+}
+
+.needle-play {
+  position: relative;
+  width: min(54vw, 260px);
+  height: min(54vw, 260px);
+  max-width: 260px;
+  max-height: 260px;
+  min-width: 190px;
+  min-height: 190px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.16) 0 9%, transparent 10% 19%, rgba(0, 0, 0, 0.2) 20% 21%, transparent 22%),
+    conic-gradient(from 140deg, #243c2a, #18231d, #263427, #111715, #243c2a);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  gap: 0;
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 1.4rem;
+  box-shadow:
+    inset 0 0 0 22px rgba(255, 255, 255, 0.035),
+    inset 0 0 0 54px rgba(0, 0, 0, 0.18),
+    0 24px 50px rgba(0, 0, 0, 0.36);
+  transition: width 320ms ease, height 320ms ease, min-width 320ms ease, min-height 320ms ease, border-color 180ms ease, transform 180ms ease, opacity 180ms ease;
+}
+
+.needle-stage.is-complete .needle-play {
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+  min-height: 58px;
+  box-shadow:
+    inset 0 0 0 6px rgba(255, 255, 255, 0.035),
+    inset 0 0 0 15px rgba(0, 0, 0, 0.18),
+    0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+.needle-play svg {
+  font-size: 3.2rem;
+  transform: translateX(4px);
+  transition: font-size 320ms ease;
+}
+
+.needle-stage.is-complete .needle-play svg {
+  font-size: 1.2rem;
+}
+
+.needle-play span {
+  position: absolute;
+  bottom: 38px;
+  left: 0;
+  right: 0;
+  transition: bottom 320ms ease, font-size 320ms ease;
+}
+
+.needle-stage.is-complete .needle-play span {
+  display: none;
+}
+
+.needle-play:hover {
+  border-color: var(--accent);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.needle-play:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.needle-progress {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(58px, 1fr));
+  gap: 8px;
+  width: min(100%, 660px);
+  transition: grid-template-columns 320ms ease;
+}
+
+.needle-stage.is-complete .needle-progress {
+  grid-template-columns: repeat(6, minmax(46px, 1fr));
+  width: 100%;
+}
+
+.needle-stage.is-complete .needle-progress span {
+  min-height: 32px;
+  font-size: 0.82rem;
+  padding-inline: 4px;
+}
+
+.needle-progress span {
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.95rem;
+  font-weight: 800;
+  transition: background 220ms ease, border-color 220ms ease, color 220ms ease, transform 220ms ease;
+}
+
+.needle-progress span.used {
+  background: rgba(245, 193, 108, 0.14);
+  border-color: rgba(245, 193, 108, 0.45);
+  color: #f5c16c;
+}
+
+.needle-progress span.current {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--card-bg));
+  transform: translateY(-1px);
+}
+
+.needle-guess {
+  align-content: start;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  animation: needle-slide-in 280ms ease both;
+}
+
+.needle-guess label {
+  display: block;
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.needle-combobox {
+  position: relative;
+}
+
+.needle-combobox input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 1.02rem;
+}
+
+.needle-combobox input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+}
+
+.needle-suggestions {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.needle-suggestions button {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text);
+  padding: 0.8rem 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.needle-suggestions button:hover {
+  background: var(--input-bg);
+}
+
+.needle-suggestions small {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.needle-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.needle-actions .btn,
+.needle-share,
+.needle-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.needle-actions .btn {
+  min-height: 50px;
+}
+
+.needle-feedback {
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--accent) 38%, var(--border-color));
+  border-radius: 8px;
+  padding: 13px 15px;
+  background: color-mix(in oklab, var(--accent) 12%, var(--card-bg));
+  color: var(--text);
+  font-weight: 900;
+}
+
+.needle-result {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  justify-self: center;
+  animation: needle-answer-in 360ms ease both;
+}
+
+.needle-result-cover {
+  align-self: start;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.needle-result-art {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+}
+
+.needle-result-body {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+}
+
+.needle-result-body h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.45rem);
+  line-height: 1.08;
+}
+
+.needle-result-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.needle-answer-meta,
+.needle-message,
+.needle-attempt-summary {
+  margin: 0;
+  color: var(--muted);
+}
+
+.needle-answer-meta {
+  font-size: 1rem;
+}
+
+.needle-message {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.needle-attempt-summary {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.needle-context-grid,
+.needle-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.needle-context-grid span,
+.needle-stats span {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.45rem 0.58rem;
+  background: var(--input-bg);
+  font-size: 0.9rem;
+}
+
+.needle-result-links .streaming-links {
+  margin-top: 0;
+}
+
+.needle-result-links {
+  display: flex;
+}
+
+.needle-listen-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.needle-spotify-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card-bg);
+  height: 80px;
+}
+
+.needle-spotify {
+  width: 100%;
+  height: 80px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  display: block;
+}
+
+.needle-next {
+  justify-self: start;
+  min-height: 46px;
+  animation: needle-rise 260ms ease both;
+}
+
+@keyframes needle-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes needle-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes needle-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes needle-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes needle-answer-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes needle-settle-left {
+  from {
+    opacity: 0.88;
+    transform: translateY(8px) scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .needle-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .needle-mode-tabs {
+    justify-content: flex-start;
+  }
+
+  .needle-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .needle-stage.is-complete {
+    grid-template-columns: 1fr;
+  }
+
+  .needle-player {
+    min-height: 0;
+  }
+
+  .needle-stage.is-complete .needle-player {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .needle-stage.is-complete .needle-progress {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .needle-page {
+    padding: 16px 12px 40px;
+  }
+
+  .needle-topbar,
+  .needle-player,
+  .needle-guess,
+  .needle-result {
+    padding: 16px;
+  }
+
+  .needle-player-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .needle-play {
+    min-width: 170px;
+    min-height: 170px;
+  }
+
+  .needle-progress {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .needle-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .needle-result {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .needle-shell > *,
+  .needle-guess,
+  .needle-result,
+  .needle-modal-backdrop,
+  .needle-genre-modal,
+  .needle-stage.is-complete .needle-player,
+  .needle-next {
+    animation: none;
+  }
+
+  .needle-stage,
+  .needle-player,
+  .needle-player-meta,
+  .needle-play,
+  .needle-play svg,
+  .needle-play span,
+  .needle-progress,
+  .needle-progress span {
+    transition: none;
+  }
+}

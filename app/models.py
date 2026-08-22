@@ -58,6 +58,8 @@ class Song(db.Model):
     duration = db.Column(db.String(16))
 
     spotify_url = db.Column(db.String(256))
+    spotify_track_id = db.Column(db.String(128), nullable=True, index=True)
+    isrc = db.Column(db.String(32), nullable=True, index=True)
     apple_url = db.Column(db.String(256))
     youtube_url = db.Column(db.String(256))
     
@@ -71,6 +73,116 @@ class Song(db.Model):
     # Elo Rating System
     elo_rating = db.Column(db.Float, default=1000.0)
     match_count = db.Column(db.Integer, default=0)
+
+    audio_matches = db.relationship('SongAudioMatch', backref='song', lazy=True, cascade='all, delete-orphan')
+
+
+class SongAudioMatch(db.Model):
+    __tablename__ = 'song_audio_matches'
+    id = db.Column(db.Integer, primary_key=True)
+    song_id = db.Column(db.Integer, db.ForeignKey('songs.id'), nullable=False)
+    provider = db.Column(db.String(32), nullable=False, default='deezer')
+    provider_track_id = db.Column(db.String(128), nullable=True)
+    match_status = db.Column(db.String(32), nullable=False, default='missing')
+    match_confidence = db.Column(db.Float, nullable=True)
+    preview_available = db.Column(db.Boolean, default=False, nullable=False)
+    isrc = db.Column(db.String(32), nullable=True)
+    matched_title = db.Column(db.String(256), nullable=True)
+    matched_artist = db.Column(db.String(256), nullable=True)
+    matched_album = db.Column(db.String(256), nullable=True)
+    matched_duration = db.Column(db.Integer, nullable=True)
+    reviewed = db.Column(db.Boolean, default=False, nullable=False)
+    override = db.Column(db.Boolean, default=False, nullable=False)
+    disabled = db.Column(db.Boolean, default=False, nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint('song_id', 'provider', name='uq_song_audio_match_song_provider'),
+        db.Index('ix_song_audio_matches_provider_track', 'provider', 'provider_track_id'),
+        db.Index('ix_song_audio_matches_status', 'provider', 'match_status', 'preview_available'),
+    )
+
+
+class NeedleDropDailyChallenge(db.Model):
+    __tablename__ = 'needle_drop_daily_challenges'
+    id = db.Column(db.Integer, primary_key=True)
+    local_date = db.Column(db.String(10), unique=True, nullable=False, index=True)
+    song_id = db.Column(db.Integer, db.ForeignKey('songs.id'), nullable=False)
+    provider = db.Column(db.String(32), nullable=False, default='deezer')
+    provider_track_id = db.Column(db.String(128), nullable=False)
+    clip_offset_seconds = db.Column(db.Float, nullable=False, default=0.0)
+    selection_seed = db.Column(db.String(128), nullable=False)
+    published_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    song = db.relationship('Song', backref='needle_drop_dailies')
+
+
+class NeedleDropSession(db.Model):
+    __tablename__ = 'needle_drop_sessions'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    mode = db.Column(db.String(16), nullable=False)
+    daily_challenge_id = db.Column(db.Integer, db.ForeignKey('needle_drop_daily_challenges.id'), nullable=True)
+    song_id = db.Column(db.Integer, db.ForeignKey('songs.id'), nullable=False)
+    filter_key = db.Column(db.String(64), nullable=True)
+    status = db.Column(db.String(16), nullable=False, default='active')
+    attempts_used = db.Column(db.Integer, nullable=False, default=0)
+    started_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', backref='needle_drop_sessions')
+    daily_challenge = db.relationship('NeedleDropDailyChallenge', backref='sessions')
+    song = db.relationship('Song', backref='needle_drop_sessions')
+
+    __table_args__ = (
+        db.Index('ix_needle_drop_sessions_user_mode', 'user_id', 'mode', 'status'),
+        db.UniqueConstraint('user_id', 'daily_challenge_id', name='uq_needle_drop_daily_user_session'),
+    )
+
+
+class NeedleDropAttempt(db.Model):
+    __tablename__ = 'needle_drop_attempts'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('needle_drop_sessions.id'), nullable=False)
+    attempt_number = db.Column(db.Integer, nullable=False)
+    guess_type = db.Column(db.String(16), nullable=False)
+    guessed_song_id = db.Column(db.Integer, db.ForeignKey('songs.id'), nullable=True)
+    guessed_artist = db.Column(db.String(256), nullable=True)
+    result = db.Column(db.String(32), nullable=False)
+    clip_length = db.Column(db.Float, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    session = db.relationship('NeedleDropSession', backref='attempts')
+    guessed_song = db.relationship('Song')
+
+    __table_args__ = (
+        db.UniqueConstraint('session_id', 'attempt_number', name='uq_needle_drop_attempt_number'),
+    )
+
+
+class NeedleDropRecognitionStat(db.Model):
+    __tablename__ = 'needle_drop_recognition_stats'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    song_id = db.Column(db.Integer, db.ForeignKey('songs.id'), nullable=False)
+    exact_correct_count = db.Column(db.Integer, nullable=False, default=0)
+    artist_recognition_count = db.Column(db.Integer, nullable=False, default=0)
+    failure_count = db.Column(db.Integer, nullable=False, default=0)
+    best_attempt = db.Column(db.Integer, nullable=True)
+    last_exact_at = db.Column(db.DateTime, nullable=True)
+    last_artist_at = db.Column(db.DateTime, nullable=True)
+    last_failed_at = db.Column(db.DateTime, nullable=True)
+    cooldown_until = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', backref='needle_drop_recognition_stats')
+    song = db.relationship('Song', backref='needle_drop_recognition_stats')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'song_id', name='uq_needle_drop_user_song_stat'),
+        db.Index('ix_needle_drop_recognition_lookup', 'user_id', 'song_id', 'cooldown_until'),
+    )
 
 class Vote(db.Model):
     __tablename__ = 'votes'

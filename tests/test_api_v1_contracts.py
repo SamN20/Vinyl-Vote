@@ -4,7 +4,7 @@ from unittest.mock import patch
 from flask import Flask
 
 from app import db, login_manager
-from app.models import Album, AlbumScore, BattleVote, NextAlbumVote, Notification, Setting, Song, SongRequest, User, Vote, VotePeriod
+from app.models import Album, AlbumScore, BattleVote, NeedleDropAttempt, NeedleDropDailyChallenge, NeedleDropSession, NextAlbumVote, Notification, Setting, Song, SongRequest, User, Vote, VotePeriod
 from app.routes import api
 
 
@@ -809,6 +809,70 @@ def test_leaderboard_battle_contract_matches_v1_and_user_counts():
     payload = v1.get_json()
     assert set(payload.keys()) == {"items", "pagination", "filters"}
     assert payload["items"][0]["user_winner_count"] >= 0
+
+    with app.app_context():
+        db.drop_all()
+
+
+def test_needle_drop_daily_archive_contract_matches_v1_without_user_rows():
+    app = _build_app()
+    with app.app_context():
+        db.create_all()
+
+    user_id = _seed_authenticated_user_and_album(app)
+
+    with app.app_context():
+        song = Song.query.order_by(Song.track_number.asc()).first()
+        song_title = song.title
+        challenge = NeedleDropDailyChallenge(
+            local_date="2026-08-20",
+            song_id=song.id,
+            provider="deezer",
+            provider_track_id="123",
+            clip_offset_seconds=2.0,
+            selection_seed="archive",
+            published_at=datetime.now(timezone.utc) - timedelta(days=2),
+            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        db.session.add(challenge)
+        db.session.flush()
+        session = NeedleDropSession(
+            user_id=user_id,
+            mode="daily",
+            daily_challenge_id=challenge.id,
+            song_id=song.id,
+            status="won",
+            attempts_used=3,
+            completed_at=datetime.now(timezone.utc),
+        )
+        db.session.add(session)
+        db.session.flush()
+        db.session.add_all(
+            [
+                NeedleDropAttempt(session_id=session.id, attempt_number=1, guess_type="skip", result="skipped", clip_length=0.75),
+                NeedleDropAttempt(session_id=session.id, attempt_number=2, guess_type="artist", guessed_artist="Test Artist", result="artist_recognized", clip_length=1.5),
+                NeedleDropAttempt(session_id=session.id, attempt_number=3, guess_type="song", guessed_song_id=song.id, result="correct", clip_length=3),
+            ]
+        )
+        db.session.commit()
+
+    client = app.test_client()
+    legacy = client.get("/api/leaderboard/needle-drop?page=1&per_page=50")
+    v1 = client.get("/api/v1/leaderboard/needle-drop?page=1&per_page=50")
+
+    assert legacy.status_code == 200
+    assert v1.status_code == 200
+    assert v1.get_json() == legacy.get_json()
+    payload = v1.get_json()
+    assert set(payload.keys()) == {"items", "pagination", "filters"}
+    assert "username" not in payload["items"][0]
+    assert "user_id" not in payload["items"][0]
+    assert payload["items"][0]["date"] == "2026-08-20"
+    assert payload["items"][0]["song"]["title"] == song_title
+    assert payload["items"][0]["players"] == 1
+    assert payload["items"][0]["wins"] == 1
+    assert payload["items"][0]["artist_recognitions"] == 1
+    assert payload["items"][0]["skips"] == 1
 
     with app.app_context():
         db.drop_all()

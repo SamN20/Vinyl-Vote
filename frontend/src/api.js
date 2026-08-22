@@ -176,6 +176,10 @@ export function getLeaderboardBattle(params = {}) {
   return leaderboardRequest("/api/v1/leaderboard/battle", params);
 }
 
+export function getLeaderboardNeedleDrop(params = {}) {
+  return leaderboardRequest("/api/v1/leaderboard/needle-drop", params);
+}
+
 export function getLeaderboardAlbums(params = {}) {
   return leaderboardRequest("/api/v1/leaderboard/albums", params);
 }
@@ -238,6 +242,40 @@ export function submitBattleVote(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function getNeedleDropDaily() {
+  return request("/api/v1/needle-drop/daily");
+}
+
+export function submitNeedleDropDailyAttempt(payload) {
+  return request("/api/v1/needle-drop/daily/attempt", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getNeedleDropEndlessOptions() {
+  return request("/api/v1/needle-drop/endless/options");
+}
+
+export function createNeedleDropEndlessRound(payload = {}) {
+  return request("/api/v1/needle-drop/endless/round", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitNeedleDropEndlessAttempt(payload) {
+  return request("/api/v1/needle-drop/endless/attempt", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function searchNeedleDropCatalog(q) {
+  const query = buildQueryString({ q });
+  return request(`/api/v1/needle-drop/autocomplete${query ? `?${query}` : ""}`, { toastOnError: false });
 }
 
 export function getSongRequests() {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { getProfileData } from "../api";
 import StatusCard from "../components/common/StatusCard";
 import ProfileAlbumHistory from "../components/profile/ProfileAlbumHistory";
@@ -19,6 +20,49 @@ function ProfileHeader({ user }) {
         <h1>{user?.username || "Your Profile"}</h1>
         <p className="subtitle">{user?.email || "Email unavailable"}</p>
       </div>
+    </section>
+  );
+}
+
+function NeedleDropProfileCard({ stats }) {
+  const hasRounds = (stats?.rounds || 0) > 0;
+  return (
+    <section className="profile-section card profile-needle-card">
+      <div className="profile-section-heading-row">
+        <div>
+          <h2>Needle Drop</h2>
+          <p className="profile-section-subtitle">Your audio recognition stats.</p>
+        </div>
+        <Link className="muted-link" to="/needle-drop-leaderboard">Daily Archive</Link>
+      </div>
+      {hasRounds ? (
+        <>
+          <div className="profile-needle-primary">
+            <div>
+              <p className="profile-stat-label">Wins</p>
+              <p className="profile-stat-value">{stats.wins}</p>
+            </div>
+            <div>
+              <p className="profile-stat-label">Win Rate</p>
+              <p className="profile-stat-value">{Math.round((stats.win_rate || 0) * 100)}%</p>
+            </div>
+            <div>
+              <p className="profile-stat-label">Best Solve</p>
+              <p className="profile-stat-value">{stats.best_attempt ? `${stats.best_attempt}` : "—"}</p>
+            </div>
+          </div>
+          <dl className="profile-needle-list">
+            <div><dt>Rounds</dt><dd>{stats.rounds}</dd></div>
+            <div><dt>Daily wins</dt><dd>{stats.daily_wins}</dd></div>
+            <div><dt>Endless wins</dt><dd>{stats.endless_wins}</dd></div>
+            <div><dt>Artist hits</dt><dd>{stats.artist_recognitions}</dd></div>
+            <div><dt>More clips</dt><dd>{stats.skips}</dd></div>
+            <div><dt>Exact songs</dt><dd>{stats.exact_songs}</dd></div>
+          </dl>
+        </>
+      ) : (
+        <p className="empty-text">No Needle Drop rounds yet.</p>
+      )}
     </section>
   );
 }
@@ -131,6 +175,8 @@ export default function ProfilePage() {
           )}
         </section>
       </section>
+
+      <NeedleDropProfileCard stats={payload?.needle_drop_stats} />
 
       <ProfileKeynAccountCard
         user={payload?.user}

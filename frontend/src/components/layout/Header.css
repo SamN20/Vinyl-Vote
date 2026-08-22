@@ -1,20 +1,32 @@
 .site-header {
   background: var(--card-bg);
   border-bottom: 1px solid var(--border-color);
-  padding: 20px 24px;
-  position: sticky;
+  padding: 12px 20px;
+  position: fixed;
+  left: 0;
+  right: 0;
   top: 0;
   z-index: 1200;
+  transition: transform 260ms ease;
+  will-change: transform;
+}
+
+.site-header.is-hidden {
+  transform: translateY(calc(-100% - 1px));
+}
+
+.header-spacer {
+  flex: 0 0 auto;
+  transition: height 160ms ease;
 }
 
 .header-container {
-  max-width: 1120px;
+  max-width: 1280px;
   margin: 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 20px;
 }
 
 .brand-link {
@@ -23,8 +35,9 @@
   gap: 10px;
   text-decoration: none;
   color: var(--text);
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .brand-logo {
@@ -80,15 +93,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 10px;
-  gap: 12px;
-  flex-wrap: wrap;
+  margin-top: 0;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
+  width: 100%;
 }
 
 .nav-group {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .user-group {
@@ -101,14 +117,15 @@
   text-decoration: none;
   font-weight: bold;
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 7px 9px;
   transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
 }
 
 .active {
   color: #fff !important;
   background: var(--accent);
-  padding: 6px 10px;
+  padding: 7px 9px;
   border-radius: 6px;
 }
 
@@ -123,11 +140,11 @@
   color: var(--text);
   font-size: 1.25em;
   cursor: pointer;
-  padding: 8px;
+  padding: 7px;
   border-radius: 50%;
   transition: color 0.2s, background 0.2s;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -160,8 +177,8 @@
   border: none;
   font-weight: bold;
   cursor: pointer;
-  padding: 6px 10px;
-  font-size: 1rem;
+  padding: 7px 9px;
+  font-size: 0.94rem;
   border-radius: 6px;
   transition: background 0.2s, color 0.2s;
 }
@@ -211,7 +228,7 @@
 .user-dropbtn {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: 4px 8px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--accent);
@@ -225,8 +242,8 @@
 }
 
 .user-avatar-small {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
@@ -259,7 +276,27 @@
   margin: 6px 0;
 }
 
+@media (max-width: 1100px) {
+  .brand-footnote {
+    display: none;
+  }
+
+  .nav-group a,
+  .nav-btn,
+  .dropbtn {
+    font-size: 0.9rem;
+    padding-inline: 7px;
+  }
+}
+
 @media (max-width: 900px) {
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .nav-links {
     display: none;
     width: 100%;
@@ -341,5 +378,12 @@
     content: " Toggle Theme";
     font-size: 1rem;
     margin-left: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header,
+  .header-spacer {
+    transition: none;
   }
 }

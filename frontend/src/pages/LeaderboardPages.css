@@ -281,6 +281,26 @@
   border-radius: 10px;
 }
 
+.needle-drop-board .leaderboard-table th,
+.needle-drop-board .leaderboard-table td {
+  padding-left: 0.9rem;
+  padding-right: 0.9rem;
+}
+
+.needle-daily-song-cell {
+  gap: 0.85rem;
+}
+
+.needle-daily-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+}
+
+.needle-daily-song-cell .streaming-links {
+  margin-top: 0.25rem;
+}
+
 .faceoff-song-meta {
   display: grid;
   gap: 0.24rem;

@@ -19,6 +19,16 @@ def search_album(query):
 def fetch_album_details(spotify_id):
     sp = get_spotify_client()
     album = sp.album(spotify_id)
+    track_items = album['tracks']['items']
+    track_ids = [track['id'] for track in track_items if track.get('id')]
+    full_tracks = {}
+    if track_ids:
+        try:
+            for track in sp.tracks(track_ids)['tracks']:
+                if track and track.get('id'):
+                    full_tracks[track['id']] = track
+        except Exception:
+            full_tracks = {}
     return {
         'title': album['name'],
         'artist': album['artists'][0]['name'],
@@ -30,8 +40,10 @@ def fetch_album_details(spotify_id):
                 'title': t['name'],
                 'track_number': t['track_number'],
                 'duration': t['duration_ms'] // 1000,  # seconds
-                'spotify_url': t['external_urls']['spotify']
-            } for t in album['tracks']['items']
+                'spotify_url': t['external_urls']['spotify'],
+                'spotify_track_id': t.get('id'),
+                'isrc': (full_tracks.get(t.get('id')) or {}).get('external_ids', {}).get('isrc'),
+            } for t in track_items
         ]
     }
 

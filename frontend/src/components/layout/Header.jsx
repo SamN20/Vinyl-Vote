@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { legacyPageHref, logoutHref } from "../../api";
 import "./Header.css";
@@ -55,6 +55,54 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [dataDropdownOpen, setDataDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const headerRef = useRef(null);
+  const lastScrollTopRef = useRef(0);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) {
+      return undefined;
+    }
+
+    const measureHeader = () => setHeaderHeight(header.getBoundingClientRect().height);
+    measureHeader();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measureHeader);
+      return () => window.removeEventListener("resize", measureHeader);
+    }
+
+    const observer = new ResizeObserver(measureHeader);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const revealHeader = () => setHeaderHidden(false);
+    const handleScroll = () => {
+      const currentScrollTop = window.scrollY || 0;
+      const previousScrollTop = lastScrollTopRef.current;
+
+      if (currentScrollTop <= 160 || currentScrollTop < previousScrollTop - 8) {
+        revealHeader();
+      } else if (currentScrollTop > previousScrollTop + 12) {
+        setHeaderHidden(true);
+      }
+
+      lastScrollTopRef.current = currentScrollTop;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (menuOpen || dataDropdownOpen || userDropdownOpen) {
+      setHeaderHidden(false);
+    }
+  }, [dataDropdownOpen, menuOpen, userDropdownOpen]);
 
   const closeMobileOverlays = useCallback(() => {
     if (!isMobileWidth()) {
@@ -82,7 +130,8 @@ export default function Header({
   }, []);
 
   return (
-    <header className="site-header">
+    <>
+      <header ref={headerRef} className={`site-header ${headerHidden ? "is-hidden" : ""}`}>
       <div className="header-container">
         <Link className="brand-link" to="/home" onClick={closeMobileOverlays}>
           <img
@@ -115,6 +164,7 @@ export default function Header({
               <>
                 <Link to="/vote" className={route === "/vote" ? "active" : ""} onClick={closeMobileOverlays}>Vote</Link>
                 <Link to="/battle" className={route === "/battle" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off</Link>
+                <Link to="/needle-drop" className={route === "/needle-drop" ? "active" : ""} onClick={closeMobileOverlays}>Needle Drop</Link>
                 <Link to="/retro-hub" className={route === "/retro-hub" || route === "/retro-vote" ? "active" : ""} onClick={closeMobileOverlays}>Retro Hub</Link>
               </>
             )}
@@ -136,6 +186,7 @@ export default function Header({
                 <Link to="/top-artists" className={route === "/top-artists" ? "active" : ""} onClick={closeMobileOverlays}>Top Artists</Link>
                 <Link to="/top-songs" className={route === "/top-songs" ? "active" : ""} onClick={closeMobileOverlays}>Top Songs</Link>
                 <Link to="/faceoff-leaderboard" className={route === "/faceoff-leaderboard" ? "active" : ""} onClick={closeMobileOverlays}>Face-Off Leaderboard</Link>
+                <Link to="/needle-drop-leaderboard" className={route === "/needle-drop-leaderboard" ? "active" : ""} onClick={closeMobileOverlays}>Needle Drop Archive</Link>
               </div>
             </div>
           </div>
@@ -181,7 +232,7 @@ export default function Header({
             )}
 
             <button
-              className="theme-toggle-icon"
+              className="header-icon-button theme-toggle-icon"
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -192,6 +243,8 @@ export default function Header({
           </div>
         </nav>
       </div>
-    </header>
+      </header>
+      <div className="header-spacer" style={{ height: headerHeight }} aria-hidden="true" />
+    </>
   );
 }

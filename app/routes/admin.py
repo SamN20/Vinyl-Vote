@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, current_app
 from flask import request, redirect, url_for, render_template, flash
 from flask import jsonify
 from ..utils import search_album, fetch_album_details, search_youtube_music, search_apple_music, get_album_spotify_data
-from ..models import Album, Song, User, VotePeriod, NextAlbumVote, Setting
+from ..models import Album, Song, User, VotePeriod, NextAlbumVote, Setting, SongAudioMatch
 from ..email import send_email
 from ..auth import admin_required
 from urllib.parse import quote
@@ -13,6 +13,7 @@ from sqlalchemy.sql import func
 from collections import defaultdict, Counter
 from datetime import datetime, timedelta, timezone
 from ..models import Vote, AlbumScore, Comment
+from ..services.audio_providers import get_audio_provider
 
 import csv
 from io import StringIO
@@ -187,6 +188,262 @@ def toggle_song_ignore(song_id):
     
     return redirect(url_for('admin.manage_songs', album_id=album_id))
 
+
+def _duration_seconds(duration):
+    if not duration:
+        return None
+    parts = str(duration).split(':')
+    try:
+        nums = [int(part) for part in parts]
+    except ValueError:
+        return None
+    if len(nums) == 2:
+        return nums[0] * 60 + nums[1]
+    if len(nums) == 3:
+        return nums[0] * 3600 + nums[1] * 60 + nums[2]
+    return None
+
+
+def _apply_audio_result(song, result, reviewed=False, override=False):
+    match = SongAudioMatch.query.filter_by(song_id=song.id, provider=result.provider).first()
+    if not match:
+        match = SongAudioMatch(song_id=song.id, provider=result.provider)
+        db.session.add(match)
+    match.provider_track_id = result.provider_track_id
+    match.match_status = result.match_status
+    match.match_confidence = result.match_confidence
+    match.preview_available = result.preview_available
+    match.isrc = result.isrc or song.isrc
+    match.matched_title = result.matched_title
+    match.matched_artist = result.matched_artist
+    match.matched_album = result.matched_album
+    match.matched_duration = result.matched_duration
+    match.reviewed = reviewed or match.reviewed
+    match.override = override or match.override
+    return match
+
+
+def _best_deezer_album_track(provider, song, deezer_tracks, index):
+    if not deezer_tracks:
+        return None, 0.0
+
+    expected_duration = _duration_seconds(song.duration)
+    candidates = []
+    if index < len(deezer_tracks):
+        candidates.append(deezer_tracks[index])
+    candidates.extend(track for track in deezer_tracks if track not in candidates)
+
+    best = max(
+        candidates,
+        key=lambda track: provider.confidence_for_track(
+            track,
+            title=song.title,
+            artist=song.album.artist,
+            album=song.album.title,
+            duration_seconds=expected_duration,
+        ),
+    )
+    confidence = provider.confidence_for_track(
+        best,
+        title=song.title,
+        artist=song.album.artist,
+        album=song.album.title,
+        duration_seconds=expected_duration,
+    )
+    if index < len(deezer_tracks) and best == deezer_tracks[index]:
+        confidence = min(1.0, confidence + 0.08)
+    return best, confidence
+
+
+@bp.route('/needle-drop-matches', methods=['GET', 'POST'])
+@admin_required
+def needle_drop_matches():
+    provider = get_audio_provider('deezer')
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'bulk_album':
+            album_id = request.form.get('album_id', type=int)
+            deezer_album_id = (request.form.get('deezer_album_id') or '').strip()
+            album = Album.query.options(joinedload(Album.songs)).get_or_404(album_id)
+            deezer_album = provider.album_tracks(deezer_album_id)
+            if not deezer_album:
+                flash("Could not load that Deezer album. Check the album ID and try again.", "error")
+                return redirect(url_for('admin.needle_drop_matches', status=request.args.get('status', 'needs_review')))
+
+            songs = sorted(album.songs, key=lambda item: item.track_number or 999)
+            mapped = 0
+            needs_review = 0
+            skipped = 0
+            for index, song in enumerate(songs):
+                if song.ignored:
+                    skipped += 1
+                    continue
+                track, confidence = _best_deezer_album_track(provider, song, deezer_album["tracks"], index)
+                if not track or confidence < 0.48:
+                    skipped += 1
+                    continue
+                result = provider.result_from_track(
+                    track,
+                    title=song.title,
+                    artist=album.artist,
+                    album=album.title,
+                    duration_seconds=_duration_seconds(song.duration),
+                    isrc=song.isrc,
+                )
+                if confidence >= 0.72 and result.preview_available:
+                    result.match_status = "matched"
+                elif result.preview_available:
+                    result.match_status = "review"
+                    needs_review += 1
+                else:
+                    result.match_status = "missing_preview"
+                    needs_review += 1
+                result.match_confidence = round(confidence, 4)
+                match = _apply_audio_result(song, result, reviewed=confidence >= 0.72, override=True)
+                match.notes = f"Bulk mapped from Deezer album {deezer_album_id}: {deezer_album.get('title') or 'Unknown album'}"
+                mapped += 1
+
+            db.session.commit()
+            flash(
+                f"Mapped {mapped} songs from Deezer album {deezer_album_id}. "
+                f"{needs_review} need review; {skipped} were skipped.",
+                "success",
+            )
+            return redirect(url_for('admin.needle_drop_matches', status=request.args.get('status', 'needs_review'), album_id=album_id))
+
+        song_id = request.form.get('song_id', type=int)
+        if not song_id:
+            flash("Choose a song before saving a Deezer match.", "error")
+            return redirect(url_for('admin.needle_drop_matches', status=request.args.get('status', 'needs_review')))
+        song = Song.query.options(joinedload(Song.album)).get_or_404(song_id)
+        match = SongAudioMatch.query.filter_by(song_id=song.id, provider='deezer').first()
+
+        if action == 'save':
+            track_id = (request.form.get('provider_track_id') or '').strip()
+            disabled = request.form.get('disabled') == 'on'
+            if track_id:
+                result = provider.resolve_track_id(
+                    track_id,
+                    title=song.title,
+                    artist=song.album.artist,
+                    album=song.album.title,
+                    duration_seconds=_duration_seconds(song.duration),
+                    isrc=song.isrc,
+                )
+                result.match_status = 'manual' if result.preview_available and not disabled else result.match_status
+                result.match_confidence = max(result.match_confidence, 0.9 if result.preview_available else 0.0)
+                match = _apply_audio_result(song, result, reviewed=True, override=True)
+            elif not match:
+                match = SongAudioMatch(song_id=song.id, provider='deezer')
+                db.session.add(match)
+            if not track_id:
+                match.provider_track_id = None
+                match.preview_available = False
+                match.match_status = 'missing'
+                match.match_confidence = 0.0
+            match.reviewed = True
+            match.override = bool(track_id)
+            match.disabled = disabled
+            if disabled:
+                match.preview_available = False
+                match.match_status = 'disabled'
+            match.notes = request.form.get('notes') or None
+            db.session.commit()
+            flash(f"Needle Drop match updated for '{song.title}'.", "success")
+        elif action == 'disable':
+            if not match:
+                match = SongAudioMatch(song_id=song.id, provider='deezer')
+                db.session.add(match)
+            match.disabled = True
+            match.preview_available = False
+            match.match_status = 'disabled'
+            match.reviewed = True
+            db.session.commit()
+            flash(f"'{song.title}' disabled for Needle Drop.", "info")
+        elif action == 'clear':
+            if match:
+                db.session.delete(match)
+                db.session.commit()
+            flash(f"Needle Drop override cleared for '{song.title}'.", "info")
+        elif action == 'retry':
+            result = provider.resolve_track(
+                title=song.title,
+                artist=song.album.artist,
+                album=song.album.title,
+                duration_seconds=_duration_seconds(song.duration),
+                isrc=song.isrc,
+            )
+            _apply_audio_result(song, result)
+            db.session.commit()
+            flash(f"Retried Deezer match for '{song.title}'.", "success")
+
+        return redirect(url_for('admin.needle_drop_matches', status=request.args.get('status', 'needs_review')))
+
+    status = request.args.get('status', 'needs_review')
+    deezer_album_query = (request.args.get('deezer_album_query') or '').strip()
+    deezer_track_query = (request.args.get('deezer_track_query') or '').strip()
+    lookup_song_id = request.args.get('lookup_song_id', type=int)
+    selected_album_id = request.args.get('album_id', type=int)
+    deezer_album_results = provider.search_albums(deezer_album_query, limit=8) if deezer_album_query else []
+    deezer_track_results = provider.search_tracks(deezer_track_query, limit=10) if deezer_track_query else []
+
+    query = Song.query.options(joinedload(Song.album), joinedload(Song.audio_matches)).join(Album).outerjoin(
+        SongAudioMatch,
+        (SongAudioMatch.song_id == Song.id) & (SongAudioMatch.provider == 'deezer'),
+    )
+    if status == 'missing':
+        query = query.filter(SongAudioMatch.id.is_(None))
+    elif status == 'disabled':
+        query = query.filter(SongAudioMatch.disabled.is_(True))
+    elif status == 'matched':
+        query = query.filter(SongAudioMatch.preview_available.is_(True), SongAudioMatch.disabled.is_(False))
+    else:
+        query = query.filter(
+            db.or_(
+                SongAudioMatch.id.is_(None),
+                SongAudioMatch.match_status != 'matched',
+                SongAudioMatch.match_confidence < 0.82,
+                SongAudioMatch.preview_available.is_(False),
+            )
+        )
+    songs = query.order_by(Album.queue_order.desc(), Song.track_number.asc()).limit(200).all()
+    base_summary = db.session.query(func.count(Song.id)).outerjoin(
+        SongAudioMatch,
+        (SongAudioMatch.song_id == Song.id) & (SongAudioMatch.provider == 'deezer'),
+    )
+    summary = {
+        'total': base_summary.scalar() or 0,
+        'matched': base_summary.filter(
+            SongAudioMatch.preview_available.is_(True),
+            SongAudioMatch.disabled.is_(False),
+        ).scalar() or 0,
+        'missing': base_summary.filter(SongAudioMatch.id.is_(None)).scalar() or 0,
+        'disabled': base_summary.filter(SongAudioMatch.disabled.is_(True)).scalar() or 0,
+        'review': base_summary.filter(
+            db.or_(
+                SongAudioMatch.id.is_(None),
+                SongAudioMatch.match_status != 'matched',
+                SongAudioMatch.match_confidence < 0.82,
+                SongAudioMatch.preview_available.is_(False),
+            )
+        ).scalar() or 0,
+    }
+    albums_for_bulk = Album.query.filter(Album.queue_order > 0).order_by(Album.queue_order.desc(), Album.artist.asc(), Album.title.asc()).all()
+    return render_template(
+        'admin_needle_drop_matches.html',
+        songs=songs,
+        status=status,
+        summary=summary,
+        albums_for_bulk=albums_for_bulk,
+        selected_album_id=selected_album_id,
+        deezer_album_query=deezer_album_query,
+        deezer_album_results=deezer_album_results,
+        deezer_track_query=deezer_track_query,
+        deezer_track_results=deezer_track_results,
+        lookup_song_id=lookup_song_id,
+    )
+
 @bp.route('/add_album', methods=['GET', 'POST'])
 @admin_required
 def add_album():
@@ -234,6 +491,8 @@ def confirm_album(spotify_id):
             track_number=track['track_number'],
             duration=f"{track['duration']//60}:{track['duration']%60:02}",
             spotify_url=track['spotify_url'],
+            spotify_track_id=track.get('spotify_track_id'),
+            isrc=track.get('isrc'),
             youtube_url=search_youtube_music(track['title'], album.artist),
             apple_url=search_apple_music(track['title'], album.artist)
         )

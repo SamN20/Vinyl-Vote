@@ -1,14 +1,16 @@
-from flask import Blueprint, jsonify, request, current_app, make_response, url_for
+from flask import Blueprint, jsonify, request, current_app, make_response, url_for, Response
 from datetime import datetime, timedelta, timezone
 from flask_login import login_required, current_user
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import joinedload
 from html import escape
 import json
 import requests
 
 from .. import db
-from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote, SongRequest, User, Notification, NextAlbumVote
+from ..models import Album, Vote, AlbumScore, VotePeriod, Song, Setting, BattleVote, SongRequest, User, Notification, NextAlbumVote, NeedleDropDailyChallenge, NeedleDropSession, NeedleDropAttempt, NeedleDropRecognitionStat
+from ..services.audio_providers import get_audio_provider
+from ..services import needle_drop
 from ..utils import fetch_artist_image, search_album, send_push
 
 bp = Blueprint('api', __name__, url_prefix='/api')
@@ -963,6 +965,109 @@ def _active_notifications_payload():
     return payload
 
 
+def _needle_drop_user_stats(user_id):
+    rounds = (
+        db.session.query(func.count(NeedleDropSession.id))
+        .filter(NeedleDropSession.user_id == user_id)
+        .scalar()
+        or 0
+    )
+    wins = (
+        db.session.query(func.count(NeedleDropSession.id))
+        .filter(NeedleDropSession.user_id == user_id, NeedleDropSession.status == 'won')
+        .scalar()
+        or 0
+    )
+    daily_wins = (
+        db.session.query(func.count(NeedleDropSession.id))
+        .filter(
+            NeedleDropSession.user_id == user_id,
+            NeedleDropSession.status == 'won',
+            NeedleDropSession.mode == 'daily',
+        )
+        .scalar()
+        or 0
+    )
+    endless_wins = (
+        db.session.query(func.count(NeedleDropSession.id))
+        .filter(
+            NeedleDropSession.user_id == user_id,
+            NeedleDropSession.status == 'won',
+            NeedleDropSession.mode == 'endless',
+        )
+        .scalar()
+        or 0
+    )
+    avg_win_attempt = (
+        db.session.query(func.avg(NeedleDropSession.attempts_used))
+        .filter(NeedleDropSession.user_id == user_id, NeedleDropSession.status == 'won')
+        .scalar()
+    )
+    best_attempt = (
+        db.session.query(func.min(NeedleDropRecognitionStat.best_attempt))
+        .filter(NeedleDropRecognitionStat.user_id == user_id)
+        .scalar()
+    )
+    artist_recognitions = (
+        db.session.query(func.count(NeedleDropAttempt.id))
+        .join(NeedleDropSession, NeedleDropSession.id == NeedleDropAttempt.session_id)
+        .filter(
+            NeedleDropSession.user_id == user_id,
+            NeedleDropAttempt.result == 'artist_recognized',
+        )
+        .scalar()
+        or 0
+    )
+    skips = (
+        db.session.query(func.count(NeedleDropAttempt.id))
+        .join(NeedleDropSession, NeedleDropSession.id == NeedleDropAttempt.session_id)
+        .filter(
+            NeedleDropSession.user_id == user_id,
+            NeedleDropAttempt.guess_type == 'skip',
+        )
+        .scalar()
+        or 0
+    )
+    wrong_guesses = (
+        db.session.query(func.count(NeedleDropAttempt.id))
+        .join(NeedleDropSession, NeedleDropSession.id == NeedleDropAttempt.session_id)
+        .filter(
+            NeedleDropSession.user_id == user_id,
+            NeedleDropAttempt.result == 'wrong',
+        )
+        .scalar()
+        or 0
+    )
+    exact_songs = (
+        db.session.query(func.count(func.distinct(NeedleDropRecognitionStat.song_id)))
+        .filter(
+            NeedleDropRecognitionStat.user_id == user_id,
+            NeedleDropRecognitionStat.exact_correct_count > 0,
+        )
+        .scalar()
+        or 0
+    )
+    last_seen = (
+        db.session.query(func.max(NeedleDropSession.started_at))
+        .filter(NeedleDropSession.user_id == user_id)
+        .scalar()
+    )
+    return {
+        'rounds': int(rounds),
+        'wins': int(wins),
+        'daily_wins': int(daily_wins),
+        'endless_wins': int(endless_wins),
+        'win_rate': round(float(wins) / float(rounds), 3) if rounds else 0,
+        'avg_win_attempt': round(float(avg_win_attempt), 2) if avg_win_attempt is not None else None,
+        'best_attempt': int(best_attempt) if best_attempt is not None else None,
+        'artist_recognitions': int(artist_recognitions),
+        'skips': int(skips),
+        'wrong_guesses': int(wrong_guesses),
+        'exact_songs': int(exact_songs),
+        'last_seen': last_seen.isoformat() if last_seen else None,
+    }
+
+
 def _build_profile_payload():
     now_utc = datetime.now(timezone.utc)
 
@@ -1291,6 +1396,7 @@ def _build_profile_payload():
             'count': int(battle_count or 0),
             'top_pick': favorite_gladiator,
         },
+        'needle_drop_stats': _needle_drop_user_stats(current_user.id),
         'album_votes': album_votes,
         'keyn_links': {
             'profile': current_app.config.get('KEYN_PROFILE_URL'),
@@ -1816,6 +1922,159 @@ def get_leaderboard_battle():
     )
 
 
+@bp.route('/leaderboard/needle-drop', methods=['GET'])
+@bp_v1.route('/leaderboard/needle-drop', methods=['GET'])
+def get_leaderboard_needle_drop():
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = min(max(request.args.get('per_page', 50, type=int), 10), 100)
+    q = request.args.get('q', '', type=str).strip()
+    sort_by = request.args.get('sort_by', 'date', type=str)
+    sort_dir = request.args.get('sort_dir', 'desc', type=str).lower()
+
+    attempts_agg = (
+        db.session.query(
+            NeedleDropSession.daily_challenge_id.label('daily_challenge_id'),
+            func.sum(case((NeedleDropAttempt.result == 'artist_recognized', 1), else_=0)).label('artist_recognitions'),
+            func.sum(case((NeedleDropAttempt.guess_type == 'skip', 1), else_=0)).label('skips'),
+            func.sum(case((NeedleDropAttempt.result == 'wrong', 1), else_=0)).label('wrong_guesses'),
+        )
+        .join(NeedleDropAttempt, NeedleDropAttempt.session_id == NeedleDropSession.id)
+        .filter(NeedleDropSession.daily_challenge_id.isnot(None))
+        .group_by(NeedleDropSession.daily_challenge_id)
+        .subquery()
+    )
+    base = (
+        db.session.query(
+            NeedleDropDailyChallenge.id.label('challenge_id'),
+            NeedleDropDailyChallenge.local_date.label('local_date'),
+            NeedleDropDailyChallenge.expires_at.label('expires_at'),
+            Song.id.label('song_id'),
+            Song.title.label('song_title'),
+            Song.spotify_url.label('spotify_url'),
+            Song.apple_url.label('apple_url'),
+            Song.youtube_url.label('youtube_url'),
+            Album.id.label('album_id'),
+            Album.title.label('album_title'),
+            Album.artist.label('artist'),
+            Album.cover_url.label('cover_url'),
+            func.count(NeedleDropSession.id).label('rounds'),
+            func.sum(case((NeedleDropSession.status == 'won', 1), else_=0)).label('wins'),
+            func.avg(case((NeedleDropSession.status == 'won', NeedleDropSession.attempts_used), else_=None)).label('avg_win_attempt'),
+            func.coalesce(attempts_agg.c.artist_recognitions, 0).label('artist_recognitions'),
+            func.coalesce(attempts_agg.c.skips, 0).label('skips'),
+            func.coalesce(attempts_agg.c.wrong_guesses, 0).label('wrong_guesses'),
+        )
+        .join(Song, Song.id == NeedleDropDailyChallenge.song_id)
+        .join(Album, Album.id == Song.album_id)
+        .outerjoin(NeedleDropSession, NeedleDropSession.daily_challenge_id == NeedleDropDailyChallenge.id)
+        .outerjoin(attempts_agg, attempts_agg.c.daily_challenge_id == NeedleDropDailyChallenge.id)
+        .filter(NeedleDropDailyChallenge.expires_at <= datetime.now(timezone.utc))
+        .group_by(
+            NeedleDropDailyChallenge.id,
+            NeedleDropDailyChallenge.local_date,
+            NeedleDropDailyChallenge.expires_at,
+            Song.id,
+            Song.title,
+            Song.spotify_url,
+            Song.apple_url,
+            Song.youtube_url,
+            Album.id,
+            Album.title,
+            Album.artist,
+            Album.cover_url,
+            attempts_agg.c.artist_recognitions,
+            attempts_agg.c.skips,
+            attempts_agg.c.wrong_guesses,
+        )
+    )
+
+    if q:
+        base = base.filter(
+            db.or_(
+                Song.title.ilike(f"%{q}%"),
+                Album.title.ilike(f"%{q}%"),
+                Album.artist.ilike(f"%{q}%"),
+                NeedleDropDailyChallenge.local_date.ilike(f"%{q}%"),
+            )
+        )
+
+    subq = base.subquery()
+    total = db.session.query(func.count()).select_from(subq).scalar() or 0
+    win_rate = case((subq.c.rounds > 0, subq.c.wins * 1.0 / subq.c.rounds), else_=0)
+    sortable = {
+        'date': subq.c.local_date,
+        'wins': subq.c.wins,
+        'rounds': subq.c.rounds,
+        'win_rate': win_rate,
+        'avg_win_attempt': subq.c.avg_win_attempt,
+        'artist_recognitions': subq.c.artist_recognitions,
+        'skips': subq.c.skips,
+        'wrong_guesses': subq.c.wrong_guesses,
+        'song': subq.c.song_title,
+        'artist': subq.c.artist,
+    }
+    sort_column = sortable.get(sort_by, subq.c.local_date)
+    if sort_by == 'avg_win_attempt' and sort_dir != 'desc':
+        order_clause = sort_column.asc().nullslast()
+    else:
+        order_clause = sort_column.asc() if sort_dir == 'asc' else sort_column.desc()
+
+    rows = (
+        db.session.query(subq)
+        .order_by(order_clause, subq.c.wins.desc(), subq.c.rounds.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    rank_offset = (page - 1) * per_page
+    items = []
+    for index, row in enumerate(rows):
+        rounds = int(row.rounds or 0)
+        wins = int(row.wins or 0)
+        items.append(
+            {
+                'rank': rank_offset + index + 1,
+                'id': row.challenge_id,
+                'date': row.local_date,
+                'expires_at': row.expires_at.isoformat() if row.expires_at else None,
+                'song': {
+                    'id': row.song_id,
+                    'title': row.song_title,
+                    'spotify_url': row.spotify_url,
+                    'apple_url': row.apple_url,
+                    'youtube_url': row.youtube_url,
+                    'album': {
+                        'id': row.album_id,
+                        'title': row.album_title,
+                        'artist': row.artist,
+                        'cover_url': row.cover_url,
+                    },
+                },
+                'players': rounds,
+                'wins': wins,
+                'failures': max(rounds - wins, 0),
+                'win_rate': round(float(wins) / float(rounds), 3) if rounds else 0,
+                'avg_win_attempt': round(float(row.avg_win_attempt), 2) if row.avg_win_attempt is not None else None,
+                'artist_recognitions': int(row.artist_recognitions or 0),
+                'skips': int(row.skips or 0),
+                'wrong_guesses': int(row.wrong_guesses or 0),
+            }
+        )
+
+    return jsonify(
+        {
+            'items': items,
+            'pagination': _pagination_payload(int(total), page, per_page),
+            'filters': {
+                'q': q,
+                'sort_by': sort_by if sort_by in sortable else 'date',
+                'sort_dir': 'asc' if sort_dir == 'asc' else 'desc',
+            },
+        }
+    )
+
+
 @bp.route('/leaderboard/albums', methods=['GET'])
 @bp_v1.route('/leaderboard/albums', methods=['GET'])
 def get_leaderboard_albums():
@@ -2145,6 +2404,162 @@ def api_battle_vote():
             'loss': round(loser.elo_rating - Rl, 1),
         },
     })
+
+
+@bp.route('/needle-drop/daily', methods=['GET'])
+@bp_v1.route('/needle-drop/daily', methods=['GET'])
+@login_required
+def needle_drop_daily():
+    challenge, session = needle_drop.get_or_create_daily_session(current_user.id)
+    if not challenge or not session:
+        return jsonify({'error': 'No Needle Drop songs with playable previews are available yet.'}), 404
+
+    reveal = session.status in {'won', 'failed', 'revealed'} or needle_drop.is_expired(challenge)
+    payload = needle_drop.session_payload(session, challenge=challenge, include_reveal=reveal)
+    payload['share_text'] = needle_drop.share_text(session) if session.status in {'won', 'failed'} else None
+    return jsonify(payload)
+
+
+@bp.route('/needle-drop/daily/attempt', methods=['POST'])
+@bp_v1.route('/needle-drop/daily/attempt', methods=['POST'])
+@login_required
+def needle_drop_daily_attempt():
+    _, session = needle_drop.get_or_create_daily_session(current_user.id)
+    if not session:
+        return jsonify({'error': 'No Needle Drop Daily is available.'}), 404
+
+    data = request.get_json(silent=True) or {}
+    guess_type = data.get('guess_type') or ('skip' if data.get('skip') else 'song')
+    if guess_type not in {'song', 'artist', 'skip'}:
+        return jsonify({'error': 'guess_type must be song, artist, or skip'}), 400
+
+    result, payload = needle_drop.record_attempt(
+        session,
+        guess_type=guess_type,
+        song_id=data.get('song_id'),
+        artist=data.get('artist'),
+    )
+    payload['result'] = result
+    payload['share_text'] = needle_drop.share_text(session) if session.status in {'won', 'failed'} else None
+    return jsonify(payload)
+
+
+@bp.route('/needle-drop/daily/archive/<local_date>', methods=['GET'])
+@bp_v1.route('/needle-drop/daily/archive/<local_date>', methods=['GET'])
+@login_required
+def needle_drop_daily_archive(local_date):
+    challenge = NeedleDropDailyChallenge.query.filter_by(local_date=local_date).first()
+    if not challenge:
+        return jsonify({'error': 'No archived Daily exists for that date.'}), 404
+    session = NeedleDropSession.query.filter_by(
+        user_id=current_user.id,
+        daily_challenge_id=challenge.id,
+    ).first()
+    if not session:
+        session = NeedleDropSession(
+            user_id=current_user.id,
+            mode='daily',
+            daily_challenge_id=challenge.id,
+            song_id=challenge.song_id,
+        )
+        db.session.add(session)
+        db.session.commit()
+    reveal = session.status in {'won', 'failed', 'revealed'} or needle_drop.is_expired(challenge)
+    return jsonify(needle_drop.session_payload(session, challenge=challenge, include_reveal=reveal))
+
+
+@bp.route('/needle-drop/daily/stats/<local_date>', methods=['GET'])
+@bp_v1.route('/needle-drop/daily/stats/<local_date>', methods=['GET'])
+@login_required
+def needle_drop_daily_stats(local_date):
+    challenge = NeedleDropDailyChallenge.query.filter_by(local_date=local_date).first()
+    if not challenge:
+        return jsonify({'error': 'No Daily exists for that date.'}), 404
+    if not needle_drop.is_expired(challenge):
+        return jsonify({'error': 'Community stats unlock after this Daily expires.'}), 403
+    return jsonify(needle_drop.daily_stats_for_challenge(challenge))
+
+
+@bp.route('/needle-drop/endless/options', methods=['GET'])
+@bp_v1.route('/needle-drop/endless/options', methods=['GET'])
+@login_required
+def needle_drop_endless_options():
+    return jsonify(needle_drop.endless_options(current_user.id))
+
+
+@bp.route('/needle-drop/endless/round', methods=['POST'])
+@bp_v1.route('/needle-drop/endless/round', methods=['POST'])
+@login_required
+def needle_drop_endless_round():
+    data = request.get_json(silent=True) or {}
+    session = needle_drop.create_endless_round(
+        current_user.id,
+        filter_key=data.get('filter_key') or 'everything',
+        genre=data.get('genre'),
+        difficulty=data.get('difficulty'),
+    )
+    if not session:
+        return jsonify({'error': 'No Needle Drop songs with playable previews are available yet.'}), 404
+    return jsonify(needle_drop.session_payload(session))
+
+
+@bp.route('/needle-drop/endless/attempt', methods=['POST'])
+@bp_v1.route('/needle-drop/endless/attempt', methods=['POST'])
+@login_required
+def needle_drop_endless_attempt():
+    data = request.get_json(silent=True) or {}
+    session_id = data.get('session_id')
+    session = db.session.get(NeedleDropSession, session_id)
+    if not session or session.user_id != current_user.id or session.mode != 'endless':
+        return jsonify({'error': 'Endless round not found.'}), 404
+    guess_type = data.get('guess_type') or ('skip' if data.get('skip') else 'song')
+    if guess_type not in {'song', 'artist', 'skip'}:
+        return jsonify({'error': 'guess_type must be song, artist, or skip'}), 400
+    result, payload = needle_drop.record_attempt(
+        session,
+        guess_type=guess_type,
+        song_id=data.get('song_id'),
+        artist=data.get('artist'),
+    )
+    payload['result'] = result
+    return jsonify(payload)
+
+
+@bp.route('/needle-drop/autocomplete', methods=['GET'])
+@bp_v1.route('/needle-drop/autocomplete', methods=['GET'])
+@login_required
+def needle_drop_autocomplete():
+    return jsonify(needle_drop.autocomplete_items(request.args.get('q', '')))
+
+
+@bp.route('/needle-drop/preview/<int:session_id>', methods=['GET'])
+@bp_v1.route('/needle-drop/preview/<int:session_id>', methods=['GET'])
+@login_required
+def needle_drop_preview(session_id):
+    session = db.session.get(NeedleDropSession, session_id)
+    if not session or session.user_id != current_user.id:
+        return jsonify({'error': 'Needle Drop round not found.'}), 404
+
+    provider_track_id = None
+    if session.daily_challenge:
+        provider_track_id = session.daily_challenge.provider_track_id
+    else:
+        match = needle_drop.match_for_song(session.song)
+        provider_track_id = match.provider_track_id if match else None
+
+    preview_url = get_audio_provider('deezer').preview_url(provider_track_id)
+    if not preview_url:
+        return jsonify({'error': 'Preview is unavailable for this song.'}), 404
+
+    upstream = requests.get(preview_url, stream=True, timeout=10)
+    if not upstream.ok:
+        return jsonify({'error': 'Preview could not be loaded.'}), 502
+    return Response(
+        upstream.iter_content(chunk_size=8192),
+        status=upstream.status_code,
+        content_type=upstream.headers.get('content-type', 'audio/mpeg'),
+        headers={'Cache-Control': 'private, max-age=300'},
+    )
 
 
 @bp.route('/song-requests', methods=['GET'])

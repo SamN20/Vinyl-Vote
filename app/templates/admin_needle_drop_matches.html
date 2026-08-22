@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Needle Drop Matches{% endblock %}
+
+{% block content %}
+{% set status_label = status.replace('_', ' ').title() %}
+<section class="needle-admin-page">
+  <div class="needle-admin-hero">
+    <div>
+      <p class="needle-admin-kicker">Needle Drop</p>
+      <h2>Preview Match Review</h2>
+      <p>Resolve Deezer preview matches, disable bad clips, and keep the playable catalog clean for Daily and Endless rounds.</p>
+    </div>
+    <div class="needle-admin-summary" aria-label="Needle Drop match summary">
+      <span><strong>{{ summary.matched }}</strong> playable</span>
+      <span><strong>{{ summary.review }}</strong> need review</span>
+      <span><strong>{{ summary.missing }}</strong> missing</span>
+      <span><strong>{{ summary.disabled }}</strong> disabled</span>
+    </div>
+  </div>
+
+  <nav class="needle-admin-tabs" aria-label="Needle Drop match filters">
+    <a class="{% if status == 'needs_review' %}active{% endif %}" href="{{ url_for('admin.needle_drop_matches', status='needs_review') }}">Needs Review</a>
+    <a class="{% if status == 'missing' %}active{% endif %}" href="{{ url_for('admin.needle_drop_matches', status='missing') }}">Missing</a>
+    <a class="{% if status == 'matched' %}active{% endif %}" href="{{ url_for('admin.needle_drop_matches', status='matched') }}">Matched</a>
+    <a class="{% if status == 'disabled' %}active{% endif %}" href="{{ url_for('admin.needle_drop_matches', status='disabled') }}">Disabled</a>
+  </nav>
+
+  <section class="needle-admin-lookup">
+    <div class="needle-lookup-panel">
+      <p class="needle-admin-kicker">Bulk album mapper</p>
+      <h3>Map a Vinyl Vote album from Deezer</h3>
+      <p>Use this when title search misses a whole album. Pick the Vinyl Vote album, search Deezer, then map by track order with title and duration checks.</p>
+      <form class="needle-lookup-form" method="get">
+        <input type="hidden" name="status" value="{{ status }}">
+        <label>
+          <span>Vinyl Vote album</span>
+          <select name="album_id">
+            {% for album in albums_for_bulk %}
+            <option value="{{ album.id }}" {% if selected_album_id == album.id %}selected{% endif %}>{{ album.artist }} — {{ album.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Deezer album search</span>
+          <input type="text" name="deezer_album_query" value="{{ deezer_album_query }}" placeholder="Taylor Swift folklore">
+        </label>
+        <button class="needle-admin-btn primary" type="submit">Search Albums</button>
+      </form>
+      <form class="needle-lookup-form compact" method="post">
+        <input type="hidden" name="action" value="bulk_album">
+        <label>
+          <span>Vinyl Vote album</span>
+          <select name="album_id">
+            {% for album in albums_for_bulk %}
+            <option value="{{ album.id }}" {% if selected_album_id == album.id %}selected{% endif %}>{{ album.artist }} — {{ album.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Deezer album ID</span>
+          <input type="text" name="deezer_album_id" placeholder="e.g. 123456789">
+        </label>
+        <button class="needle-admin-btn" type="submit">Map Album ID</button>
+      </form>
+    </div>
+
+    {% if deezer_album_results %}
+    <div class="needle-deezer-results">
+      {% for album in deezer_album_results %}
+      <article class="needle-deezer-album">
+        {% if album.cover_medium %}<img src="{{ album.cover_medium }}" alt="" loading="lazy">{% endif %}
+        <div>
+          <h4>{{ album.title }}</h4>
+          <p>{{ album.artist.name if album.artist else 'Unknown artist' }}</p>
+          <small>Deezer album {{ album.id }}{% if album.nb_tracks %} · {{ album.nb_tracks }} tracks{% endif %}</small>
+        </div>
+        <form method="post">
+          <input type="hidden" name="action" value="bulk_album">
+          <input type="hidden" name="album_id" value="{{ selected_album_id or (albums_for_bulk[0].id if albums_for_bulk else '') }}">
+          <input type="hidden" name="deezer_album_id" value="{{ album.id }}">
+          <button class="needle-admin-btn primary" type="submit">Map This Album</button>
+        </form>
+      </article>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <div class="needle-admin-toolbar">
+    <div>
+      <p class="needle-admin-kicker">Queue</p>
+      <h3>{{ status_label }}</h3>
+    </div>
+    <span>Showing up to 200 songs</span>
+  </div>
+
+  <div class="needle-match-list">
+    {% for song in songs %}
+    {% set match = song.audio_matches|selectattr('provider', 'equalto', 'deezer')|first %}
+    <article class="needle-match-card">
+      <div class="needle-match-song">
+        <p class="needle-match-track">{{ song.track_number or '—' }}</p>
+        <div>
+          <h3>{{ song.title }}</h3>
+          <p>{{ song.album.artist if song.album else 'Unknown artist' }}</p>
+        </div>
+      </div>
+
+      <div class="needle-match-album">
+        <span>Album</span>
+        <strong>{{ song.album.title if song.album else 'Unknown album' }}</strong>
+        <small>{{ song.duration or 'No duration' }}{% if song.isrc %} · ISRC {{ song.isrc }}{% endif %}</small>
+      </div>
+
+      <div class="needle-match-status">
+        {% if match %}
+        <span class="needle-status-pill {{ 'ok' if match.preview_available and not match.disabled else 'warn' }}">
+          {{ match.match_status }}
+          {% if match.match_confidence is not none %} · {{ "%.2f"|format(match.match_confidence) }}{% endif %}
+        </span>
+        <dl>
+          <div>
+            <dt>Deezer ID</dt>
+            <dd>{{ match.provider_track_id or '—' }}</dd>
+          </div>
+          <div>
+            <dt>Preview</dt>
+            <dd>{{ 'yes' if match.preview_available and not match.disabled else 'no' }}</dd>
+          </div>
+        </dl>
+        {% if match.matched_title %}
+        <p class="needle-match-candidate">{{ match.matched_title }} — {{ match.matched_artist or 'Unknown artist' }}</p>
+        {% endif %}
+        {% if match.override or match.disabled %}
+        <p class="needle-match-flags">
+          {% if match.override %}<span>manual</span>{% endif %}
+          {% if match.disabled %}<span>disabled</span>{% endif %}
+        </p>
+        {% endif %}
+        {% else %}
+        <span class="needle-status-pill warn">missing</span>
+        <p class="needle-match-candidate">No Deezer candidate has been stored yet.</p>
+        {% endif %}
+      </div>
+
+      <form class="needle-match-form" method="post">
+        <input type="hidden" name="song_id" value="{{ song.id }}">
+        <label>
+          <span>Deezer track ID</span>
+          <input type="text" name="provider_track_id" value="{{ match.provider_track_id if match else '' }}" placeholder="e.g. 1761190427">
+        </label>
+        <label class="needle-checkbox">
+          <input type="checkbox" name="disabled" {% if match and match.disabled %}checked{% endif %}>
+          <span>Disable preview use</span>
+        </label>
+        <label>
+          <span>Notes</span>
+          <input type="text" name="notes" value="{{ match.notes if match and match.notes else '' }}" placeholder="Bad clip, wrong remaster, missing preview...">
+        </label>
+        <div class="needle-match-actions">
+          <button class="needle-admin-btn primary" name="action" value="save" type="submit">Save</button>
+          <button class="needle-admin-btn" name="action" value="retry" type="submit">Retry</button>
+          <button class="needle-admin-btn danger" name="action" value="disable" type="submit">Disable</button>
+          <button class="needle-admin-btn ghost" name="action" value="clear" type="submit">Clear</button>
+        </div>
+      </form>
+      <div class="needle-song-search">
+        <form method="get">
+          <input type="hidden" name="status" value="{{ status }}">
+          <input type="hidden" name="lookup_song_id" value="{{ song.id }}">
+          <input type="hidden" name="deezer_track_query" value="{{ song.title }} {{ song.album.artist if song.album else '' }} {{ song.album.title if song.album else '' }}">
+          <button class="needle-admin-btn ghost" type="submit">Find Deezer Candidates</button>
+        </form>
+        {% if lookup_song_id == song.id and deezer_track_results %}
+        <div class="needle-track-results">
+          {% for track in deezer_track_results %}
+          <article>
+            <div>
+              <strong>{{ track.title }}</strong>
+              <span>{{ track.artist.name if track.artist else 'Unknown artist' }} · {{ track.album.title if track.album else 'Unknown album' }}</span>
+              <small>ID {{ track.id }} · {{ (track.duration // 60) if track.duration else 0 }}:{{ "%02d"|format((track.duration % 60) if track.duration else 0) }} · Preview {{ 'yes' if track.preview else 'no' }}</small>
+            </div>
+            <form method="post">
+              <input type="hidden" name="song_id" value="{{ song.id }}">
+              <input type="hidden" name="provider_track_id" value="{{ track.id }}">
+              <input type="hidden" name="notes" value="Saved from Deezer candidate search">
+              <button class="needle-admin-btn primary" name="action" value="save" type="submit">Use</button>
+            </form>
+          </article>
+          {% endfor %}
+        </div>
+        {% elif lookup_song_id == song.id %}
+        <p class="needle-match-candidate">No Deezer candidates came back for this search.</p>
+        {% endif %}
+      </div>
+    </article>
+    {% else %}
+    <div class="needle-admin-empty">
+      <h3>No songs found</h3>
+      <p>This filter is clear right now.</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

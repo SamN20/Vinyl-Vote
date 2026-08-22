@@ -16,6 +16,8 @@ import BattlePage from "./pages/BattlePage";
 import ExtensionPage from "./pages/ExtensionPage";
 import HomePage from "./pages/HomePage";
 import NextAlbumVotePage from "./pages/NextAlbumVotePage";
+import NeedleDropLeaderboardPage from "./pages/NeedleDropLeaderboardPage";
+import NeedleDropPage from "./pages/NeedleDropPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ProfilePage from "./pages/ProfilePage";
 import ResultsPage from "./pages/ResultsPage";
@@ -73,6 +75,14 @@ function parsePathRoute(pathname) {
 
   if (pathOnly === "/battle") {
     return { page: "/battle", albumId: null };
+  }
+
+  if (pathOnly === "/needle-drop") {
+    return { page: "/needle-drop", albumId: null };
+  }
+
+  if (pathOnly === "/needle-drop-leaderboard") {
+    return { page: "/needle-drop-leaderboard", albumId: null };
   }
 
   if (pathOnly === "/top-albums") {
@@ -136,6 +146,17 @@ const routeSeo = {
     description: "Pick between two songs and help shape Vinyl Vote's community Face-Off song rankings.",
     path: "/battle",
   },
+  "/needle-drop": {
+    title: "Needle Drop",
+    description: "Guess Vinyl Vote songs from short audio previews in Daily and Endless modes.",
+    path: "/needle-drop",
+    robots: "noindex,nofollow",
+  },
+  "/needle-drop-leaderboard": {
+    title: "Needle Drop Daily Archive",
+    description: "Browse previous Vinyl Vote Needle Drop Daily songs and spoiler-safe community results.",
+    path: "/needle-drop-leaderboard",
+  },
   "/terms": {
     title: "Terms of Use",
     description: "Read the terms that apply when using Vinyl Vote.",
@@ -196,6 +217,7 @@ function App() {
     "/results",
     "/top-artists",
     "/faceoff-leaderboard",
+    "/needle-drop-leaderboard",
     "/top-albums",
     "/top-songs",
     "/battle",
@@ -288,8 +310,16 @@ function App() {
           <FaceoffLeaderboardPage />
         ) : null}
 
+        {route.page === "/needle-drop-leaderboard" && sessionState !== "loading" && sessionState !== "error" ? (
+          <NeedleDropLeaderboardPage />
+        ) : null}
+
         {route.page === "/battle" && sessionState !== "loading" && sessionState !== "error" ? (
           <BattlePage sessionState={sessionState} theme={theme} />
+        ) : null}
+
+        {sessionState === "authenticated" && route.page === "/needle-drop" ? (
+          <NeedleDropPage />
         ) : null}
 
         {route.page === "/top-albums" && sessionState !== "loading" && sessionState !== "error" ? (
