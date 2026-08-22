@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { FaCompactDisc, FaMusic, FaSearch, FaTimes, FaUserAlt } from "react-icons/fa";
 import { siteSearch } from "../../api";
@@ -99,6 +100,10 @@ export default function SiteSearch({ isOpen, onClose, onNavigate }) {
     return null;
   }
 
+  if (typeof document === "undefined") {
+    return null;
+  }
+
   function handleBackdropMouseDown(event) {
     if (event.target === event.currentTarget) {
       onClose();
@@ -112,7 +117,7 @@ export default function SiteSearch({ isOpen, onClose, onNavigate }) {
 
   const resultCount = countResults(items);
 
-  return (
+  return createPortal(
     <div className="site-search-backdrop" onMouseDown={handleBackdropMouseDown}>
       <section
         className="site-search-dialog"
@@ -198,6 +203,7 @@ export default function SiteSearch({ isOpen, onClose, onNavigate }) {
           ) : null}
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

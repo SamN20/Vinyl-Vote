@@ -27,6 +27,7 @@ describe("Header", () => {
 
     expect(screen.getByRole("dialog", { name: "Find music" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox")).toBeInTheDocument();
+    expect(document.querySelector(".site-search-backdrop")?.parentElement).toBe(document.body);
   });
 
   it("hides after a meaningful downward scroll and returns on the way back up", () => {
